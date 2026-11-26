@@ -185,6 +185,17 @@
     --output train.lattice
 </code></pre>
 <p><code>--dict</code> には、Lindera 用にビルドした辞書のディレクトリも渡せます。その場合は <code>train</code> feature だけで足ります。</p>
+<p><a href="./head_and_function_word.html">スキーマ</a>は、その辞書のものを使います。<code>convert</code> は、辞書の名前を辞書のメタデータから読みます。スキーマがあるのは <code>ipadic</code>・<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> です。UniDic では、辞書のディレクトリを渡します。たとえば、<a href="../lindera-cli/commands.html"><code>lindera download</code></a> が入れたディレクトリです。</p>
+<pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
+cargo run --release -p lindera-dependency --features train -- convert \
+    --dict "$dictionary" \
+    --input ja_gsd-ud-train.conllu \
+    --output train.lattice
+</code></pre>
+<p>スキーマの無い辞書は断ります。</p>
+<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+</code></pre>
+<p>学習するコマンドは辞書を読みません。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a>・<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a>・<code>instances</code> には、辞書の名前を <code>--dictionary-name</code> で渡します。省くと <code>ipadic</code> です。</p>
 <p>コマンドは、文ごとに次を行います。</p>
 <ol>
 <li><strong>語の係り受けを、文節の係り受けに直す。</strong> <code>BunsetuBILabel=B</code> の語が文節を始め、文節の外に係る語が、文節の係り先を決めます。並列は、京大コーパスと CaboCha の形に戻します。並列の各要素は次の要素に係り、係りの種類は <code>P</code> です。</li>
@@ -232,7 +243,7 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <ul>
 <li>2 つの原因で落ちた文は、両方に数えます。</li>
 <li>種類 <code>P</code> の係りは、文節を形態素に合わせる前に数え、書き出したものでもう一度数えます。つないだ文節は、最後の文節の係りを引き継ぎます。</li>
-<li>最後の数行は、IPADIC のスキーマの主辞を、コーパスが印を付けた内容の主辞（<code>BunsetuPositionType</code>）と比べ、食い違いの多い 10 種類を品詞で並べます。ここでは 2 行だけを示しています。<a href="./head_and_function_word.html">主辞と機能語</a>を参照してください。</li>
+<li>最後の数行は、辞書のスキーマの主辞を、コーパスが印を付けた内容の主辞（<code>BunsetuPositionType</code>）と比べ、食い違いの多い 10 種類を品詞で並べます。ここでは 2 行だけを示しています。<a href="./head_and_function_word.html">主辞と機能語</a>を参照してください。</li>
 </ul>
 <h2 id="コーパス"><a class="header" href="#コーパス">コーパス</a></h2>
 <p>コーパスはリポジトリに入っていません。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency/fetch_corpora.sh</code></a> が、この章の数字を測った commit のコーパスを取得し、<code>convert_corpora.sh</code> が変換します。</p>
@@ -243,6 +254,27 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <tr><td><a href="https://github.com/UniversalDependencies/UD_Japanese-PUD">UD Japanese-PUD</a></td><td>cf69c5c</td><td>test</td><td>994 of 1,000</td><td>9,843</td><td>27,728</td></tr>
 </tbody></table>
 </div>
+<p>この表は IPADIC のものです。残った文は、どの辞書でも同じです（文を落とす理由が、辞書に関係しないため）。文節と形態素の数は辞書で変わります。UD Japanese-GSD は UniDic の短単位で分かち書きされているので、UniDic の辞書では、文節の境界が形態素の途中に来ることが減り、併合される文節も減ります（<code>convert_corpora.sh --dictionary unidic-cwj</code>）。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>ファイル</th><th>形態素の境界に合った文節の境界</th><th>併合された文節</th><th>文節</th><th>形態素</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>GSD train</td><td>99.21% (49,372 / 49,764)</td><td>392</td><td>56,396</td><td>162,456</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.16% (3,641 / 3,672)</td><td>31</td><td>4,147</td><td>11,934</td></tr>
+<tr><td></td><td>GSD test</td><td>99.10% (3,967 / 4,003)</td><td>36</td><td>4,509</td><td>12,591</td></tr>
+<tr><td></td><td>PUD</td><td>99.45% (8,849 / 8,898)</td><td>49</td><td>9,843</td><td>27,728</td></tr>
+<tr><td><code>unidic</code></td><td>GSD train</td><td>99.87% (49,700 / 49,764)</td><td>64</td><td>56,724</td><td>172,976</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.89% (3,668 / 3,672)</td><td>4</td><td>4,174</td><td>12,709</td></tr>
+<tr><td></td><td>GSD test</td><td>99.80% (3,995 / 4,003)</td><td>8</td><td>4,537</td><td>13,294</td></tr>
+<tr><td></td><td>PUD</td><td>99.98% (8,896 / 8,898)</td><td>2</td><td>9,890</td><td>29,571</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD train</td><td>99.95% (49,739 / 49,764)</td><td>25</td><td>56,763</td><td>172,196</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.95% (3,670 / 3,672)</td><td>2</td><td>4,176</td><td>12,657</td></tr>
+<tr><td></td><td>GSD test</td><td>99.98% (4,002 / 4,003)</td><td>1</td><td>4,544</td><td>13,254</td></tr>
+<tr><td></td><td>PUD</td><td>99.97% (8,895 / 8,898)</td><td>3</td><td>9,889</td><td>29,413</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD train</td><td>99.94% (49,735 / 49,764)</td><td>29</td><td>56,759</td><td>173,184</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.95% (3,670 / 3,672)</td><td>2</td><td>4,176</td><td>12,723</td></tr>
+<tr><td></td><td>GSD test</td><td>99.95% (4,001 / 4,003)</td><td>2</td><td>4,543</td><td>13,299</td></tr>
+<tr><td></td><td>PUD</td><td>99.97% (8,895 / 8,898)</td><td>3</td><td>9,889</td><td>29,545</td></tr>
+</tbody></table>
+</div>
+<p>3 つの UniDic の辞書は、同じ形態素を返しません。GSD train の文のうち、<code>unidic</code> と <code>unidic-cwj</code> で分かち書きが同じ文は 85.88%、品詞まで同じ文は 66.06% で、<code>unidic-cwj</code> と <code>unidic-csj</code> では 88.10% と 73.22% です（<code>compare_dictionaries.py</code>）。そのため、学習データは 1 つの辞書のためのもので、モデルも同じです。</p>
 <h2 id="コーパスのライセンス"><a class="header" href="#コーパスのライセンス">コーパスのライセンス</a></h2>
 <p>UD Japanese-GSD のライセンスは CC BY-SA 4.0、UD Japanese-PUD は CC BY-SA 3.0 です（各リポジトリの <code>LICENSE.txt</code>）。以下は、このプロジェクトでの扱い方であり、法的な助言ではありません。</p>
 <ul>

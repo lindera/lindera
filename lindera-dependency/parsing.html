@@ -390,7 +390,7 @@ for instance in parser::instances(&amp;Schema::ipadic(), &amp;set, sentence)? {
 <p>These are the three decisions of the table above. In the third, 本を is already attached to the target 読んだと, hence <code>A:を</code>.</p>
 <p>A sentence whose tree the parser cannot make (a head to the left, crossing arcs, a root that is not the last bunsetsu) is an error. The <a href="./training_data.html">conversion</a> leaves such sentences out of the training data.</p>
 <h3 id="the-command"><a class="header" href="#the-command">The command</a></h3>
-<p>With the <code>train</code> feature, <code>lindera-dependency instances</code> writes the instances of a file in the lattice format, with the schema of IPADIC:</p>
+<p>With the <code>train</code> feature, <code>lindera-dependency instances</code> writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names:</p>
 <pre><code class="language-shell">lindera-dependency instances --input train.lattice --output train.instances
 </code></pre>
 <p>Each line is one instance: <code>+1</code> or <code>-1</code>, then the feature strings, separated by tabs. An empty line ends each sentence, so that a file can be cut into folds between sentences. <code>--features</code> takes a feature set; the default is every group.</p>
@@ -412,7 +412,7 @@ negative: 32488
 </tbody></table>
 </div>
 <h2 id="training-a-model"><a class="header" href="#training-a-model">Training a model</a></h2>
-<p>Training is behind the <code>train</code> feature. <code>train-parser</code> trains the parser on <a href="./training_data.html">training data</a>, with the schema of IPADIC, and writes a <a href="./model_file.html">model file</a>. With <code>--chunker</code>, the chunker of another model file goes into the output, which is then the whole model of the dictionary:</p>
+<p>Training is behind the <code>train</code> feature. <code>train-parser</code> trains the parser on <a href="./training_data.html">training data</a>, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names, and writes a <a href="./model_file.html">model file</a>. With <code>--chunker</code>, the chunker of another model file goes into the output, which is then the whole model of the dictionary; that file has to be for the same dictionary:</p>
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 cargo run --release -p lindera-dependency --features train -- train-parser \

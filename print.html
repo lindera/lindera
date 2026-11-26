@@ -2896,6 +2896,7 @@ EOS
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
+<p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="lindera-dependency/./head_and_function_word.html">schema</a> of that dictionary then go into the model.</p>
 <p>On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:</p>
 <pre><code class="language-text">train.lattice: 7024 sentences
 iterations: 126
@@ -3148,7 +3149,7 @@ for instance in parser::instances(&amp;Schema::ipadic(), &amp;set, sentence)? {
 <p>These are the three decisions of the table above. In the third, 本を is already attached to the target 読んだと, hence <code>A:を</code>.</p>
 <p>A sentence whose tree the parser cannot make (a head to the left, crossing arcs, a root that is not the last bunsetsu) is an error. The <a href="lindera-dependency/./training_data.html">conversion</a> leaves such sentences out of the training data.</p>
 <h3 id="the-command-1"><a class="header" href="#the-command-1">The command</a></h3>
-<p>With the <code>train</code> feature, <code>lindera-dependency instances</code> writes the instances of a file in the lattice format, with the schema of IPADIC:</p>
+<p>With the <code>train</code> feature, <code>lindera-dependency instances</code> writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names:</p>
 <pre><code class="language-shell">lindera-dependency instances --input train.lattice --output train.instances
 </code></pre>
 <p>Each line is one instance: <code>+1</code> or <code>-1</code>, then the feature strings, separated by tabs. An empty line ends each sentence, so that a file can be cut into folds between sentences. <code>--features</code> takes a feature set; the default is every group.</p>
@@ -3170,7 +3171,7 @@ negative: 32488
 </tbody></table>
 </div>
 <h2 id="training-a-model-1"><a class="header" href="#training-a-model-1">Training a model</a></h2>
-<p>Training is behind the <code>train</code> feature. <code>train-parser</code> trains the parser on <a href="lindera-dependency/./training_data.html">training data</a>, with the schema of IPADIC, and writes a <a href="lindera-dependency/./model_file.html">model file</a>. With <code>--chunker</code>, the chunker of another model file goes into the output, which is then the whole model of the dictionary:</p>
+<p>Training is behind the <code>train</code> feature. <code>train-parser</code> trains the parser on <a href="lindera-dependency/./training_data.html">training data</a>, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names, and writes a <a href="lindera-dependency/./model_file.html">model file</a>. With <code>--chunker</code>, the chunker of another model file goes into the output, which is then the whole model of the dictionary; that file has to be for the same dictionary:</p>
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 cargo run --release -p lindera-dependency --features train -- train-parser \
@@ -3778,8 +3779,69 @@ assert!(schema.is_comma(&amp;comma));
 </div>
 <p>The largest difference is the verbal noun with する (利用 / し / た): CaboCha's rule makes し the head word, the corpus the noun. The steps between the two lines, and the variants that were not taken, are in the <a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#agreement-with-ud-japanese-gsd">README of the crate</a>.</p>
 <p>The function word is defined by the schema alone: the corpus has no label that means the same.</p>
+<h2 id="the-schema-of-unidic"><a class="header" href="#the-schema-of-unidic">The schema of UniDic</a></h2>
+<p><code>Schema::unidic()</code> is the schema of the three UniDic dictionaries of Lindera: <code>unidic</code> (unidic-mecab 2.1.2), <code>unidic-cwj</code> and <code>unidic-csj</code>. The columns it reads are at the same places in the three: four levels of part of speech, the conjugation type, the conjugation form, and the 語彙素 in the eighth column, which is the base form. The base form of こと is therefore 事. It starts from the pattern of CaboCha for UniDic:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Patterns</th></tr></thead><tbody>
+<tr><td>Function words</td><td>助詞, 助動詞, 接尾辞,形容詞的, 接尾辞,形状詞的, 接尾辞,動詞的 (CaboCha); 動詞,非自立可能 and 形容詞,非自立可能</td></tr>
+<tr><td>Not heads</td><td>空白, 補助記号 and 記号; a 動詞 right after に, と or を (事故 / に / よっ / て); 助動詞語幹 (よう, そう, みたい); a formal noun (こと, ため, もの, 際, うえ, ところ) right after a 動詞, a 助動詞 or a 形容詞; a nominal suffix (接尾辞,名詞的) right after a 形容詞 (大き / さ)</td></tr>
+</tbody></table>
+</div>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::Schema;
+use lindera_dependency::lattice::LatticeMorpheme;
+
+let schema = Schema::unidic();
+// 利用 / する / こと / が
+let bunsetsu = [
+    LatticeMorpheme::new("利用", "名詞,普通名詞,サ変可能,*,*,*,リヨウ,利用"),
+    LatticeMorpheme::new("する", "動詞,非自立可能,*,*,サ行変格,連体形-一般,スル,為る"),
+    LatticeMorpheme::new("こと", "名詞,普通名詞,一般,*,*,*,コト,事"),
+    LatticeMorpheme::new("が", "助詞,格助詞,*,*,*,*,ガ,が"),
+];
+// The head word is 利用 and the function word が: する is 非自立可能,
+// and こと is a formal noun after a verb.
+assert_eq!(schema.positions(&amp;bunsetsu), Some((0, 3)));
+<span class="boring">}</span></code></pre></pre>
+<p>The additions were measured as those of IPADIC were. With UniDic CWJ, each line is the one before with one addition, and the last line is <code>Schema::unidic()</code>:</p>
+<div class="table-wrapper"><table><thead><tr><th>Rule</th><th>GSD train</th><th>GSD dev</th><th>GSD test</th><th>PUD</th></tr></thead><tbody>
+<tr><td>The rule of CaboCha for UniDic</td><td>82.50%</td><td>82.81%</td><td>83.96%</td><td>81.75%</td></tr>
+<tr><td>And 非自立可能 is a function word</td><td>94.73%</td><td>94.64%</td><td>94.70%</td><td>94.47%</td></tr>
+<tr><td>And a verb after に, と or を is not a head</td><td>96.71%</td><td>96.53%</td><td>96.43%</td><td>96.73%</td></tr>
+<tr><td>And 助動詞語幹 is not a head</td><td>97.19%</td><td>97.05%</td><td>97.10%</td><td>97.15%</td></tr>
+<tr><td>And a formal noun after a predicate is not a head</td><td>97.63%</td><td>97.49%</td><td>97.69%</td><td>98.04%</td></tr>
+<tr><td>And a nominal suffix after an adjective is not a head</td><td>97.70% (55,460 / 56,763)</td><td>97.61% (4,076 / 4,176)</td><td>97.95% (4,451 / 4,544)</td><td>98.16% (9,707 / 9,889)</td></tr>
+</tbody></table>
+</div>
+<p>The same schema with each of the three dictionaries:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>GSD train</th><th>GSD dev</th><th>GSD test</th><th>PUD</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>97.52% (55,320 / 56,724)</td><td>97.60% (4,074 / 4,174)</td><td>97.86% (4,440 / 4,537)</td><td>97.84% (9,676 / 9,890)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>97.70% (55,460 / 56,763)</td><td>97.61% (4,076 / 4,176)</td><td>97.95% (4,451 / 4,544)</td><td>98.16% (9,707 / 9,889)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>97.55% (55,366 / 56,759)</td><td>97.49% (4,071 / 4,176)</td><td>97.91% (4,448 / 4,543)</td><td>97.91% (9,682 / 9,889)</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><strong>非自立可能 is the largest step.</strong> UniDic gives it to する, いる, ある and なる, which the pattern of CaboCha takes as head words: in 利用 / する the corpus has the noun.</li>
+<li><strong>Not taken.</strong> A nominal suffix that is never a head lowers GSD train to 91.14% (51,736 / 56,763): the corpus has a suffix such as 長 or 内 as the head. So does one that is not a head after a number, 96.75% (54,917 / 56,763). UniDic tags a letter of the Latin alphabet 記号,文字; taking it out of the symbols gives 97.50% (55,346 / 56,763).</li>
+<li><strong>What a schema does not express.</strong> A percent sign after a number is the content head in the corpus (3 / %, 65 bunsetsu of GSD train). UniDic tags it 補助記号,一般, as it does ・, and a schema takes a symbol by its part of speech or by its characters, not by both; so it stays a symbol, and the number is the head word. With IPADIC <code>%</code> is a noun and the head word.</li>
+<li><strong>What is left is mostly not a matter of the rule.</strong> The content head of the corpus is taken at the morpheme that holds its first character. A word of the corpus that the dictionary splits (a number in digits, a name in katakana, k / m) therefore disagrees with a head word that is the last morpheme.</li>
+</ul>
 <h2 id="another-dictionary"><a class="header" href="#another-dictionary">Another dictionary</a></h2>
-<p>A schema is a value whose fields are public: the columns, <code>function_words</code>, <code>not_heads</code>, <code>symbols</code>, and the two lists the <a href="lindera-dependency/./parsing.html">parser</a> reads, <code>particles</code> and <code>lexicalized</code>. A schema for another dictionary is built from data, without new code. IPADIC is the only one the crate provides so far; UniDic is to follow.</p>
+<p>A schema is a value whose fields are public: the columns, <code>function_words</code>, <code>not_heads</code>, <code>symbols</code>, and the two lists the <a href="lindera-dependency/./parsing.html">parser</a> reads, <code>particles</code> and <code>lexicalized</code>. A schema for another dictionary is built from data, without new code. The crate provides two, <code>Schema::ipadic()</code> and <code>Schema::unidic()</code>. <code>Schema::for_dictionary</code> gives the one of a dictionary of Lindera by its name, and <code>None</code> for a dictionary without one:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::Schema;
+
+assert_eq!(Schema::for_dictionary("ipadic"), Some(Schema::ipadic()));
+// The three UniDic dictionaries have one schema.
+assert_eq!(Schema::for_dictionary("unidic-cwj"), Some(Schema::unidic()));
+assert_eq!(Schema::for_dictionary("ko-dic"), None);
+assert_eq!(
+    Schema::DICTIONARIES,
+    ["ipadic", "unidic", "unidic-cwj", "unidic-csj"]
+);
+<span class="boring">}</span></code></pre></pre>
+<p>A schema of your own is a value like these:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use lindera_dependency::{Marks, Pattern, Schema, Symbols};
@@ -3807,6 +3869,17 @@ let schema = Schema {
     --output train.lattice
 </code></pre>
 <p><code>--dict</code> also takes the directory of a dictionary built for Lindera; the <code>train</code> feature alone is then enough.</p>
+<p>The <a href="lindera-dependency/./head_and_function_word.html">schema</a> is the one of the dictionary: <code>convert</code> reads the name of the dictionary from its metadata. There are schemas for <code>ipadic</code>, <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code>. For UniDic, give the directory of the dictionary, such as the one <a href="lindera-dependency/../lindera-cli/commands.html"><code>lindera download</code></a> installs:</p>
+<pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
+cargo run --release -p lindera-dependency --features train -- convert \
+    --dict "$dictionary" \
+    --input ja_gsd-ud-train.conllu \
+    --output train.lattice
+</code></pre>
+<p>A dictionary without a schema is refused:</p>
+<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+</code></pre>
+<p>The commands that train do not read a dictionary. <a href="lindera-dependency/./chunking.html#training-a-model"><code>train-chunker</code></a>, <a href="lindera-dependency/./parsing.html#training-a-model"><code>train-parser</code></a> and <code>instances</code> take its name with <code>--dictionary-name</code>, and <code>ipadic</code> when it is left out.</p>
 <p>For each sentence, the command:</p>
 <ol>
 <li><strong>turns the word dependencies into bunsetsu dependencies.</strong> A word with <code>BunsetuBILabel=B</code> starts a bunsetsu, and the word whose head is outside the bunsetsu gives the head of the bunsetsu. Coordination is put back in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next one, with an arc of type <code>P</code>;</li>
@@ -3854,7 +3927,7 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <ul>
 <li>A sentence dropped for two causes counts for both.</li>
 <li>The arcs of type <code>P</code> are counted before the bunsetsu are laid over the morphemes, and again in what is written: a merged bunsetsu takes the arc of the last one merged.</li>
-<li>The last lines compare the head word of the schema of IPADIC with the content head the corpus marks (<code>BunsetuPositionType</code>), and list the ten most frequent disagreements by part of speech; two are shown here. See <a href="lindera-dependency/./head_and_function_word.html">Head and Function Word</a>.</li>
+<li>The last lines compare the head word of the schema of the dictionary with the content head the corpus marks (<code>BunsetuPositionType</code>), and list the ten most frequent disagreements by part of speech; two are shown here. See <a href="lindera-dependency/./head_and_function_word.html">Head and Function Word</a>.</li>
 </ul>
 <h2 id="corpora"><a class="header" href="#corpora">Corpora</a></h2>
 <p>The corpora are not part of the repository. <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency/fetch_corpora.sh</code></a> gets them at the commits the numbers of this chapter were taken at, and <code>convert_corpora.sh</code> converts them.</p>
@@ -3865,6 +3938,27 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <tr><td><a href="https://github.com/UniversalDependencies/UD_Japanese-PUD">UD Japanese-PUD</a></td><td>cf69c5c</td><td>test</td><td>994 of 1,000</td><td>9,843</td><td>27,728</td></tr>
 </tbody></table>
 </div>
+<p>The table is for IPADIC. The sentences kept are the same with every dictionary: what leaves a sentence out does not depend on it. The bunsetsu and the morphemes are not. UD Japanese-GSD is segmented in the short units of UniDic, so with a UniDic dictionary fewer bunsetsu boundaries fall inside a morpheme, and fewer bunsetsu are merged (<code>convert_corpora.sh --dictionary unidic-cwj</code>):</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>File</th><th>Bunsetsu boundaries on a morpheme boundary</th><th>Bunsetsu merged</th><th>Bunsetsu</th><th>Morphemes</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>GSD train</td><td>99.21% (49,372 / 49,764)</td><td>392</td><td>56,396</td><td>162,456</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.16% (3,641 / 3,672)</td><td>31</td><td>4,147</td><td>11,934</td></tr>
+<tr><td></td><td>GSD test</td><td>99.10% (3,967 / 4,003)</td><td>36</td><td>4,509</td><td>12,591</td></tr>
+<tr><td></td><td>PUD</td><td>99.45% (8,849 / 8,898)</td><td>49</td><td>9,843</td><td>27,728</td></tr>
+<tr><td><code>unidic</code></td><td>GSD train</td><td>99.87% (49,700 / 49,764)</td><td>64</td><td>56,724</td><td>172,976</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.89% (3,668 / 3,672)</td><td>4</td><td>4,174</td><td>12,709</td></tr>
+<tr><td></td><td>GSD test</td><td>99.80% (3,995 / 4,003)</td><td>8</td><td>4,537</td><td>13,294</td></tr>
+<tr><td></td><td>PUD</td><td>99.98% (8,896 / 8,898)</td><td>2</td><td>9,890</td><td>29,571</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD train</td><td>99.95% (49,739 / 49,764)</td><td>25</td><td>56,763</td><td>172,196</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.95% (3,670 / 3,672)</td><td>2</td><td>4,176</td><td>12,657</td></tr>
+<tr><td></td><td>GSD test</td><td>99.98% (4,002 / 4,003)</td><td>1</td><td>4,544</td><td>13,254</td></tr>
+<tr><td></td><td>PUD</td><td>99.97% (8,895 / 8,898)</td><td>3</td><td>9,889</td><td>29,413</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD train</td><td>99.94% (49,735 / 49,764)</td><td>29</td><td>56,759</td><td>173,184</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.95% (3,670 / 3,672)</td><td>2</td><td>4,176</td><td>12,723</td></tr>
+<tr><td></td><td>GSD test</td><td>99.95% (4,001 / 4,003)</td><td>2</td><td>4,543</td><td>13,299</td></tr>
+<tr><td></td><td>PUD</td><td>99.97% (8,895 / 8,898)</td><td>3</td><td>9,889</td><td>29,545</td></tr>
+</tbody></table>
+</div>
+<p>The three UniDic dictionaries do not give the same morphemes. On the sentences of GSD train, <code>unidic</code> and <code>unidic-cwj</code> segment 85.88% alike and tag 66.06% alike, <code>unidic-cwj</code> and <code>unidic-csj</code> 88.10% and 73.22% (<code>compare_dictionaries.py</code>). Training data is therefore made for one dictionary, and so is a model.</p>
 <h2 id="licenses-of-the-corpora"><a class="header" href="#licenses-of-the-corpora">Licenses of the corpora</a></h2>
 <p>UD Japanese-GSD is licensed under CC BY-SA 4.0 and UD Japanese-PUD under CC BY-SA 3.0 (<code>LICENSE.txt</code> in each repository). This is how this project handles them; it is not legal advice.</p>
 <ul>
@@ -16627,6 +16721,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>The bunsetsu are those of UD Japanese-GSD (NINJAL's standard, as in BCCWJ-DepPara), not those of the Kyoto corpus.</td><td>The training data is UD Japanese-GSD, which has the bunsetsu boundaries and a license that allows a model to be released.</td><td>#1417</td></tr>
 <tr><td>Coordination is in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next, with the arc type <code>P</code>.</td><td>UD attaches later conjuncts to the first, with an arc to the left, which the parsers cannot produce.</td><td>#1417, #1419</td></tr>
 <tr><td>The first model is for IPADIC; UniDic follows. A model belongs to one dictionary.</td><td>A model depends on the part-of-speech columns and on the segmentation of its dictionary. The baselines of CaboCha and of J.DepP were measured with IPADIC, so the numbers can be compared.</td><td>#1417</td></tr>
+<tr><td>A model for each of the three UniDic dictionaries of Lindera (<code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>), with one schema.</td><td>The three do not segment and tag alike: on the sentences of GSD train, two of them agree on every morpheme and its part of speech for 63% to 73% of the sentences. A model is checked against the name of its dictionary. The columns a schema reads are at the same places in the three.</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>Chunking is a conditional random field over <code>B</code> and <code>I</code>, trained with <code>lindera-crf</code>.</td><td>It is what CaboCha does, and its chunking is better than J.DepP's independent decisions (see the baselines).</td><td>#1417, #1421</td></tr>
 <tr><td>Chunking inference has a Viterbi of its own over a table of weights, and does not use <code>lindera-crf</code>.</td><td><code>search_best_path</code> of <code>lindera-crf</code> needs every label of an edge registered in the model, through <code>&amp;mut self</code>, so it does not fit sentences it has not seen; and the default build stays without a dependency.</td><td>#1417, #1421</td></tr>
 <tr><td>Parsing is shift-reduce with a linear binary classifier over features and pairs of features.</td><td>Both reference implementations do this; it is linear in the length of the sentence.</td><td>#1417</td></tr>
@@ -16707,6 +16802,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><code>Schema::positions</code> follows <code>findHead</code> of CaboCha.</li>
 <li><strong>Symbols are recognized by the surface as well as by the part of speech.</strong> IPADIC has no half-width symbols: <code>,</code> is an unknown word and comes out as 名詞,サ変接続.</li>
 <li><strong>The schema of IPADIC adds to CaboCha's patterns</strong> what the agreement with the content head of UD Japanese-GSD supports: する and できる are function words; 名詞,非自立, the suffixes 的 and さ, and a verb right after a particle are not heads. The largest systematic disagreement of CaboCha's rule is the verbal noun with する (利用 / し / た), where it makes し the head.</li>
+<li><strong>The schema of UniDic is a second value, measured in the same way.</strong> To the pattern of CaboCha for UniDic it adds 非自立可能 as a function word, and as what is not a head: a verb right after に, と or を, a 助動詞語幹, a formal noun right after a predicate, and a nominal suffix right after an adjective. No code of the chunker or of the parser changed for it. One thing is not expressed: the corpus has a percent sign after a number as the head, UniDic tags it as it tags other symbols (補助記号,一般), and a schema takes a symbol by its part of speech or by its characters, not by the two together.</li>
 <li>The function word is defined by the schema alone. UD Japanese-GSD has no label that means the same: its <code>SYN_HEAD</code> matches neither "the last morpheme that is not a symbol" nor "the morpheme after the head".</li>
 </ul>
 <h3 id="parser-1436"><a class="header" href="#parser-1436">Parser (<a href="https://github.com/lindera/lindera/issues/1436">#1436</a>)</a></h3>
@@ -16836,6 +16932,10 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>Counters (名詞,接尾,助数詞) left out of the heads</td><td>train 93.45%</td><td>Script: <code>head_rules.py table</code></td></tr>
 <tr><td>名詞,非自立,副詞可能 kept as a head</td><td>train 96.60%, dev 97.13%, test 96.83%</td><td>Script: <code>head_rules.py table</code></td></tr>
 <tr><td>UniDic on GSD's own tags: CaboCha's pattern, with 非自立可能, with compound function words</td><td>train 83.89%, 96.17%, 98.06%</td><td>Prototype, lost</td></tr>
+<tr><td>UniDic through the output of Lindera (UniDic CWJ): CaboCha's pattern, with 非自立可能, with a verb after に, と or を, with 助動詞語幹, with formal nouns, <code>Schema::unidic()</code></td><td>train 82.50%, 94.73%, 96.71%, 97.19%, 97.63%, 97.70% (55,460 / 56,763); the schema on dev 97.61%, test 97.95%, PUD 98.16%</td><td>Script: <code>head_variants/</code></td></tr>
+<tr><td>The same, <code>Schema::unidic()</code> with <code>unidic</code> and with <code>unidic-csj</code></td><td>train 97.52% and 97.55%</td><td>Script: <code>head_variants/</code></td></tr>
+<tr><td>Bunsetsu boundaries of GSD train on a morpheme boundary: IPADIC, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code></td><td>99.21%, 99.87%, 99.95%, 99.94%</td><td>Script: <code>convert_corpora.sh</code></td></tr>
+<tr><td>Sentences of GSD train with the same morphemes, and with the same part of speech too: <code>unidic</code> and <code>unidic-cwj</code>, <code>unidic</code> and <code>unidic-csj</code>, <code>unidic-cwj</code> and <code>unidic-csj</code></td><td>85.88% and 66.06%, 86.33% and 62.64%, 88.10% and 73.22%</td><td>Script: <code>compare_dictionaries.py</code></td></tr>
 <tr><td><code>SYN_HEAD</code> of GSD against "last morpheme that is not a symbol" and "the morpheme after the head"</td><td>87–88% and 81–82%</td><td>Prototype, lost</td></tr>
 </tbody></table>
 </div>

@@ -390,7 +390,7 @@ for instance in parser::instances(&amp;Schema::ipadic(), &amp;set, sentence)? {
 <p>上の表の 3 回の判定です。3 回目では、本を がすでに係り先の候補の 読んだと に係っているので、<code>A:を</code> が付きます。</p>
 <p>解析器が作れない木の文（係り先が左にある、係り受けが交差する、根が最後の文節でない）は、エラーになります。<a href="./training_data.html">変換</a>は、そういう文を学習データに入れません。</p>
 <h3 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h3>
-<p><code>train</code> feature を付けると、<code>lindera-dependency instances</code> が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。</p>
+<p><code>train</code> feature を付けると、<code>lindera-dependency instances</code> が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。<code>--dictionary-name</code> で辞書を指定すると、その辞書のスキーマを使います。</p>
 <pre><code class="language-shell">lindera-dependency instances --input train.lattice --output train.instances
 </code></pre>
 <p>1 行が 1 件の事例です。<code>+1</code> か <code>-1</code> の後に、素性の文字列がタブ区切りで続きます。文ごとに空行が 1 つ入るので、ファイルを文の境目で分割できます。<code>--features</code> は素性の集合を受け取り、既定は全部の群です。</p>
@@ -412,7 +412,7 @@ negative: 32488
 </tbody></table>
 </div>
 <h2 id="モデルを学習する"><a class="header" href="#モデルを学習する">モデルを学習する</a></h2>
-<p>学習は <code>train</code> feature の裏にあります。<code>train-parser</code> は、<a href="./training_data.html">学習データ</a>から IPADIC のスキーマで解析器を学習し、<a href="./model_file.html">モデルファイル</a>を書き出します。<code>--chunker</code> を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。</p>
+<p>学習は <code>train</code> feature の裏にあります。<code>train-parser</code> は、<a href="./training_data.html">学習データ</a>から IPADIC のスキーマで解析器を学習し、<a href="./model_file.html">モデルファイル</a>を書き出します。<code>--dictionary-name</code> で辞書を指定すると、その辞書のスキーマを使います。<code>--chunker</code> を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。そのファイルは、同じ辞書のものでなければなりません。</p>
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 cargo run --release -p lindera-dependency --features train -- train-parser \

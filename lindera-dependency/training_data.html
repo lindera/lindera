@@ -185,6 +185,17 @@
     --output train.lattice
 </code></pre>
 <p><code>--dict</code> also takes the directory of a dictionary built for Lindera; the <code>train</code> feature alone is then enough.</p>
+<p>The <a href="./head_and_function_word.html">schema</a> is the one of the dictionary: <code>convert</code> reads the name of the dictionary from its metadata. There are schemas for <code>ipadic</code>, <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code>. For UniDic, give the directory of the dictionary, such as the one <a href="../lindera-cli/commands.html"><code>lindera download</code></a> installs:</p>
+<pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
+cargo run --release -p lindera-dependency --features train -- convert \
+    --dict "$dictionary" \
+    --input ja_gsd-ud-train.conllu \
+    --output train.lattice
+</code></pre>
+<p>A dictionary without a schema is refused:</p>
+<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+</code></pre>
+<p>The commands that train do not read a dictionary. <a href="./chunking.html#training-a-model"><code>train-chunker</code></a>, <a href="./parsing.html#training-a-model"><code>train-parser</code></a> and <code>instances</code> take its name with <code>--dictionary-name</code>, and <code>ipadic</code> when it is left out.</p>
 <p>For each sentence, the command:</p>
 <ol>
 <li><strong>turns the word dependencies into bunsetsu dependencies.</strong> A word with <code>BunsetuBILabel=B</code> starts a bunsetsu, and the word whose head is outside the bunsetsu gives the head of the bunsetsu. Coordination is put back in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next one, with an arc of type <code>P</code>;</li>
@@ -232,7 +243,7 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <ul>
 <li>A sentence dropped for two causes counts for both.</li>
 <li>The arcs of type <code>P</code> are counted before the bunsetsu are laid over the morphemes, and again in what is written: a merged bunsetsu takes the arc of the last one merged.</li>
-<li>The last lines compare the head word of the schema of IPADIC with the content head the corpus marks (<code>BunsetuPositionType</code>), and list the ten most frequent disagreements by part of speech; two are shown here. See <a href="./head_and_function_word.html">Head and Function Word</a>.</li>
+<li>The last lines compare the head word of the schema of the dictionary with the content head the corpus marks (<code>BunsetuPositionType</code>), and list the ten most frequent disagreements by part of speech; two are shown here. See <a href="./head_and_function_word.html">Head and Function Word</a>.</li>
 </ul>
 <h2 id="corpora"><a class="header" href="#corpora">Corpora</a></h2>
 <p>The corpora are not part of the repository. <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency/fetch_corpora.sh</code></a> gets them at the commits the numbers of this chapter were taken at, and <code>convert_corpora.sh</code> converts them.</p>
@@ -243,6 +254,27 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <tr><td><a href="https://github.com/UniversalDependencies/UD_Japanese-PUD">UD Japanese-PUD</a></td><td>cf69c5c</td><td>test</td><td>994 of 1,000</td><td>9,843</td><td>27,728</td></tr>
 </tbody></table>
 </div>
+<p>The table is for IPADIC. The sentences kept are the same with every dictionary: what leaves a sentence out does not depend on it. The bunsetsu and the morphemes are not. UD Japanese-GSD is segmented in the short units of UniDic, so with a UniDic dictionary fewer bunsetsu boundaries fall inside a morpheme, and fewer bunsetsu are merged (<code>convert_corpora.sh --dictionary unidic-cwj</code>):</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>File</th><th>Bunsetsu boundaries on a morpheme boundary</th><th>Bunsetsu merged</th><th>Bunsetsu</th><th>Morphemes</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>GSD train</td><td>99.21% (49,372 / 49,764)</td><td>392</td><td>56,396</td><td>162,456</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.16% (3,641 / 3,672)</td><td>31</td><td>4,147</td><td>11,934</td></tr>
+<tr><td></td><td>GSD test</td><td>99.10% (3,967 / 4,003)</td><td>36</td><td>4,509</td><td>12,591</td></tr>
+<tr><td></td><td>PUD</td><td>99.45% (8,849 / 8,898)</td><td>49</td><td>9,843</td><td>27,728</td></tr>
+<tr><td><code>unidic</code></td><td>GSD train</td><td>99.87% (49,700 / 49,764)</td><td>64</td><td>56,724</td><td>172,976</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.89% (3,668 / 3,672)</td><td>4</td><td>4,174</td><td>12,709</td></tr>
+<tr><td></td><td>GSD test</td><td>99.80% (3,995 / 4,003)</td><td>8</td><td>4,537</td><td>13,294</td></tr>
+<tr><td></td><td>PUD</td><td>99.98% (8,896 / 8,898)</td><td>2</td><td>9,890</td><td>29,571</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD train</td><td>99.95% (49,739 / 49,764)</td><td>25</td><td>56,763</td><td>172,196</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.95% (3,670 / 3,672)</td><td>2</td><td>4,176</td><td>12,657</td></tr>
+<tr><td></td><td>GSD test</td><td>99.98% (4,002 / 4,003)</td><td>1</td><td>4,544</td><td>13,254</td></tr>
+<tr><td></td><td>PUD</td><td>99.97% (8,895 / 8,898)</td><td>3</td><td>9,889</td><td>29,413</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD train</td><td>99.94% (49,735 / 49,764)</td><td>29</td><td>56,759</td><td>173,184</td></tr>
+<tr><td></td><td>GSD dev</td><td>99.95% (3,670 / 3,672)</td><td>2</td><td>4,176</td><td>12,723</td></tr>
+<tr><td></td><td>GSD test</td><td>99.95% (4,001 / 4,003)</td><td>2</td><td>4,543</td><td>13,299</td></tr>
+<tr><td></td><td>PUD</td><td>99.97% (8,895 / 8,898)</td><td>3</td><td>9,889</td><td>29,545</td></tr>
+</tbody></table>
+</div>
+<p>The three UniDic dictionaries do not give the same morphemes. On the sentences of GSD train, <code>unidic</code> and <code>unidic-cwj</code> segment 85.88% alike and tag 66.06% alike, <code>unidic-cwj</code> and <code>unidic-csj</code> 88.10% and 73.22% (<code>compare_dictionaries.py</code>). Training data is therefore made for one dictionary, and so is a model.</p>
 <h2 id="licenses-of-the-corpora"><a class="header" href="#licenses-of-the-corpora">Licenses of the corpora</a></h2>
 <p>UD Japanese-GSD is licensed under CC BY-SA 4.0 and UD Japanese-PUD under CC BY-SA 3.0 (<code>LICENSE.txt</code> in each repository). This is how this project handles them; it is not legal advice.</p>
 <ul>

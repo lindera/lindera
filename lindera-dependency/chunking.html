@@ -245,6 +245,7 @@ EOS
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
+<p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="./head_and_function_word.html">schema</a> of that dictionary then go into the model.</p>
 <p>On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:</p>
 <pre><code class="language-text">train.lattice: 7024 sentences
 iterations: 126

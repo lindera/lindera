@@ -244,8 +244,69 @@ assert!(schema.is_comma(&amp;comma));
 </div>
 <p>最大の違いは、サ変名詞 + する（利用 / し / た）です。CaboCha の規則は し を主辞にし、コーパスは名詞を主辞にします。2 つの行の間の段階と、採らなかった変種は、<a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#agreement-with-ud-japanese-gsd">クレートの README</a> にあります。</p>
 <p>機能語は、スキーマだけで定義します。コーパスには、同じ意味の印がありません。</p>
+<h2 id="unidic-のスキーマ"><a class="header" href="#unidic-のスキーマ">UniDic のスキーマ</a></h2>
+<p><code>Schema::unidic()</code> は、Lindera の 3 つの UniDic の辞書、<code>unidic</code>（unidic-mecab 2.1.2）・<code>unidic-cwj</code>・<code>unidic-csj</code> のスキーマです。スキーマが読む列は、3 つとも同じ位置にあります。品詞の 4 階層、活用型、活用形と、8 列目の語彙素で、語彙素を原形として使います。そのため、こと の原形は 事 です。CaboCha の UniDic のパターンから出発します。</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>パターン</th></tr></thead><tbody>
+<tr><td>機能語</td><td>助詞、助動詞、接尾辞,形容詞的、接尾辞,形状詞的、接尾辞,動詞的（CaboCha）。動詞,非自立可能 と 形容詞,非自立可能</td></tr>
+<tr><td>主辞にならないもの</td><td>空白、補助記号、記号。に・と・を の直後の 動詞（事故 / に / よっ / て）。助動詞語幹（よう、そう、みたい）。動詞・助動詞・形容詞の直後の形式名詞（こと、ため、もの、際、うえ、ところ）。形容詞の直後の名詞的な接尾辞（接尾辞,名詞的。大き / さ）</td></tr>
+</tbody></table>
+</div>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::Schema;
+use lindera_dependency::lattice::LatticeMorpheme;
+
+let schema = Schema::unidic();
+// 利用 / する / こと / が
+let bunsetsu = [
+    LatticeMorpheme::new("利用", "名詞,普通名詞,サ変可能,*,*,*,リヨウ,利用"),
+    LatticeMorpheme::new("する", "動詞,非自立可能,*,*,サ行変格,連体形-一般,スル,為る"),
+    LatticeMorpheme::new("こと", "名詞,普通名詞,一般,*,*,*,コト,事"),
+    LatticeMorpheme::new("が", "助詞,格助詞,*,*,*,*,ガ,が"),
+];
+// The head word is 利用 and the function word が: する is 非自立可能,
+// and こと is a formal noun after a verb.
+assert_eq!(schema.positions(&amp;bunsetsu), Some((0, 3)));
+<span class="boring">}</span></code></pre></pre>
+<p>足した規則は、IPADIC と同じように測って決めました。UniDic CWJ での値で、各行は前の行に規則を 1 つ足したものです。最後の行が <code>Schema::unidic()</code> です。</p>
+<div class="table-wrapper"><table><thead><tr><th>規則</th><th>GSD train</th><th>GSD dev</th><th>GSD test</th><th>PUD</th></tr></thead><tbody>
+<tr><td>CaboCha の UniDic の規則</td><td>82.50%</td><td>82.81%</td><td>83.96%</td><td>81.75%</td></tr>
+<tr><td>非自立可能 を機能語にする</td><td>94.73%</td><td>94.64%</td><td>94.70%</td><td>94.47%</td></tr>
+<tr><td>に・と・を の直後の動詞を主辞にしない</td><td>96.71%</td><td>96.53%</td><td>96.43%</td><td>96.73%</td></tr>
+<tr><td>助動詞語幹 を主辞にしない</td><td>97.19%</td><td>97.05%</td><td>97.10%</td><td>97.15%</td></tr>
+<tr><td>用言の直後の形式名詞を主辞にしない</td><td>97.63%</td><td>97.49%</td><td>97.69%</td><td>98.04%</td></tr>
+<tr><td>形容詞の直後の名詞的な接尾辞を主辞にしない</td><td>97.70% (55,460 / 56,763)</td><td>97.61% (4,076 / 4,176)</td><td>97.95% (4,451 / 4,544)</td><td>98.16% (9,707 / 9,889)</td></tr>
+</tbody></table>
+</div>
+<p>同じスキーマを 3 つの辞書で測った値です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>GSD train</th><th>GSD dev</th><th>GSD test</th><th>PUD</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>97.52% (55,320 / 56,724)</td><td>97.60% (4,074 / 4,174)</td><td>97.86% (4,440 / 4,537)</td><td>97.84% (9,676 / 9,890)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>97.70% (55,460 / 56,763)</td><td>97.61% (4,076 / 4,176)</td><td>97.95% (4,451 / 4,544)</td><td>98.16% (9,707 / 9,889)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>97.55% (55,366 / 56,759)</td><td>97.49% (4,071 / 4,176)</td><td>97.91% (4,448 / 4,543)</td><td>97.91% (9,682 / 9,889)</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><strong>最も大きいのは 非自立可能 です。</strong> UniDic は する・いる・ある・なる に 非自立可能 を付けます。CaboCha のパターンはこれらを主辞にしますが、コーパスは 利用 / する の名詞を主辞にします。</li>
+<li><strong>採らなかった規則。</strong> 名詞的な接尾辞をどこでも主辞にしないと、GSD train は 91.14% (51,736 / 56,763) に下がります。コーパスは 長 や 内 のような接尾辞を主辞にするためです。数詞の直後に限っても 96.75% (54,917 / 56,763) に下がります。UniDic は英字 1 文字に 記号,文字 を付けます。これを記号から外すと 97.50% (55,346 / 56,763) になります。</li>
+<li><strong>スキーマで表せないもの。</strong> コーパスは、数の後ろのパーセント記号を内容の主辞にします（3 / %。GSD train で 65 文節）。UniDic はこれに、・ と同じ 補助記号,一般 を付けます。スキーマは、記号を品詞か文字のどちらかで見分け、両方を組み合わせては見分けません。そのため、パーセント記号は記号のままで、数が主辞になります。IPADIC では <code>%</code> は名詞で、主辞になります。</li>
+<li><strong>残りの大半は、規則の問題ではありません。</strong> コーパスの内容の主辞は、その語の最初の文字を持つ形態素に写します。コーパスの 1 語を辞書が分ける場合（数字で書いた数、カタカナの名前、k / m）は、最後の形態素を主辞にするスキーマと食い違います。</li>
+</ul>
 <h2 id="ほかの辞書"><a class="header" href="#ほかの辞書">ほかの辞書</a></h2>
-<p>スキーマは、フィールドが公開されている値です。列、<code>function_words</code>、<code>not_heads</code>、<code>symbols</code> と、<a href="./parsing.html">解析器</a>が読む 2 つの一覧 <code>particles</code>・<code>lexicalized</code> があります。ほかの辞書のスキーマは、新しいコードを書かずに、データから作れます。このクレートが今のところ用意しているのは IPADIC だけで、UniDic が続く予定です。</p>
+<p>スキーマは、フィールドが公開されている値です。列、<code>function_words</code>、<code>not_heads</code>、<code>symbols</code> と、<a href="./parsing.html">解析器</a>が読む 2 つの一覧 <code>particles</code>・<code>lexicalized</code> があります。ほかの辞書のスキーマは、新しいコードを書かずに、データから作れます。このクレートは、<code>Schema::ipadic()</code> と <code>Schema::unidic()</code> の 2 つを用意しています。<code>Schema::for_dictionary</code> は、Lindera の辞書の名前からスキーマを返し、スキーマの無い辞書には <code>None</code> を返します。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dependency::Schema;
+
+assert_eq!(Schema::for_dictionary("ipadic"), Some(Schema::ipadic()));
+// The three UniDic dictionaries have one schema.
+assert_eq!(Schema::for_dictionary("unidic-cwj"), Some(Schema::unidic()));
+assert_eq!(Schema::for_dictionary("ko-dic"), None);
+assert_eq!(
+    Schema::DICTIONARIES,
+    ["ipadic", "unidic", "unidic-cwj", "unidic-csj"]
+);
+<span class="boring">}</span></code></pre></pre>
+<p>自分のスキーマも、同じように値として書きます。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use lindera_dependency::{Marks, Pattern, Schema, Symbols};
