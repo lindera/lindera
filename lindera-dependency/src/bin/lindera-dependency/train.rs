@@ -115,9 +115,16 @@ pub(crate) enum RegularizationArg {
 /// The arguments of `train-chunker`.
 #[derive(Debug, clap::Args)]
 #[clap(
-    about = "Train the model of the chunker on a file in the lattice format with bunsetsu (the output of convert), for the IPADIC schema"
+    about = "Train the model of the chunker on a file in the lattice format with bunsetsu (the output of convert)"
 )]
 pub(crate) struct TrainChunkerArgs {
+    /// The dictionary the model is for.
+    #[clap(
+        long = "dictionary-name",
+        default_value = DEFAULT_DICTIONARY,
+        help = "Name of the dictionary the training data was tokenized with, whose schema is used: ipadic, unidic, unidic-cwj or unidic-csj"
+    )]
+    dictionary_name: String,
     /// The training data.
     #[clap(
         short = 'i',
@@ -177,6 +184,13 @@ pub(crate) struct TrainChunkerArgs {
     about = "Write the training instances of the parser: the decisions it asks on each sentence of a file in the lattice format, each with its features and with the answer of the file"
 )]
 pub(crate) struct InstancesArgs {
+    /// The dictionary the model is for.
+    #[clap(
+        long = "dictionary-name",
+        default_value = DEFAULT_DICTIONARY,
+        help = "Name of the dictionary the training data was tokenized with, whose schema is used: ipadic, unidic, unidic-cwj or unidic-csj"
+    )]
+    dictionary_name: String,
     /// The answers.
     #[clap(
         short = 'i',
@@ -201,9 +215,27 @@ pub(crate) struct InstancesArgs {
     features: String,
 }
 
-/// The name of the dictionary of the models the command trains: the one
-/// whose schema it uses, [`Schema::ipadic`].
-pub(crate) const DICTIONARY: &str = "ipadic";
+/// The name of the dictionary the training commands take when none is
+/// given: the one of the first model.
+pub(crate) const DEFAULT_DICTIONARY: &str = "ipadic";
+
+/// The schema of a dictionary, for a command.
+///
+/// # Arguments
+///
+/// * `dictionary` - The name of the dictionary.
+///
+/// # Returns
+///
+/// The schema, or an error that lists the dictionaries with a schema.
+pub(crate) fn schema_of(dictionary: &str) -> Result<Schema, String> {
+    Schema::for_dictionary(dictionary).ok_or_else(|| {
+        format!(
+            "there is no schema for the dictionary {dictionary}; there are schemas for {}",
+            Schema::DICTIONARIES.join(", ")
+        )
+    })
+}
 
 /// The algorithm of `train-parser`.
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -237,9 +269,16 @@ pub(crate) enum QuantizationArg {
 /// The arguments of `train-parser`.
 #[derive(Debug, clap::Args)]
 #[clap(
-    about = "Train the parser on a file in the lattice format with the head of every bunsetsu (the output of convert), for the IPADIC schema, and write a model file"
+    about = "Train the parser on a file in the lattice format with the head of every bunsetsu (the output of convert), and write a model file"
 )]
 pub(crate) struct TrainParserArgs {
+    /// The dictionary the model is for.
+    #[clap(
+        long = "dictionary-name",
+        default_value = DEFAULT_DICTIONARY,
+        help = "Name of the dictionary the training data was tokenized with, whose schema is used: ipadic, unidic, unidic-cwj or unidic-csj"
+    )]
+    dictionary_name: String,
     /// The training data.
     #[clap(
         short = 'i',
@@ -358,6 +397,9 @@ pub(crate) struct TrainParserArgs {
 pub(crate) fn convert(args: ConvertArgs) -> Result<(), CommandError> {
     let dictionary = load_dictionary(&args.dict)
         .map_err(|error| format!("cannot load the dictionary {}: {error}", args.dict))?;
+    // The schema of the dictionary the data is tokenized with.
+    let name = dictionary.metadata.name.clone();
+    let schema = schema_of(&name).map_err(|error| format!("{}: {error}", args.dict))?;
     // The default settings: the data has to be tokenized as the text the
     // parser will be used on.
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -377,13 +419,8 @@ pub(crate) fn convert(args: ConvertArgs) -> Result<(), CommandError> {
     let output = File::create(&args.output)
         .map_err(|error| format!("cannot create {}: {error}", args.output.display()))?;
     let mut output = BufWriter::new(output);
-    let report = corpus::convert(
-        BufReader::new(input),
-        &mut output,
-        &Schema::ipadic(),
-        tokenize,
-    )
-    .map_err(|error| format!("{}: {error}", args.input.display()))?;
+    let report = corpus::convert(BufReader::new(input), &mut output, &schema, tokenize)
+        .map_err(|error| format!("{}: {error}", args.input.display()))?;
     output
         .flush()
         .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
@@ -606,6 +643,7 @@ pub(crate) fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> 
         }
     };
     let options = TrainOptions {
+        schema: schema_of(&args.dictionary_name)?,
         columns: chunker::parse_columns(&args.columns)?,
         template,
         regularization: match args.regularization {
@@ -618,12 +656,11 @@ pub(crate) fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> 
             .threads
             .or_else(|| std::thread::available_parallelism().ok())
             .map_or(1, NonZeroUsize::get),
-        ..TrainOptions::default()
     };
     let sentences = read_lattice(&args.input)?;
     let trained = chunker::train(&sentences, &options)
         .map_err(|error| format!("{}: {error}", args.input.display()))?;
-    let bytes = ModelBuilder::new(DICTIONARY, options.schema.clone())?
+    let bytes = ModelBuilder::new(&args.dictionary_name, options.schema.clone())?
         .chunker(&trained.model)?
         .to_bytes();
     fs::write(&args.output, &bytes)
@@ -650,7 +687,8 @@ pub(crate) fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> 
 
 /// Runs `train-parser`.
 ///
-/// The features are made with the schema of IPADIC.
+/// The features are made with the schema of the dictionary of
+/// `--dictionary-name`.
 ///
 /// # Arguments
 ///
@@ -664,6 +702,7 @@ pub(crate) fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> 
 /// that cannot be trained on.
 pub(crate) fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
     let options = ParserTrainOptions {
+        schema: schema_of(&args.dictionary_name)?,
         features: FeatureSet::parse(&args.features)?,
         algorithm: match args.algorithm {
             AlgorithmArg::Dcd => Algorithm::DualCoordinateDescent {
@@ -684,7 +723,6 @@ pub(crate) fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
         min_count: args.min_count,
         pair_threshold: args.pair_threshold,
         seed: args.seed,
-        ..ParserTrainOptions::default()
     };
     let quantization = match args.quantization {
         QuantizationArg::F32 => Quantization::F32,
@@ -694,14 +732,14 @@ pub(crate) fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
     // The file the chunker comes from is read before the training: a file
     // that cannot be used is found at once.
     let builder = match &args.chunker {
-        None => ModelBuilder::new(DICTIONARY, options.schema.clone())?,
+        None => ModelBuilder::new(&args.dictionary_name, options.schema.clone())?,
         Some(path) => {
             let bytes = fs::read(path)
                 .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
             let model =
                 Model::new(bytes).map_err(|error| format!("{}: {error}", path.display()))?;
             model
-                .check_dictionary(DICTIONARY)
+                .check_dictionary(&args.dictionary_name)
                 .map_err(|error| format!("{}: {error}", path.display()))?;
             if model.chunker().is_none() {
                 return Err(format!("{}: the model has no chunker", path.display()).into());
@@ -743,8 +781,8 @@ pub(crate) fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
 
 /// Runs `instances`.
 ///
-/// The features are made with the schema of IPADIC, as `convert` computes
-/// the head words with it.
+/// The features are made with the schema of the dictionary of
+/// `--dictionary-name`, as `convert` computes the head words with it.
 ///
 /// # Arguments
 ///
@@ -757,7 +795,7 @@ pub(crate) fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
 /// tree the parser cannot make, or an output that cannot be written.
 pub(crate) fn instances(args: InstancesArgs) -> Result<(), CommandError> {
     let set = FeatureSet::parse(&args.features)?;
-    let schema = Schema::ipadic();
+    let schema = schema_of(&args.dictionary_name)?;
     let sentences = read_lattice(&args.input)?;
 
     let output = File::create(&args.output)

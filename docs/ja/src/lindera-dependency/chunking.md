@@ -81,6 +81,8 @@ cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 ```
 
+モデルは IPADIC のものになります。`--dictionary-name` でほかの辞書（`unidic`・`unidic-cwj`・`unidic-csj`）を指定すると、その辞書の名前と[スキーマ](./head_and_function_word.md)がモデルに入ります。
+
 IPADIC で変換した UD Japanese-GSD の train では、数秒で終わり、最後に次を出力します。
 
 ```text

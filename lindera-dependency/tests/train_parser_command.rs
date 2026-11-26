@@ -545,3 +545,101 @@ fn fails_with_the_cause() {
     let written = fs::read_to_string(&output_path).unwrap();
     assert_eq!(heads(&written), [[Some(1), None]]);
 }
+
+#[test]
+fn trains_for_the_dictionary_named() {
+    let directory = tempfile::tempdir().unwrap();
+    let train_path = directory.path().join("train.lattice");
+    let chunker_path = directory.path().join("chunker.model");
+    let model_path = directory.path().join("unidic-cwj.model");
+    let default_path = directory.path().join("default.model");
+    let instances_path = directory.path().join("instances.tsv");
+    fs::write(&train_path, training_data()).unwrap();
+    let train: [(&str, &Path); 1] = [("--input", &train_path)];
+    let chunker_arguments = [
+        "train-chunker",
+        "--regularization",
+        "l2",
+        "--lambda",
+        "0.01",
+        "--threads",
+        "1",
+    ];
+    let named = ["--dictionary-name", "unidic-cwj"];
+
+    // The name and the schema of the dictionary go into the model, of the
+    // chunker and of the parser.
+    success(run(
+        &[&chunker_arguments[..], &named[..]].concat(),
+        &[train[0], ("--output", &chunker_path)],
+    ));
+    let model = Model::new(fs::read(&chunker_path).unwrap()).unwrap();
+    assert_eq!(model.dictionary(), "unidic-cwj");
+    assert_eq!(model.schema(), &Schema::unidic());
+    success(run(
+        &[&["train-parser", "--cost", "1"][..], &named[..]].concat(),
+        &[
+            train[0],
+            ("--chunker", &chunker_path),
+            ("--output", &model_path),
+        ],
+    ));
+    let model = Model::new(fs::read(&model_path).unwrap()).unwrap();
+    assert_eq!(model.dictionary(), "unidic-cwj");
+    assert_eq!(model.schema(), &Schema::unidic());
+    assert!(model.chunker().is_some() && model.parser().is_some());
+    success(run(
+        &[&["instances"][..], &named[..]].concat(),
+        &[train[0], ("--output", &instances_path)],
+    ));
+
+    // Without the option the model is for IPADIC, as before.
+    success(run(
+        &chunker_arguments,
+        &[train[0], ("--output", &default_path)],
+    ));
+    let model = Model::new(fs::read(&default_path).unwrap()).unwrap();
+    assert_eq!(model.dictionary(), "ipadic");
+    assert_eq!(model.schema(), &Schema::ipadic());
+
+    // The chunker of another dictionary is refused: of UniDic CWJ for
+    // IPADIC, and of UniDic CWJ for UniDic, which has the same schema.
+    let unused_path = directory.path().join("unused.model");
+    for (arguments, name) in [
+        (&["train-parser"][..], "ipadic"),
+        (
+            &["train-parser", "--dictionary-name", "unidic"][..],
+            "unidic",
+        ),
+    ] {
+        let error = failure(run(
+            arguments,
+            &[
+                train[0],
+                ("--chunker", &chunker_path),
+                ("--output", &unused_path),
+            ],
+        ));
+        assert!(
+            error.contains(&format!(
+                "chunker.model: the model is for the dictionary \"unidic-cwj\", and the morphemes are of \"{name}\""
+            )),
+            "{error}"
+        );
+    }
+
+    // A dictionary without a schema: the ones that have one are listed.
+    for command in ["train-chunker", "train-parser", "instances"] {
+        let error = failure(run(
+            &[command, "--dictionary-name", "ko-dic"],
+            &[train[0], ("--output", &unused_path)],
+        ));
+        assert!(
+            error.contains(
+                "Error: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj"
+            ),
+            "{command}: {error}"
+        );
+    }
+    assert!(!unused_path.exists());
+}

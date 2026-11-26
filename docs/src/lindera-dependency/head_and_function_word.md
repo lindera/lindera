@@ -81,9 +81,74 @@ The largest difference is the verbal noun with する (利用 / し / た): Cabo
 
 The function word is defined by the schema alone: the corpus has no label that means the same.
 
+## The schema of UniDic
+
+`Schema::unidic()` is the schema of the three UniDic dictionaries of Lindera: `unidic` (unidic-mecab 2.1.2), `unidic-cwj` and `unidic-csj`. The columns it reads are at the same places in the three: four levels of part of speech, the conjugation type, the conjugation form, and the 語彙素 in the eighth column, which is the base form. The base form of こと is therefore 事. It starts from the pattern of CaboCha for UniDic:
+
+| | Patterns |
+| --- | --- |
+| Function words | 助詞, 助動詞, 接尾辞,形容詞的, 接尾辞,形状詞的, 接尾辞,動詞的 (CaboCha); 動詞,非自立可能 and 形容詞,非自立可能 |
+| Not heads | 空白, 補助記号 and 記号; a 動詞 right after に, と or を (事故 / に / よっ / て); 助動詞語幹 (よう, そう, みたい); a formal noun (こと, ため, もの, 際, うえ, ところ) right after a 動詞, a 助動詞 or a 形容詞; a nominal suffix (接尾辞,名詞的) right after a 形容詞 (大き / さ) |
+
+```rust
+use lindera_dependency::Schema;
+use lindera_dependency::lattice::LatticeMorpheme;
+
+let schema = Schema::unidic();
+// 利用 / する / こと / が
+let bunsetsu = [
+    LatticeMorpheme::new("利用", "名詞,普通名詞,サ変可能,*,*,*,リヨウ,利用"),
+    LatticeMorpheme::new("する", "動詞,非自立可能,*,*,サ行変格,連体形-一般,スル,為る"),
+    LatticeMorpheme::new("こと", "名詞,普通名詞,一般,*,*,*,コト,事"),
+    LatticeMorpheme::new("が", "助詞,格助詞,*,*,*,*,ガ,が"),
+];
+// The head word is 利用 and the function word が: する is 非自立可能,
+// and こと is a formal noun after a verb.
+assert_eq!(schema.positions(&bunsetsu), Some((0, 3)));
+```
+
+The additions were measured as those of IPADIC were. With UniDic CWJ, each line is the one before with one addition, and the last line is `Schema::unidic()`:
+
+| Rule | GSD train | GSD dev | GSD test | PUD |
+| --- | --- | --- | --- | --- |
+| The rule of CaboCha for UniDic | 82.50% | 82.81% | 83.96% | 81.75% |
+| And 非自立可能 is a function word | 94.73% | 94.64% | 94.70% | 94.47% |
+| And a verb after に, と or を is not a head | 96.71% | 96.53% | 96.43% | 96.73% |
+| And 助動詞語幹 is not a head | 97.19% | 97.05% | 97.10% | 97.15% |
+| And a formal noun after a predicate is not a head | 97.63% | 97.49% | 97.69% | 98.04% |
+| And a nominal suffix after an adjective is not a head | 97.70% (55,460 / 56,763) | 97.61% (4,076 / 4,176) | 97.95% (4,451 / 4,544) | 98.16% (9,707 / 9,889) |
+
+The same schema with each of the three dictionaries:
+
+| Dictionary | GSD train | GSD dev | GSD test | PUD |
+| --- | --- | --- | --- | --- |
+| `unidic` | 97.52% (55,320 / 56,724) | 97.60% (4,074 / 4,174) | 97.86% (4,440 / 4,537) | 97.84% (9,676 / 9,890) |
+| `unidic-cwj` | 97.70% (55,460 / 56,763) | 97.61% (4,076 / 4,176) | 97.95% (4,451 / 4,544) | 98.16% (9,707 / 9,889) |
+| `unidic-csj` | 97.55% (55,366 / 56,759) | 97.49% (4,071 / 4,176) | 97.91% (4,448 / 4,543) | 97.91% (9,682 / 9,889) |
+
+- **非自立可能 is the largest step.** UniDic gives it to する, いる, ある and なる, which the pattern of CaboCha takes as head words: in 利用 / する the corpus has the noun.
+- **Not taken.** A nominal suffix that is never a head lowers GSD train to 91.14% (51,736 / 56,763): the corpus has a suffix such as 長 or 内 as the head. So does one that is not a head after a number, 96.75% (54,917 / 56,763). UniDic tags a letter of the Latin alphabet 記号,文字; taking it out of the symbols gives 97.50% (55,346 / 56,763).
+- **What a schema does not express.** A percent sign after a number is the content head in the corpus (3 / %, 65 bunsetsu of GSD train). UniDic tags it 補助記号,一般, as it does ・, and a schema takes a symbol by its part of speech or by its characters, not by both; so it stays a symbol, and the number is the head word. With IPADIC `%` is a noun and the head word.
+- **What is left is mostly not a matter of the rule.** The content head of the corpus is taken at the morpheme that holds its first character. A word of the corpus that the dictionary splits (a number in digits, a name in katakana, k / m) therefore disagrees with a head word that is the last morpheme.
+
 ## Another dictionary
 
-A schema is a value whose fields are public: the columns, `function_words`, `not_heads`, `symbols`, and the two lists the [parser](./parsing.md) reads, `particles` and `lexicalized`. A schema for another dictionary is built from data, without new code. IPADIC is the only one the crate provides so far; UniDic is to follow.
+A schema is a value whose fields are public: the columns, `function_words`, `not_heads`, `symbols`, and the two lists the [parser](./parsing.md) reads, `particles` and `lexicalized`. A schema for another dictionary is built from data, without new code. The crate provides two, `Schema::ipadic()` and `Schema::unidic()`. `Schema::for_dictionary` gives the one of a dictionary of Lindera by its name, and `None` for a dictionary without one:
+
+```rust
+use lindera_dependency::Schema;
+
+assert_eq!(Schema::for_dictionary("ipadic"), Some(Schema::ipadic()));
+// The three UniDic dictionaries have one schema.
+assert_eq!(Schema::for_dictionary("unidic-cwj"), Some(Schema::unidic()));
+assert_eq!(Schema::for_dictionary("ko-dic"), None);
+assert_eq!(
+    Schema::DICTIONARIES,
+    ["ipadic", "unidic", "unidic-cwj", "unidic-csj"]
+);
+```
+
+A schema of your own is a value like these:
 
 ```rust
 use lindera_dependency::{Marks, Pattern, Schema, Symbols};

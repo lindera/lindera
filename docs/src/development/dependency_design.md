@@ -35,6 +35,7 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | The bunsetsu are those of UD Japanese-GSD (NINJAL's standard, as in BCCWJ-DepPara), not those of the Kyoto corpus. | The training data is UD Japanese-GSD, which has the bunsetsu boundaries and a license that allows a model to be released. | #1417 |
 | Coordination is in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next, with the arc type `P`. | UD attaches later conjuncts to the first, with an arc to the left, which the parsers cannot produce. | #1417, #1419 |
 | The first model is for IPADIC; UniDic follows. A model belongs to one dictionary. | A model depends on the part-of-speech columns and on the segmentation of its dictionary. The baselines of CaboCha and of J.DepP were measured with IPADIC, so the numbers can be compared. | #1417 |
+| A model for each of the three UniDic dictionaries of Lindera (`unidic`, `unidic-cwj`, `unidic-csj`), with one schema. | The three do not segment and tag alike: on the sentences of GSD train, two of them agree on every morpheme and its part of speech for 63% to 73% of the sentences. A model is checked against the name of its dictionary. The columns a schema reads are at the same places in the three. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Chunking is a conditional random field over `B` and `I`, trained with `lindera-crf`. | It is what CaboCha does, and its chunking is better than J.DepP's independent decisions (see the baselines). | #1417, #1421 |
 | Chunking inference has a Viterbi of its own over a table of weights, and does not use `lindera-crf`. | `search_best_path` of `lindera-crf` needs every label of an edge registered in the model, through `&mut self`, so it does not fit sentences it has not seen; and the default build stays without a dependency. | #1417, #1421 |
 | Parsing is shift-reduce with a linear binary classifier over features and pairs of features. | Both reference implementations do this; it is linear in the length of the sentence. | #1417 |
@@ -121,6 +122,7 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - `Schema::positions` follows `findHead` of CaboCha.
 - **Symbols are recognized by the surface as well as by the part of speech.** IPADIC has no half-width symbols: `,` is an unknown word and comes out as 名詞,サ変接続.
 - **The schema of IPADIC adds to CaboCha's patterns** what the agreement with the content head of UD Japanese-GSD supports: する and できる are function words; 名詞,非自立, the suffixes 的 and さ, and a verb right after a particle are not heads. The largest systematic disagreement of CaboCha's rule is the verbal noun with する (利用 / し / た), where it makes し the head.
+- **The schema of UniDic is a second value, measured in the same way.** To the pattern of CaboCha for UniDic it adds 非自立可能 as a function word, and as what is not a head: a verb right after に, と or を, a 助動詞語幹, a formal noun right after a predicate, and a nominal suffix right after an adjective. No code of the chunker or of the parser changed for it. One thing is not expressed: the corpus has a percent sign after a number as the head, UniDic tags it as it tags other symbols (補助記号,一般), and a schema takes a symbol by its part of speech or by its characters, not by the two together.
 - The function word is defined by the schema alone. UD Japanese-GSD has no label that means the same: its `SYN_HEAD` matches neither "the last morpheme that is not a symbol" nor "the morpheme after the head".
 
 ### Parser ([#1436](https://github.com/lindera/lindera/issues/1436))
@@ -266,6 +268,10 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | Counters (名詞,接尾,助数詞) left out of the heads | train 93.45% | Script: `head_rules.py table` |
 | 名詞,非自立,副詞可能 kept as a head | train 96.60%, dev 97.13%, test 96.83% | Script: `head_rules.py table` |
 | UniDic on GSD's own tags: CaboCha's pattern, with 非自立可能, with compound function words | train 83.89%, 96.17%, 98.06% | Prototype, lost |
+| UniDic through the output of Lindera (UniDic CWJ): CaboCha's pattern, with 非自立可能, with a verb after に, と or を, with 助動詞語幹, with formal nouns, `Schema::unidic()` | train 82.50%, 94.73%, 96.71%, 97.19%, 97.63%, 97.70% (55,460 / 56,763); the schema on dev 97.61%, test 97.95%, PUD 98.16% | Script: `head_variants/` |
+| The same, `Schema::unidic()` with `unidic` and with `unidic-csj` | train 97.52% and 97.55% | Script: `head_variants/` |
+| Bunsetsu boundaries of GSD train on a morpheme boundary: IPADIC, `unidic`, `unidic-cwj`, `unidic-csj` | 99.21%, 99.87%, 99.95%, 99.94% | Script: `convert_corpora.sh` |
+| Sentences of GSD train with the same morphemes, and with the same part of speech too: `unidic` and `unidic-cwj`, `unidic` and `unidic-csj`, `unidic-cwj` and `unidic-csj` | 85.88% and 66.06%, 86.33% and 62.64%, 88.10% and 73.22% | Script: `compare_dictionaries.py` |
 | `SYN_HEAD` of GSD against "last morpheme that is not a symbol" and "the morpheme after the head" | 87–88% and 81–82% | Prototype, lost |
 
 ### Parser
