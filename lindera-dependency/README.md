@@ -770,11 +770,14 @@ The dependency accuracy counts every bunsetsu but the last of each sentence
 | UD Japanese-GSD test | 88.53% (3,512 / 3,967) | 84.47% (3,351 / 3,967) | 96.92 |
 | UD Japanese-PUD | 88.81% (7,859 / 8,849) | 86.19% (7,627 / 8,849) | 98.04 |
 
-The targets of the project were 89.0 on dev and 87.8 on test with the
-bunsetsu of the answer, and 85.0 and 84.3 from the morphemes: the numbers of
-CaboCha and of J.DepP trained on the same data, which are on record and
-cannot be measured again with what is in this repository
-([#1433](https://github.com/lindera/lindera/issues/1433)).
+The targets of the project are 89.1 on dev and 87.7 on test with the
+bunsetsu of the answer, and 85.0 and 84.3 from the morphemes: from the
+numbers of CaboCha and of J.DepP trained on the same data, which
+`scripts/dependency/baselines.sh` measures
+([#1433](https://github.com/lindera/lindera/issues/1433)). CaboCha gives
+89.84 and 88.51, and 85.00 and 84.25; J.DepP 90.11 and 88.71, and 85.99 and
+84.65. J.DepP is ahead from the morphemes because it chunks better
+([#1464](https://github.com/lindera/lindera/issues/1464)).
 
 The algorithms are those of the reference implementations: dual coordinate
 descent on a support vector machine, as CaboCha (`--algorithm dcd`, the

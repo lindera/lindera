@@ -93,7 +93,7 @@ The three layers give the same output for a sentence, when the morphemes and the
 | `-O1`, `-O2`, `-O4`, the output layer | Not kept: `lindera tokenize` writes the morphemes, and `chunk` the bunsetsu |
 | `-n`, named entities | Not kept |
 
-Reading the output with CaboCha's own tools has not been tried: they are not built here ([#1433](https://github.com/lindera/lindera/issues/1433)). The output is read back by the reader of this crate, and by [`evaluate`](./evaluation.md).
+CaboCha's own tools read the output ([#1433](https://github.com/lindera/lindera/issues/1433)): `cabocha-system-eval` counts on it what [`evaluate`](./evaluation.md) counts, and `cabocha -I 2` takes it as its input with bunsetsu.
 
 ## Speed
 
