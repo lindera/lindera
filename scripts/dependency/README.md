@@ -22,6 +22,10 @@ need corpora this repository does not hold.
   `--dict`. UniDic is not embedded: embedding UniDic CWJ or CSJ takes 8 to
   11 GiB of memory to compile.
 - **Python 3.10 or later**, with the standard library only.
+- **For the baselines**: CaboCha and J.DepP, with CRF++ and MeCab, which
+  `build_baselines.sh` builds from their sources into
+  `scripts/dependency/data/tools`. It needs a C++ compiler, make, curl and
+  the helper scripts of automake. None of their sources is committed here.
 - A Rust toolchain, as for the rest of the repository.
 
 Run everything from the root of the repository.
@@ -38,6 +42,11 @@ Run everything from the root of the repository.
 | `projection_stats.py` | The projection onto the morphemes of IPADIC, written independently in Python: the boundaries that fit, the bunsetsu merged. It writes lattice files |
 | `compare_outputs.py` | Compares the lattice files of `projection_stats.py` with those of `convert`, line by line |
 | `baseline_next.py` | The baseline "every bunsetsu depends on the next one", counted independently of `lindera-dependency evaluate` |
+| `build_baselines.sh` | Builds the tools of the baselines from source, at fixed versions: CRF++ c603ea6, MeCab 61b90ba with its IPA dictionary, CaboCha 96e100a, J.DepP 2022-03-18. Its header says what each needs to build with a current compiler |
+| `baselines.sh` | The baselines: CaboCha and J.DepP trained on the train file with the morphemes of IPADIC, and run on dev, test and PUD. For each, the dependency accuracy with the bunsetsu of the answer, the one from the morphemes and the F of the chunking, counted by `lindera-dependency evaluate`, next to what `cabocha-system-eval` and J.DepP report; and the arcs on which the two differ |
+| `cabocha_chunker_cost.sh` | The cost of CaboCha's chunker, which the baseline takes at 4: the F of the chunking for each candidate, on dev and test and over a 10-fold cross-validation of train |
+| `jdepp_format.py` | The input of J.DepP from a lattice file, and its outputs back in the lattice format. J.DepP takes a line by its first character, so a morpheme that starts with `*` or `#` is given to it with the full-width character |
+| `baseline_numbers.py` | The lines `baselines.sh` prints, from the JSON of `evaluate` |
 | `chunker_experiments.sh` | The experiments behind the defaults of the chunker: the cross-validation, the pairs of settings, the result. `--dictionary <name>` runs them with a UniDic dictionary; the stage `base` has the pairs around the base form, which the settings for UniDic rest on, and the stage `check` the settings for UniDic and their neighbours only |
 | `chunker_experiment.py`, `make_templates.py` | The driver and the feature templates of `chunker_experiments.sh` |
 | `parser_instances.sh` | The training instances of the parser for the four files, with `lindera-dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back. `--dictionary` as for `convert_corpora.sh` |
@@ -82,6 +91,13 @@ python3 -I -B scripts/dependency/baseline_next.py --write $data/next \
     $data/lattice/ja_pud-ud-test.lattice
 target/release/lindera-dependency evaluate \
     --gold $data/lattice/ja_gsd-ud-dev.lattice --system $data/next/ja_gsd-ud-dev.lattice
+
+# The baselines of CaboCha and J.DepP: the tools (about a minute and a
+# half, with the downloads), then the trainings and the counts (half a
+# minute), and the cost of CaboCha's chunker (four minutes).
+scripts/dependency/build_baselines.sh
+scripts/dependency/baselines.sh
+scripts/dependency/cabocha_chunker_cost.sh
 
 # The chunker: about an hour for all the stages.
 scripts/dependency/chunker_experiments.sh all
@@ -147,6 +163,8 @@ python3 -I -B scripts/dependency/compare_dictionaries.py \
 
 With the corpora at the commits above and the IPADIC of this repository
 (mecab-ipadic 2.7.0-20250920), the numbers do not depend on the machine.
+The baselines were measured with the tools built by GCC 15.2 on Linux
+(x86_64); another compiler or system was not tried.
 The models of the chunker are the same bytes each time. The numbers for
 UniDic are with the dictionaries of the release 7.0.0 of Lindera, which
 `lindera download` installs.
@@ -157,6 +175,9 @@ UniDic are with the dictionaries of the release 7.0.0 of Lindera, which
 | `convert_corpora.sh` | Bunsetsu boundaries on a morpheme boundary: 99.21% (train), 99.16% (dev), 99.10% (test), 99.45% (PUD). Bunsetsu written: 56,396, 4,147, 4,509, 9,843 |
 | `compare_outputs.py` | `COMPARE_OK`, every line identical |
 | `baseline_next.py` | Level 1: 64.10% (2,334 / 3,641) on dev, 62.77% (2,490 / 3,967) on test, 60.87% (5,386 / 8,849) on PUD; the same from `evaluate` |
+| `build_baselines.sh` | `the tools are in ...`; a second run says that the tools of these versions are there |
+| `baselines.sh` | CaboCha: level 1 89.84% (3,271 / 3,641) on dev, 88.51% (3,511 / 3,967) on test, 88.65% (7,845 / 8,849) on PUD; from the morphemes 85.00%, 84.25%, 85.69%; chunking F 96.79, 96.80, 97.81; the same counts from `cabocha-system-eval`. J.DepP: level 1 90.11% (3,281 / 3,641), 88.71% (3,519 / 3,967), 88.98% (7,874 / 8,849); from the morphemes 85.99%, 84.65%, 86.45%; chunking F 97.17, 97.02, 98.04; the same from J.DepP itself. The two differ on 127, 196 and 424 arcs. The same lines twice |
+| `cabocha_chunker_cost.sh` | For the costs 0.5, 1, 2, 4, 8 and 16: chunking F 96.66, 96.64, 96.68, 96.79, 96.82, 96.86 on dev, and 96.45, 96.57, 96.63, 96.66, 96.66, 96.67 over the cross-validation |
 | `chunker_experiments.sh default` | F 96.85 on dev, 96.92 on test, 98.04 on PUD; 4,325 feature strings, 8,656 weights, 261,851 bytes |
 | `chunker_experiments.sh cv` | F over the 10 folds of train, such as 96.83 for CaboCha's columns with L1 and 0.25, and 96.93 for the default setting; the README of the crate has the table |
 | `model_speed/` | 261,851 bytes; about 228 microseconds to read the file; chunking the train file at about 18,223 sentences per second with the model in memory and 16,896 on the bytes of the file. The times depend on the machine: these are of one core of an AMD Ryzen AI Max+ 395 |
@@ -184,8 +205,7 @@ UniDic are with the dictionaries of the release 7.0.0 of Lindera, which
 ## What these scripts do not reproduce
 
 Some numbers of the design notes came from prototypes that are lost, and
-nothing here gives them: the accuracy of CaboCha and of J.DepP on the same
-data, the learning curve, the bunsetsu boundaries per set of break
+nothing here gives them: the learning curve, the bunsetsu boundaries per set of break
 characters, the decoding of a CRF++ text model against CaboCha, and the
 agreement of the head word for UniDic on the tags of the corpus itself
 (`head_variants/` gives it through the output of Lindera). The design

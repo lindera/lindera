@@ -93,7 +93,7 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 | `-O1`、`-O2`、`-O4`、出力の層 | 無い。形態素は `lindera tokenize` が、文節は `chunk` が書く |
 | `-n`、固有表現 | 無い |
 
-CaboCha の道具で出力を読むことは、試していません。ここではビルドしていないためです（[#1433](https://github.com/lindera/lindera/issues/1433)）。出力は、このクレートの読み込みと [`evaluate`](./evaluation.md) で読めます。
+出力は、CaboCha の道具で読めます（[#1433](https://github.com/lindera/lindera/issues/1433)）。`cabocha-system-eval` は、この出力で [`evaluate`](./evaluation.md) と同じ数を数えます。`cabocha -I 2` は、文節つきの入力として受け取ります。
 
 ## 速度
 
