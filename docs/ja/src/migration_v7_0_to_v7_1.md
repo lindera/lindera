@@ -1,16 +1,17 @@
 # v7.0 から v7.1 への移行
 
-このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 1 つあります。マイナーの版に入れたのは、メンテナーの決定です（[#1440](https://github.com/lindera/lindera/issues/1440)）。トークナイザーが返したトークンを読むコードは、影響を受けません。
+このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 2 つあります。マイナーの版に入れたのは、メンテナーの決定です（[#1440](https://github.com/lindera/lindera/issues/1440)、[#1446](https://github.com/lindera/lindera/issues/1446)）。トークナイザーが返したトークンを読むコードは、影響を受けません。
 
 ## 概要
 
 | 変更 | 影響を受ける人 | 対応 |
 | --- | --- | --- |
 | **`Token` が係り受け解析の結果を持つようになり、`#[non_exhaustive]` になった** | `Token` を構造体式で作る、または全部の欄を分解する Rust のコード | `Token::new` でトークンを作り、違う欄は後から設定する |
+| **`Dictionary::save_to_path` を削除した** | これを呼んでいた Rust のコード（実行すると panic していた） | 辞書のディレクトリをコピーする |
 
 トークナイザーが返したトークンを読むコードは、影響を受けません。`surface`、`byte_start`、`details()`、`as_value()` などの欄とメソッドは、これまでどおりです。
 
-v7.1 は、文節の係り受け解析（[Lindera Dependency](./lindera-dependency.md)）を足します。この変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、[変わらないこと](#変わらないこと)に挙げます。
+v7.1 は、文節の係り受け解析（[Lindera Dependency](./lindera-dependency.md)）を足します。`Token` の変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、[変わらないこと](#変わらないこと)に挙げます。
 
 ## `Token` は `Token::new` で作る
 
@@ -55,6 +56,16 @@ let token = Token::new(
 - 全部の欄を並べていたパターンは、末尾に `..` を付けます。`let Token { surface, byte_start, .. } = token;`
 
 該当する箇所は、コンパイラが示します。構造体式は `cannot create non-exhaustive struct using struct expression`（E0639）、パターンは ``..` required with struct marked as non-exhaustive``（E0638）です。
+
+## `Dictionary::save_to_path` を削除した
+
+`lindera_dictionary::dictionary::Dictionary::save_to_path` を削除しました（[#1446](https://github.com/lindera/lindera/issues/1446)）。v1.0.0 から API にありましたが、実装されたことがありません。渡されたディレクトリを作ったあと、どの呼び出しでも panic していました。これを呼ぶコードは、コンパイルできなくなります。
+
+```text
+error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
+```
+
+代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには [`lindera build`](./lindera-cli/commands.md) を、公開されている辞書を入れるには [`lindera download`](./lindera-cli/commands.md) を使います。
 
 ## 変わらないこと
 

@@ -1,16 +1,17 @@
 # Migrating from v7.0 to v7.1
 
-This guide lists the breaking changes of v7.1.0. There is one, in the Rust API, and it is in a minor version by a decision of the maintainer ([#1440](https://github.com/lindera/lindera/issues/1440)): code that reads the tokens a tokenizer returns is not affected.
+This guide lists the breaking changes of v7.1.0. There are two, in the Rust API, and they are in a minor version by a decision of the maintainer ([#1440](https://github.com/lindera/lindera/issues/1440), [#1446](https://github.com/lindera/lindera/issues/1446)): code that reads the tokens a tokenizer returns is not affected.
 
 ## Overview
 
 | Change | Affects | What you do |
 | --- | --- | --- |
 | **`Token` holds the result of a dependency analysis, and is `#[non_exhaustive]`** | Rust code that builds a `Token` with a struct expression, or that destructures all of its fields | Build the token with `Token::new`, and set the fields that differ afterwards |
+| **`Dictionary::save_to_path` is removed** | Rust code that calls it, which panicked when it ran | Copy the directory of the dictionary |
 
 Code that reads the tokens a tokenizer returns is not affected: `surface`, `byte_start`, `details()`, `as_value()` and the other fields and methods are what they were.
 
-v7.1 adds bunsetsu dependency analysis ([Lindera Dependency](./lindera-dependency.md)), and this change comes with it. The rest of what v7.1 adds needs no change of existing code; [What does not change](#what-does-not-change) lists what a user may notice.
+v7.1 adds bunsetsu dependency analysis ([Lindera Dependency](./lindera-dependency.md)), and the change of `Token` comes with it. The rest of what v7.1 adds needs no change of existing code; [What does not change](#what-does-not-change) lists what a user may notice.
 
 ## `Token` is built with `Token::new`
 
@@ -55,6 +56,16 @@ let token = Token::new(
 - A pattern that named every field needs `..` at its end: `let Token { surface, byte_start, .. } = token;`.
 
 The compiler names each place: `cannot create non-exhaustive struct using struct expression` (E0639) for a struct expression, and ``..` required with struct marked as non-exhaustive`` (E0638) for a pattern.
+
+## `Dictionary::save_to_path` is removed
+
+`lindera_dictionary::dictionary::Dictionary::save_to_path` is gone ([#1446](https://github.com/lindera/lindera/issues/1446)). It was in the API since v1.0.0 and never had an implementation: it created the directory it was given and then panicked, in every call. Code that calls it no longer compiles:
+
+```text
+error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
+```
+
+Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; [`lindera build`](./lindera-cli/commands.md) makes one from its sources, and [`lindera download`](./lindera-cli/commands.md) installs a published one.
 
 ## What does not change
 
