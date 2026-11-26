@@ -15602,14 +15602,15 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 と WASM と PHP と整数の引数と <code>Mode</code> と <code>JsPenalty</code> と CLI の警告の項目を除く）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="v70-から-v71-への移行"><a class="header" href="#v70-から-v71-への移行">v7.0 から v7.1 への移行</a></h1>
-<p>このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 1 つあります。マイナーの版に入れたのは、メンテナーの決定です（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>）。トークナイザーが返したトークンを読むコードは、影響を受けません。</p>
+<p>このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 2 つあります。マイナーの版に入れたのは、メンテナーの決定です（<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>、<a href="https://github.com/lindera/lindera/issues/1446">#1446</a>）。トークナイザーが返したトークンを読むコードは、影響を受けません。</p>
 <h2 id="概要-5"><a class="header" href="#概要-5">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響を受ける人</th><th>対応</th></tr></thead><tbody>
 <tr><td><strong><code>Token</code> が係り受け解析の結果を持つようになり、<code>#[non_exhaustive]</code> になった</strong></td><td><code>Token</code> を構造体式で作る、または全部の欄を分解する Rust のコード</td><td><code>Token::new</code> でトークンを作り、違う欄は後から設定する</td></tr>
+<tr><td><strong><code>Dictionary::save_to_path</code> を削除した</strong></td><td>これを呼んでいた Rust のコード（実行すると panic していた）</td><td>辞書のディレクトリをコピーする</td></tr>
 </tbody></table>
 </div>
 <p>トークナイザーが返したトークンを読むコードは、影響を受けません。<code>surface</code>、<code>byte_start</code>、<code>details()</code>、<code>as_value()</code> などの欄とメソッドは、これまでどおりです。</p>
-<p>v7.1 は、文節の係り受け解析（<a href="./lindera-dependency.html">Lindera Dependency</a>）を足します。この変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、<a href="migration_v7_0_to_v7_1.html#%E5%A4%89%E3%82%8F%E3%82%89%E3%81%AA%E3%81%84%E3%81%93%E3%81%A8">変わらないこと</a>に挙げます。</p>
+<p>v7.1 は、文節の係り受け解析（<a href="./lindera-dependency.html">Lindera Dependency</a>）を足します。<code>Token</code> の変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、<a href="migration_v7_0_to_v7_1.html#%E5%A4%89%E3%82%8F%E3%82%89%E3%81%AA%E3%81%84%E3%81%93%E3%81%A8">変わらないこと</a>に挙げます。</p>
 <h2 id="token-は-tokennew-で作る"><a class="header" href="#token-は-tokennew-で作る"><code>Token</code> は <code>Token::new</code> で作る</a></h2>
 <p><code>Token</code> に、係り受け解析の結果を持つ欄が加わりました。<code>Token::dependency()</code> で読み、係り受けを解析するトークンフィルターを使わなければ <code>None</code> です（<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>）。欄を足すと、この型の構造体式がすべて壊れます。そこで、この型を <code>#[non_exhaustive]</code> にしました。今後は、欄を足してもコードが壊れません。</p>
 <p><code>#[non_exhaustive]</code> の構造体は、その型のクレートの外では、構造体式で作れません。欄のパターンには <code>..</code> が必要です。該当するのは、トークンを手で作るコードで、多くは自作のトークンフィルターのテストです。</p>
@@ -15649,6 +15650,11 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <li>全部の欄を並べていたパターンは、末尾に <code>..</code> を付けます。<code>let Token { surface, byte_start, .. } = token;</code></li>
 </ul>
 <p>該当する箇所は、コンパイラが示します。構造体式は <code>cannot create non-exhaustive struct using struct expression</code>（E0639）、パターンは <code>..` required with struct marked as non-exhaustive</code>（E0638）です。</p>
+<h2 id="dictionarysave_to_path-を削除した"><a class="header" href="#dictionarysave_to_path-を削除した"><code>Dictionary::save_to_path</code> を削除した</a></h2>
+<p><code>lindera_dictionary::dictionary::Dictionary::save_to_path</code> を削除しました（<a href="https://github.com/lindera/lindera/issues/1446">#1446</a>）。v1.0.0 から API にありましたが、実装されたことがありません。渡されたディレクトリを作ったあと、どの呼び出しでも panic していました。これを呼ぶコードは、コンパイルできなくなります。</p>
+<pre><code class="language-text">error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
+</code></pre>
+<p>代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには <a href="./lindera-cli/commands.html"><code>lindera build</code></a> を、公開されている辞書を入れるには <a href="./lindera-cli/commands.html"><code>lindera download</code></a> を使います。</p>
 <h2 id="変わらないこと"><a class="header" href="#変わらないこと">変わらないこと</a></h2>
 <ul>
 <li><code>Token::as_value</code> と <code>lindera tokenize -o json</code> が書く JSON は、係り受けを持たないトークンでは、キーが増えません。</li>

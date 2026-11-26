@@ -177,14 +177,15 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="migrating-from-v70-to-v71"><a class="header" href="#migrating-from-v70-to-v71">Migrating from v7.0 to v7.1</a></h1>
-<p>This guide lists the breaking changes of v7.1.0. There is one, in the Rust API, and it is in a minor version by a decision of the maintainer (<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>): code that reads the tokens a tokenizer returns is not affected.</p>
+<p>This guide lists the breaking changes of v7.1.0. There are two, in the Rust API, and they are in a minor version by a decision of the maintainer (<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>, <a href="https://github.com/lindera/lindera/issues/1446">#1446</a>): code that reads the tokens a tokenizer returns is not affected.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><strong><code>Token</code> holds the result of a dependency analysis, and is <code>#[non_exhaustive]</code></strong></td><td>Rust code that builds a <code>Token</code> with a struct expression, or that destructures all of its fields</td><td>Build the token with <code>Token::new</code>, and set the fields that differ afterwards</td></tr>
+<tr><td><strong><code>Dictionary::save_to_path</code> is removed</strong></td><td>Rust code that calls it, which panicked when it ran</td><td>Copy the directory of the dictionary</td></tr>
 </tbody></table>
 </div>
 <p>Code that reads the tokens a tokenizer returns is not affected: <code>surface</code>, <code>byte_start</code>, <code>details()</code>, <code>as_value()</code> and the other fields and methods are what they were.</p>
-<p>v7.1 adds bunsetsu dependency analysis (<a href="./lindera-dependency.html">Lindera Dependency</a>), and this change comes with it. The rest of what v7.1 adds needs no change of existing code; <a href="#what-does-not-change">What does not change</a> lists what a user may notice.</p>
+<p>v7.1 adds bunsetsu dependency analysis (<a href="./lindera-dependency.html">Lindera Dependency</a>), and the change of <code>Token</code> comes with it. The rest of what v7.1 adds needs no change of existing code; <a href="#what-does-not-change">What does not change</a> lists what a user may notice.</p>
 <h2 id="token-is-built-with-tokennew"><a class="header" href="#token-is-built-with-tokennew"><code>Token</code> is built with <code>Token::new</code></a></h2>
 <p><code>Token</code> gets a field for the result of a dependency analysis, read with <code>Token::dependency()</code>, which is <code>None</code> unless a token filter that analyzes dependencies ran (<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>). Adding a field breaks every struct expression of the type, so the type is <code>#[non_exhaustive]</code> from now on: a field that is added later will not break code again.</p>
 <p>Outside the crate of the type, a <code>#[non_exhaustive]</code> struct cannot be built with a struct expression, and a pattern over its fields needs <code>..</code>. This is code that makes tokens by hand, which is mostly the tests of a custom token filter.</p>
@@ -224,6 +225,11 @@
 <li>A pattern that named every field needs <code>..</code> at its end: <code>let Token { surface, byte_start, .. } = token;</code>.</li>
 </ul>
 <p>The compiler names each place: <code>cannot create non-exhaustive struct using struct expression</code> (E0639) for a struct expression, and <code>..` required with struct marked as non-exhaustive</code> (E0638) for a pattern.</p>
+<h2 id="dictionarysave_to_path-is-removed"><a class="header" href="#dictionarysave_to_path-is-removed"><code>Dictionary::save_to_path</code> is removed</a></h2>
+<p><code>lindera_dictionary::dictionary::Dictionary::save_to_path</code> is gone (<a href="https://github.com/lindera/lindera/issues/1446">#1446</a>). It was in the API since v1.0.0 and never had an implementation: it created the directory it was given and then panicked, in every call. Code that calls it no longer compiles:</p>
+<pre><code class="language-text">error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
+</code></pre>
+<p>Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; <a href="./lindera-cli/commands.html"><code>lindera build</code></a> makes one from its sources, and <a href="./lindera-cli/commands.html"><code>lindera download</code></a> installs a published one.</p>
 <h2 id="what-does-not-change"><a class="header" href="#what-does-not-change">What does not change</a></h2>
 <ul>
 <li>The JSON that <code>Token::as_value</code> and <code>lindera tokenize -o json</code> write has no new key for a token without a dependency.</li>
