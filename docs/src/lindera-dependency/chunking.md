@@ -81,6 +81,8 @@ cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 ```
 
+The model is for IPADIC unless `--dictionary-name` names another dictionary (`unidic`, `unidic-cwj` or `unidic-csj`): the name and the [schema](./head_and_function_word.md) of that dictionary then go into the model.
+
 On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:
 
 ```text

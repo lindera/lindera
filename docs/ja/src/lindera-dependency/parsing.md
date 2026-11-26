@@ -252,7 +252,7 @@ for instance in parser::instances(&Schema::ipadic(), &set, sentence)? {
 
 ### コマンド
 
-`train` feature を付けると、`lindera-dependency instances` が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。
+`train` feature を付けると、`lindera-dependency instances` が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。`--dictionary-name` で辞書を指定すると、その辞書のスキーマを使います。
 
 ```shell
 lindera-dependency instances --input train.lattice --output train.instances
@@ -283,7 +283,7 @@ negative: 32488
 
 ## モデルを学習する
 
-学習は `train` feature の裏にあります。`train-parser` は、[学習データ](./training_data.md)から IPADIC のスキーマで解析器を学習し、[モデルファイル](./model_file.md)を書き出します。`--chunker` を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。
+学習は `train` feature の裏にあります。`train-parser` は、[学習データ](./training_data.md)から IPADIC のスキーマで解析器を学習し、[モデルファイル](./model_file.md)を書き出します。`--dictionary-name` で辞書を指定すると、その辞書のスキーマを使います。`--chunker` を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。そのファイルは、同じ辞書のものでなければなりません。
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- train-chunker \

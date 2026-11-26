@@ -252,7 +252,7 @@ A sentence whose tree the parser cannot make (a head to the left, crossing arcs,
 
 ### The command
 
-With the `train` feature, `lindera-dependency instances` writes the instances of a file in the lattice format, with the schema of IPADIC:
+With the `train` feature, `lindera-dependency instances` writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that `--dictionary-name` names:
 
 ```shell
 lindera-dependency instances --input train.lattice --output train.instances
@@ -283,7 +283,7 @@ The command stops at a sentence whose tree does not come back when its answer de
 
 ## Training a model
 
-Training is behind the `train` feature. `train-parser` trains the parser on [training data](./training_data.md), with the schema of IPADIC, and writes a [model file](./model_file.md). With `--chunker`, the chunker of another model file goes into the output, which is then the whole model of the dictionary:
+Training is behind the `train` feature. `train-parser` trains the parser on [training data](./training_data.md), with the schema of IPADIC, or of the dictionary that `--dictionary-name` names, and writes a [model file](./model_file.md). With `--chunker`, the chunker of another model file goes into the output, which is then the whole model of the dictionary; that file has to be for the same dictionary:
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- train-chunker \

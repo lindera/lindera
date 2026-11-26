@@ -102,7 +102,12 @@ cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
 ```
 
 `--dict` also takes the directory of a dictionary built for Lindera; the
-`train` feature alone is then enough. For each sentence, the command:
+`train` feature alone is then enough. The schema is the one of the
+dictionary, by the name in its metadata: there are schemas for `ipadic`,
+`unidic`, `unidic-cwj` and `unidic-csj`, and another dictionary is refused.
+The commands that train read no dictionary: `train-chunker`, `train-parser`
+and `instances` take its name with `--dictionary-name`, and `ipadic` when
+it is left out. For each sentence, the command:
 
 1. turns the word dependencies into bunsetsu dependencies. Coordination is
    put back in the form of the Kyoto corpus and CaboCha: each conjunct
@@ -154,7 +159,8 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 A sentence dropped for two causes counts for both. The arcs of type `P` are
 counted before the bunsetsu are laid over the morphemes, and again in what
 is written: a merged bunsetsu takes the arc of the last one merged. The
-last lines compare the head word of the schema of IPADIC with the content
+last lines compare the head word of the schema of the dictionary with the
+content
 head of the corpus; see [Head and function word](#head-and-function-word).
 
 ### Corpora
@@ -168,6 +174,36 @@ these commits, with the IPADIC that Lindera embeds (`embed-ipadic`):
 | | | dev | 506 of 507 | 4,147 | 11,934 |
 | | | test | 542 of 543 | 4,509 | 12,591 |
 | [UD Japanese-PUD](https://github.com/UniversalDependencies/UD_Japanese-PUD) | cf69c5c | test | 994 of 1,000 | 9,843 | 27,728 |
+
+The sentences kept are the same with every dictionary. The bunsetsu and the
+morphemes are not: UD Japanese-GSD is segmented in the short units of
+UniDic, so with a UniDic dictionary fewer bunsetsu boundaries fall inside a
+morpheme, and fewer bunsetsu are merged. With the dictionaries of the
+release 7.0.0 of Lindera:
+
+| Dictionary | File | Bunsetsu boundaries on a morpheme boundary | Bunsetsu merged | Bunsetsu | Morphemes |
+| --- | --- | --- | --- | --- | --- |
+| IPADIC | GSD train | 99.21% (49,372 / 49,764) | 392 | 56,396 | 162,456 |
+| | GSD dev | 99.16% (3,641 / 3,672) | 31 | 4,147 | 11,934 |
+| | GSD test | 99.10% (3,967 / 4,003) | 36 | 4,509 | 12,591 |
+| | PUD | 99.45% (8,849 / 8,898) | 49 | 9,843 | 27,728 |
+| `unidic` | GSD train | 99.87% (49,700 / 49,764) | 64 | 56,724 | 172,976 |
+| | GSD dev | 99.89% (3,668 / 3,672) | 4 | 4,174 | 12,709 |
+| | GSD test | 99.80% (3,995 / 4,003) | 8 | 4,537 | 13,294 |
+| | PUD | 99.98% (8,896 / 8,898) | 2 | 9,890 | 29,571 |
+| `unidic-cwj` | GSD train | 99.95% (49,739 / 49,764) | 25 | 56,763 | 172,196 |
+| | GSD dev | 99.95% (3,670 / 3,672) | 2 | 4,176 | 12,657 |
+| | GSD test | 99.98% (4,002 / 4,003) | 1 | 4,544 | 13,254 |
+| | PUD | 99.97% (8,895 / 8,898) | 3 | 9,889 | 29,413 |
+| `unidic-csj` | GSD train | 99.94% (49,735 / 49,764) | 29 | 56,759 | 173,184 |
+| | GSD dev | 99.95% (3,670 / 3,672) | 2 | 4,176 | 12,723 |
+| | GSD test | 99.95% (4,001 / 4,003) | 2 | 4,543 | 13,299 |
+| | PUD | 99.97% (8,895 / 8,898) | 3 | 9,889 | 29,545 |
+
+The three UniDic dictionaries do not give the same morphemes: on the
+sentences of GSD train, `unidic` and `unidic-cwj` segment 85.88% alike and
+tag 66.06% alike, `unidic-cwj` and `unidic-csj` 88.10% and 73.22%. Training
+data is made for one dictionary, and so is a model.
 
 ### Licenses of the corpora
 
@@ -213,7 +249,8 @@ not of the dictionary of the model.
 The feature strings are made in two steps that can each be replaced. The
 columns of a morpheme (its surface, its part of speech, its conjugation
 form, ...) are read through the `Schema` of the dictionary, which says which
-feature column holds what; `Schema::ipadic()` is the one of IPADIC. A
+feature column holds what; `Schema::ipadic()` is the one of IPADIC and
+`Schema::unidic()` the one of UniDic. A
 template in the format of CRF++ then expands them. A model file holds the
 schema, the columns and the template the chunker was trained with; the
 schema is stored whole, with its patterns for the head and the function
@@ -398,6 +435,21 @@ The head is CaboCha's, the content word, and not J.DepP's, which lets an
 auxiliary be the head. The function word is defined by the schema alone: UD
 Japanese-GSD has no label that means the same.
 
+### The schema of UniDic
+
+`Schema::unidic()` is the schema of the three UniDic dictionaries of
+Lindera, `unidic` (unidic-mecab 2.1.2), `unidic-cwj` and `unidic-csj`: the
+columns it reads are at the same places in the three. The base form is the
+語彙素, in the eighth column, so the base form of こと is 事.
+`Schema::for_dictionary` gives the schema of a dictionary by its name.
+
+| | Patterns |
+| --- | --- |
+| Function words | 助詞, 助動詞, 接尾辞,形容詞的, 接尾辞,形状詞的, 接尾辞,動詞的 (CaboCha); 動詞,非自立可能 and 形容詞,非自立可能 |
+| Particles | 助詞 |
+| Function words taken by their surface as a child | 助詞, 副詞, 連体詞, 接続詞 |
+| Not heads | 空白, 補助記号 and 記号; a 動詞 right after に, と or を (事故 / に / よっ / て); 助動詞語幹 (よう, そう, みたい); a formal noun (こと, ため, もの, 際, うえ, ところ) right after a 動詞, a 助動詞 or a 形容詞; a nominal suffix (接尾辞,名詞的) right after a 形容詞 (大き / さ) |
+
 ### Agreement with UD Japanese-GSD
 
 UD Japanese-GSD marks the content head of each bunsetsu
@@ -437,6 +489,42 @@ lowers the agreement by about 9 points: the corpus has a suffix such as 化
 or 性 as the head. Keeping 名詞,非自立,副詞可能 (後, 間) as a head changes
 train by +0.05 points, dev by +0.17 and test by -0.09, which is not a
 systematic difference.
+
+For UniDic the same measurement, with UniDic CWJ; the last line is
+`Schema::unidic()`:
+
+| Rule | GSD train | GSD dev | GSD test | PUD |
+| --- | --- | --- | --- | --- |
+| The rule of CaboCha for UniDic | 82.50% | 82.81% | 83.96% | 81.75% |
+| And 非自立可能 is a function word | 94.73% | 94.64% | 94.70% | 94.47% |
+| And a verb after に, と or を is not a head | 96.71% | 96.53% | 96.43% | 96.73% |
+| And 助動詞語幹 is not a head | 97.19% | 97.05% | 97.10% | 97.15% |
+| And a formal noun after a predicate is not a head | 97.63% | 97.49% | 97.69% | 98.04% |
+| And a nominal suffix after an adjective is not a head | 97.70% (55,460 / 56,763) | 97.61% (4,076 / 4,176) | 97.95% (4,451 / 4,544) | 98.16% (9,707 / 9,889) |
+
+The same schema with each of the three dictionaries:
+
+| Dictionary | GSD train | GSD dev | GSD test | PUD |
+| --- | --- | --- | --- | --- |
+| `unidic` | 97.52% (55,320 / 56,724) | 97.60% (4,074 / 4,174) | 97.86% (4,440 / 4,537) | 97.84% (9,676 / 9,890) |
+| `unidic-cwj` | 97.70% (55,460 / 56,763) | 97.61% (4,076 / 4,176) | 97.95% (4,451 / 4,544) | 98.16% (9,707 / 9,889) |
+| `unidic-csj` | 97.55% (55,366 / 56,759) | 97.49% (4,071 / 4,176) | 97.91% (4,448 / 4,543) | 97.91% (9,682 / 9,889) |
+
+非自立可能 is the largest step: UniDic gives it to する, いる, ある and なる,
+which the pattern of CaboCha takes as head words. Three changes were
+measured and not taken (`head_variants/`, GSD train). A nominal suffix that
+is never a head gives 91.14% (51,736 / 56,763), and one that is not a head
+after a number 96.75% (54,917 / 56,763): the corpus has such a suffix as
+the head. A letter of the Latin alphabet, which UniDic tags 記号,文字, taken
+out of the symbols gives 97.50% (55,346 / 56,763).
+
+One disagreement is not expressed by the schema. The corpus has a percent
+sign after a number as the head (3 / %, 65 bunsetsu of GSD train); UniDic
+tags it 補助記号,一般, as it tags ・, and a schema takes a symbol by its part
+of speech or by its characters, not by the two together. Most of what is
+left comes from words of the corpus that the dictionary splits (a number in
+digits, a name in katakana): the content head is taken at the morpheme that
+holds its first character, and the head word is the last one.
 
 ## Parsing
 
@@ -547,7 +635,7 @@ The `children` features are those of the answer so far. A sentence whose
 tree the parser cannot make is an error.
 
 The `instances` command writes them for a file in the lattice format, with
-the schema of IPADIC:
+the schema of IPADIC, or of the dictionary that `--dictionary-name` names:
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- instances \

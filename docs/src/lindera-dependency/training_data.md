@@ -13,6 +13,24 @@ cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
 
 `--dict` also takes the directory of a dictionary built for Lindera; the `train` feature alone is then enough.
 
+The [schema](./head_and_function_word.md) is the one of the dictionary: `convert` reads the name of the dictionary from its metadata. There are schemas for `ipadic`, `unidic`, `unidic-cwj` and `unidic-csj`. For UniDic, give the directory of the dictionary, such as the one [`lindera download`](../lindera-cli/commands.md) installs:
+
+```shell
+dictionary=$(lindera download unidic-cwj)
+cargo run --release -p lindera-dependency --features train -- convert \
+    --dict "$dictionary" \
+    --input ja_gsd-ud-train.conllu \
+    --output train.lattice
+```
+
+A dictionary without a schema is refused:
+
+```text
+Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+```
+
+The commands that train do not read a dictionary. [`train-chunker`](./chunking.md#training-a-model), [`train-parser`](./parsing.md#training-a-model) and `instances` take its name with `--dictionary-name`, and `ipadic` when it is left out.
+
 For each sentence, the command:
 
 1. **turns the word dependencies into bunsetsu dependencies.** A word with `BunsetuBILabel=B` starts a bunsetsu, and the word whose head is outside the bunsetsu gives the head of the bunsetsu. Coordination is put back in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next one, with an arc of type `P`;
@@ -68,7 +86,7 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 
 - A sentence dropped for two causes counts for both.
 - The arcs of type `P` are counted before the bunsetsu are laid over the morphemes, and again in what is written: a merged bunsetsu takes the arc of the last one merged.
-- The last lines compare the head word of the schema of IPADIC with the content head the corpus marks (`BunsetuPositionType`), and list the ten most frequent disagreements by part of speech; two are shown here. See [Head and Function Word](./head_and_function_word.md).
+- The last lines compare the head word of the schema of the dictionary with the content head the corpus marks (`BunsetuPositionType`), and list the ten most frequent disagreements by part of speech; two are shown here. See [Head and Function Word](./head_and_function_word.md).
 
 ## Corpora
 
@@ -80,6 +98,29 @@ The corpora are not part of the repository. [`scripts/dependency/fetch_corpora.s
 | | | dev | 506 of 507 | 4,147 | 11,934 |
 | | | test | 542 of 543 | 4,509 | 12,591 |
 | [UD Japanese-PUD](https://github.com/UniversalDependencies/UD_Japanese-PUD) | cf69c5c | test | 994 of 1,000 | 9,843 | 27,728 |
+
+The table is for IPADIC. The sentences kept are the same with every dictionary: what leaves a sentence out does not depend on it. The bunsetsu and the morphemes are not. UD Japanese-GSD is segmented in the short units of UniDic, so with a UniDic dictionary fewer bunsetsu boundaries fall inside a morpheme, and fewer bunsetsu are merged (`convert_corpora.sh --dictionary unidic-cwj`):
+
+| Dictionary | File | Bunsetsu boundaries on a morpheme boundary | Bunsetsu merged | Bunsetsu | Morphemes |
+| --- | --- | --- | --- | --- | --- |
+| IPADIC | GSD train | 99.21% (49,372 / 49,764) | 392 | 56,396 | 162,456 |
+| | GSD dev | 99.16% (3,641 / 3,672) | 31 | 4,147 | 11,934 |
+| | GSD test | 99.10% (3,967 / 4,003) | 36 | 4,509 | 12,591 |
+| | PUD | 99.45% (8,849 / 8,898) | 49 | 9,843 | 27,728 |
+| `unidic` | GSD train | 99.87% (49,700 / 49,764) | 64 | 56,724 | 172,976 |
+| | GSD dev | 99.89% (3,668 / 3,672) | 4 | 4,174 | 12,709 |
+| | GSD test | 99.80% (3,995 / 4,003) | 8 | 4,537 | 13,294 |
+| | PUD | 99.98% (8,896 / 8,898) | 2 | 9,890 | 29,571 |
+| `unidic-cwj` | GSD train | 99.95% (49,739 / 49,764) | 25 | 56,763 | 172,196 |
+| | GSD dev | 99.95% (3,670 / 3,672) | 2 | 4,176 | 12,657 |
+| | GSD test | 99.98% (4,002 / 4,003) | 1 | 4,544 | 13,254 |
+| | PUD | 99.97% (8,895 / 8,898) | 3 | 9,889 | 29,413 |
+| `unidic-csj` | GSD train | 99.94% (49,735 / 49,764) | 29 | 56,759 | 173,184 |
+| | GSD dev | 99.95% (3,670 / 3,672) | 2 | 4,176 | 12,723 |
+| | GSD test | 99.95% (4,001 / 4,003) | 2 | 4,543 | 13,299 |
+| | PUD | 99.97% (8,895 / 8,898) | 3 | 9,889 | 29,545 |
+
+The three UniDic dictionaries do not give the same morphemes. On the sentences of GSD train, `unidic` and `unidic-cwj` segment 85.88% alike and tag 66.06% alike, `unidic-cwj` and `unidic-csj` 88.10% and 73.22% (`compare_dictionaries.py`). Training data is therefore made for one dictionary, and so is a model.
 
 ## Licenses of the corpora
 

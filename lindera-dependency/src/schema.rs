@@ -58,6 +58,10 @@ const NO_COLUMN: u32 = u32::MAX;
 const EMPTY: &str = "*";
 
 /// The characters of the commas, in full width and half width.
+/// The formal nouns of the schema of UniDic, by their 語彙素: こと, ため,
+/// もの, 際, うえ and ところ.
+const FORMAL_NOUNS: [&str; 6] = ["事", "為", "物", "際", "上", "所"];
+
 const COMMAS: &str = "、，,";
 
 /// The characters of the periods, in full width and half width.
@@ -114,6 +118,10 @@ pub struct Schema {
 }
 
 impl Schema {
+    /// The names of the dictionaries [`Schema::for_dictionary`] has a schema
+    /// for.
+    pub const DICTIONARIES: [&'static str; 4] = ["ipadic", "unidic", "unidic-cwj", "unidic-csj"];
+
     /// The schema of IPADIC.
     ///
     /// The columns are four levels of part of speech, then the conjugation
@@ -180,6 +188,130 @@ impl Schema {
                 open_brackets: Marks::new(&[&["記号", "括弧開"]], OPEN_BRACKETS),
                 close_brackets: Marks::new(&[&["記号", "括弧閉"]], CLOSE_BRACKETS),
             },
+        }
+    }
+
+    /// The schema of UniDic: of `unidic` (unidic-mecab 2.1.2), `unidic-cwj`
+    /// and `unidic-csj`, whose first columns are the same.
+    ///
+    /// The columns are 品詞大分類, 中分類, 小分類, 細分類, 活用型, 活用形,
+    /// 語彙素読み and 語彙素; the base form is the 語彙素, so that of こと
+    /// is 事.
+    ///
+    /// The function words are the ones of the pattern CaboCha has for
+    /// UniDic (a particle, an auxiliary, and a suffix that is not nominal),
+    /// and a verb or an adjective that is 非自立可能. What is not a head
+    /// was measured on UD Japanese-GSD, as for IPADIC:
+    ///
+    /// * a verb right after に, と or を (に / よっ / て, と / し / て),
+    /// * a 助動詞語幹 (よう, そう, みたい),
+    /// * a formal noun (こと, ため, もの, 際, うえ, ところ) right after a
+    ///   verb, an auxiliary or an adjective,
+    /// * a nominal suffix right after an adjective (大き / さ).
+    ///
+    /// UniDic tags a letter of the Latin alphabet 記号,文字, and it is a
+    /// symbol here as any 記号 is.
+    ///
+    /// # Returns
+    ///
+    /// The schema.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lindera_dependency::Schema;
+    /// use lindera_dependency::lattice::LatticeMorpheme;
+    ///
+    /// let schema = Schema::unidic();
+    /// // 利用 / する / こと / が
+    /// let bunsetsu = [
+    ///     LatticeMorpheme::new("利用", "名詞,普通名詞,サ変可能,*,*,*,リヨウ,利用"),
+    ///     LatticeMorpheme::new("する", "動詞,非自立可能,*,*,サ行変格,連体形-一般,スル,為る"),
+    ///     LatticeMorpheme::new("こと", "名詞,普通名詞,一般,*,*,*,コト,事"),
+    ///     LatticeMorpheme::new("が", "助詞,格助詞,*,*,*,*,ガ,が"),
+    /// ];
+    /// // The head word is 利用 and the function word が: する is 非自立可能,
+    /// // and こと is a formal noun after a verb.
+    /// assert_eq!(schema.positions(&bunsetsu), Some((0, 3)));
+    /// ```
+    pub fn unidic() -> Self {
+        Self {
+            part_of_speech: 0..4,
+            conjugation_type: Some(4),
+            conjugation_form: Some(5),
+            base_form: Some(7),
+            function_words: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["助動詞"]),
+                Pattern::new(&["接尾辞", "形容詞的"]),
+                Pattern::new(&["接尾辞", "形状詞的"]),
+                Pattern::new(&["接尾辞", "動詞的"]),
+                Pattern::new(&["動詞", "非自立可能"]),
+                Pattern::new(&["形容詞", "非自立可能"]),
+            ],
+            not_heads: vec![
+                Pattern::new(&["動詞"])
+                    .after(Pattern::new(&["助詞"]).with_base_forms(&["に", "と", "を"])),
+                Pattern::new(&["形状詞", "助動詞語幹"]),
+                Pattern::new(&["名詞", "助動詞語幹"]),
+                Pattern::new(&["名詞", "普通名詞"])
+                    .with_base_forms(&FORMAL_NOUNS)
+                    .after(Pattern::new(&["動詞"])),
+                Pattern::new(&["名詞", "普通名詞"])
+                    .with_base_forms(&FORMAL_NOUNS)
+                    .after(Pattern::new(&["助動詞"])),
+                Pattern::new(&["名詞", "普通名詞"])
+                    .with_base_forms(&FORMAL_NOUNS)
+                    .after(Pattern::new(&["形容詞"])),
+                Pattern::new(&["接尾辞", "名詞的"]).after(Pattern::new(&["形容詞"])),
+            ],
+            particles: vec![Pattern::new(&["助詞"])],
+            lexicalized: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["副詞"]),
+                Pattern::new(&["連体詞"]),
+                Pattern::new(&["接続詞"]),
+            ],
+            symbols: Symbols {
+                others: Marks::new(&[&["空白"], &["補助記号"], &["記号"]], ""),
+                commas: Marks::new(&[&["補助記号", "読点"]], COMMAS),
+                periods: Marks::new(&[&["補助記号", "句点"]], PERIODS),
+                open_brackets: Marks::new(&[&["補助記号", "括弧開"]], OPEN_BRACKETS),
+                close_brackets: Marks::new(&[&["補助記号", "括弧閉"]], CLOSE_BRACKETS),
+            },
+        }
+    }
+
+    /// The schema of a dictionary of Lindera, by the name of the dictionary.
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The name of the dictionary, as its metadata has it:
+    ///   `ipadic`, `unidic`, `unidic-cwj` or `unidic-csj`.
+    ///
+    /// # Returns
+    ///
+    /// The schema, or `None` for a dictionary this crate has no schema for.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lindera_dependency::Schema;
+    ///
+    /// assert_eq!(Schema::for_dictionary("ipadic"), Some(Schema::ipadic()));
+    /// // The three UniDic dictionaries have one schema.
+    /// assert_eq!(Schema::for_dictionary("unidic-cwj"), Some(Schema::unidic()));
+    /// assert_eq!(Schema::for_dictionary("ko-dic"), None);
+    /// assert_eq!(
+    ///     Schema::DICTIONARIES,
+    ///     ["ipadic", "unidic", "unidic-cwj", "unidic-csj"]
+    /// );
+    /// ```
+    pub fn for_dictionary(dictionary: &str) -> Option<Self> {
+        match dictionary {
+            "ipadic" => Some(Self::ipadic()),
+            "unidic" | "unidic-cwj" | "unidic-csj" => Some(Self::unidic()),
+            _ => None,
         }
     }
 
@@ -796,47 +928,6 @@ mod tests {
         assert_eq!(of(("x", "*,名詞")), "");
     }
 
-    /// A schema for UniDic made of data only, with the three rules measured
-    /// for it on UD Japanese-GSD: the pattern of CaboCha, 非自立可能 as a
-    /// function word, and a verb after に, と or を that is not a head.
-    fn unidic() -> Schema {
-        Schema {
-            // 品詞大分類, 中分類, 小分類, 細分類, 活用型, 活用形, 語彙素読み,
-            // 語彙素.
-            part_of_speech: 0..4,
-            conjugation_type: Some(4),
-            conjugation_form: Some(5),
-            base_form: Some(7),
-            function_words: vec![
-                Pattern::new(&["助詞"]),
-                Pattern::new(&["助動詞"]),
-                Pattern::new(&["接尾辞", "形容詞的"]),
-                Pattern::new(&["接尾辞", "形状詞的"]),
-                Pattern::new(&["接尾辞", "動詞的"]),
-                Pattern::new(&["動詞", "非自立可能"]),
-                Pattern::new(&["形容詞", "非自立可能"]),
-            ],
-            not_heads: vec![
-                Pattern::new(&["動詞"])
-                    .after(Pattern::new(&["助詞"]).with_base_forms(&["に", "と", "を"])),
-            ],
-            particles: vec![Pattern::new(&["助詞"])],
-            lexicalized: vec![
-                Pattern::new(&["助詞"]),
-                Pattern::new(&["副詞"]),
-                Pattern::new(&["連体詞"]),
-                Pattern::new(&["接続詞"]),
-            ],
-            symbols: Symbols {
-                others: Marks::new(&[&["空白"], &["補助記号"], &["記号"]], ""),
-                commas: Marks::new(&[&["補助記号", "読点"]], COMMAS),
-                periods: Marks::new(&[&["補助記号", "句点"]], PERIODS),
-                open_brackets: Marks::new(&[&["補助記号", "括弧開"]], OPEN_BRACKETS),
-                close_brackets: Marks::new(&[&["補助記号", "括弧閉"]], CLOSE_BRACKETS),
-            },
-        }
-    }
-
     #[test]
     fn particles_and_words_taken_by_their_surface_follow_the_patterns() {
         let schema = Schema::ipadic();
@@ -863,7 +954,7 @@ mod tests {
 
     #[test]
     fn unidic_is_a_second_schema_of_data_only() {
-        let schema = unidic();
+        let schema = Schema::unidic();
         // 思っ / て / いる: いる (非自立可能) is a function word.
         let omotte_iru = morphemes(&[
             (
@@ -902,9 +993,126 @@ mod tests {
         assert_eq!(Schema::ipadic().positions(&omotte_iru), Some((2, 2)));
     }
 
+    const SURU_UNIDIC: (&str, &str) =
+        ("する", "動詞,非自立可能,*,*,サ行変格,連体形-一般,スル,為る");
+    const TA_UNIDIC: (&str, &str) = ("た", "助動詞,*,*,*,助動詞-タ,連体形-一般,タ,た");
+    const NI_UNIDIC: (&str, &str) = ("に", "助詞,格助詞,*,*,*,*,ニ,に");
+    const TSUKAU_UNIDIC: (&str, &str) =
+        ("使う", "動詞,一般,*,*,五段-ワア行,連体形-一般,ツカウ,使う");
+
+    #[test]
+    fn unidic_does_not_take_an_auxiliary_stem_as_the_head() {
+        let schema = Schema::unidic();
+        // 使う / よう / に: よう is 形状詞,助動詞語幹.
+        let you = morphemes(&[
+            TSUKAU_UNIDIC,
+            ("よう", "形状詞,助動詞語幹,*,*,*,*,ヨウ,様"),
+            ("に", "助動詞,*,*,*,助動詞-ダ,連用形-ニ,ダ,だ"),
+        ]);
+        assert_eq!(schema.positions(&you), Some((0, 2)));
+        // 働い / た / そう / だ: そう of hearsay is 名詞,助動詞語幹.
+        let sou = morphemes(&[
+            (
+                "働い",
+                "動詞,一般,*,*,五段-カ行,連用形-イ音便,ハタラク,働く",
+            ),
+            TA_UNIDIC,
+            ("そう", "名詞,助動詞語幹,*,*,*,*,ソウ,そう-伝聞"),
+            ("だ", "助動詞,*,*,*,助動詞-ダ,終止形-一般,ダ,だ"),
+        ]);
+        assert_eq!(schema.positions(&sou), Some((0, 3)));
+    }
+
+    #[test]
+    fn unidic_does_not_take_a_formal_noun_after_a_predicate_as_the_head() {
+        let schema = Schema::unidic();
+        let koto = ("こと", "名詞,普通名詞,一般,*,*,*,コト,事");
+        let tame = ("ため", "名詞,普通名詞,副詞可能,*,*,*,タメ,為");
+        let kounyuu = ("購入", "名詞,普通名詞,サ変可能,*,*,*,コウニュウ,購入");
+        // 購入 / する / こと / に: after a verb.
+        let after_verb = morphemes(&[kounyuu, SURU_UNIDIC, koto, NI_UNIDIC]);
+        assert_eq!(schema.positions(&after_verb), Some((0, 3)));
+        // 購入 / する / た / ため / に: after an auxiliary.
+        let after_auxiliary = morphemes(&[kounyuu, SURU_UNIDIC, TA_UNIDIC, tame, NI_UNIDIC]);
+        assert_eq!(schema.positions(&after_auxiliary), Some((0, 4)));
+        // 新しい / こと / に: after an adjective.
+        let after_adjective = morphemes(&[
+            (
+                "新しい",
+                "形容詞,一般,*,*,形容詞,連体形-一般,アタラシイ,新しい",
+            ),
+            koto,
+            NI_UNIDIC,
+        ]);
+        assert_eq!(schema.positions(&after_adjective), Some((0, 2)));
+        // こと / に, and 購入 / こと / に: not after one of them.
+        assert_eq!(
+            schema.positions(&morphemes(&[koto, NI_UNIDIC])),
+            Some((0, 1))
+        );
+        assert_eq!(
+            schema.positions(&morphemes(&[kounyuu, koto, NI_UNIDIC])),
+            Some((1, 2))
+        );
+        // 使う / 人 / に: 人 is not a formal noun.
+        let hito = morphemes(&[
+            TSUKAU_UNIDIC,
+            ("人", "名詞,普通名詞,一般,*,*,*,ヒト,人"),
+            NI_UNIDIC,
+        ]);
+        assert_eq!(schema.positions(&hito), Some((1, 2)));
+    }
+
+    #[test]
+    fn unidic_does_not_take_a_nominal_suffix_after_an_adjective_as_the_head() {
+        let schema = Schema::unidic();
+        // 大き / さ / に.
+        let ookisa = morphemes(&[
+            ("大き", "形容詞,一般,*,*,形容詞,語幹-一般,オオキイ,大きい"),
+            ("さ", "接尾辞,名詞的,一般,*,*,*,サ,さ"),
+            NI_UNIDIC,
+        ]);
+        assert_eq!(schema.positions(&ookisa), Some((0, 2)));
+        // 市 / 長 / に: after a noun the suffix is the head.
+        let shichou = morphemes(&[
+            ("市", "名詞,普通名詞,一般,*,*,*,シ,市"),
+            ("長", "接尾辞,名詞的,一般,*,*,*,チョウ,長"),
+            NI_UNIDIC,
+        ]);
+        assert_eq!(schema.positions(&shichou), Some((1, 2)));
+    }
+
+    #[test]
+    fn unidic_takes_a_letter_as_a_symbol() {
+        let schema = Schema::unidic();
+        // 5 / k / m: the letters are 記号,文字.
+        let kilometers = morphemes(&[
+            ("5", "名詞,数詞,*,*,*,*,ゴ,五"),
+            ("k", "記号,文字,*,*,*,*,ケー,Ｋ"),
+            ("m", "記号,文字,*,*,*,*,エム,Ｍ"),
+        ]);
+        assert!(schema.is_symbol(&kilometers[1]));
+        assert_eq!(schema.positions(&kilometers), Some((0, 0)));
+    }
+
+    #[test]
+    fn a_schema_is_chosen_by_the_name_of_the_dictionary() {
+        assert_eq!(Schema::for_dictionary("ipadic"), Some(Schema::ipadic()));
+        for name in ["unidic", "unidic-cwj", "unidic-csj"] {
+            assert_eq!(Schema::for_dictionary(name), Some(Schema::unidic()));
+        }
+        // Every name of the list has a schema, and no other name has.
+        for name in Schema::DICTIONARIES {
+            assert!(Schema::for_dictionary(name).is_some(), "{name}");
+        }
+        for name in ["", "IPADIC", "ipadic-neologd", "ko-dic", "unidic-"] {
+            assert_eq!(Schema::for_dictionary(name), None, "{name}");
+        }
+    }
+
     #[test]
     fn a_schema_comes_back_from_its_bytes() {
-        for schema in [Schema::ipadic(), unidic(), Schema::default()] {
+        for schema in [Schema::ipadic(), Schema::unidic(), Schema::default()] {
             let mut bytes = Vec::new();
             schema.write(&mut bytes);
             let mut reader = Reader::new(&bytes, "test bytes", Error::Chunker);
