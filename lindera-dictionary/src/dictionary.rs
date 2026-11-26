@@ -7,7 +7,6 @@ pub mod prefix_dictionary;
 pub mod schema;
 pub mod unknown_dictionary;
 
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -384,17 +383,6 @@ impl Dictionary {
             unknown_dictionary: Arc::new(unknown_dictionary),
             metadata: Arc::new(metadata),
         })
-    }
-
-    /// Save dictionary to a directory
-    pub fn save_to_path(&self, dict_path: &Path) -> LinderaResult<()> {
-        // Create directory if it doesn't exist
-        fs::create_dir_all(dict_path)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        // For now, we'll implement this as needed
-        // This would require implementing save methods for each component
-        todo!("Dictionary saving will be implemented when needed")
     }
 }
 
