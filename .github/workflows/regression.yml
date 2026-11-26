@@ -565,7 +565,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dependency
-      features: "--features train,embed-ipadic,embed-model-ipadic"
+      features: "--features train,embed-ipadic,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj"
       dictionaries: "ipadic"
       lint: true
 
@@ -877,7 +877,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-analysis
-      features: "--features embed-ipadic,embed-ko-dic,embed-dependency-ipadic"
+      features: "--features embed-ipadic,embed-ko-dic,embed-dependency-ipadic,embed-dependency-unidic,embed-dependency-unidic-cwj,embed-dependency-unidic-csj"
       dictionaries: "ipadic ko-dic"
       lint: true
 

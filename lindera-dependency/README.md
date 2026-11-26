@@ -6,7 +6,8 @@ A dependency analysis groups the morphemes of a sentence into bunsetsu (文節)
 and finds, for each bunsetsu, the bunsetsu it depends on.
 
 The crate is on crates.io from Lindera 7.1.0 on, and each release of
-Lindera publishes a model for IPADIC with it. It holds:
+Lindera publishes a model for IPADIC and one for each of the three UniDic
+dictionaries with it. It holds:
 
 - the `Morpheme` trait: a surface and the feature columns of its dictionary;
   the crate depends on no tokenizer
@@ -31,9 +32,11 @@ the page of its version: `lindera-dependency-ipadic-<version>.zip`. It is
 built by
 [`scripts/dependency/build_model.sh`](../scripts/dependency/build_model.sh),
 from the train file of UD Japanese-GSD, and is under the MIT license. The
-feature `embed-model-ipadic` embeds it in a program. The chunker and the
-parser can also be trained with the commands of the crate, in a few
-seconds each.
+feature `embed-model-ipadic` embeds it in a program. The same is published
+for `unidic`, `unidic-cwj` and `unidic-csj`, with the name of the dictionary
+in place of `ipadic`: `lindera-dependency-unidic-cwj-<version>.zip` and
+`embed-model-unidic-cwj`, for UniDic CWJ. The chunker and the parser can
+also be trained with the commands of the crate, in a few seconds each.
 
 The documentation has a chapter on the crate, in
 [English](../docs/src/lindera-dependency.md) and in

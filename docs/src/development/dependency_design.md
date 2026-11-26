@@ -71,6 +71,7 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | Of CaboCha's options the command keeps the lattice output (`-f1`) and the three input layers (`-I`), as `--input-layer`. The tree, XML and CoNLL outputs, the output layer and the named entities are not kept. | The lattice format is what other tools read, and its writer exists. The layers are what `parse` and `parse --chunk` did, as one option. The morphemes alone and the bunsetsu alone have commands of their own. | #1439 |
 | The command reads, parses and writes one sentence at a time, and stops at the first sentence that fails, with what it wrote before. | It stands in a pipe, and its memory does not grow with the input. | #1439 |
 | The model for IPADIC is distributed under the MIT license, with an acknowledgement of UD Japanese-GSD and the notice of IPADIC. | The model holds names of features and weights, and none of the annotation: the project takes it not to be an adaptation of the treebank. No court has decided the question; the [model file page](../lindera-dependency/model_file.md#license-of-the-model) says what the position rests on. With one license for the code and the model, a program that embeds the model is distributed as one with an embedded dictionary is. | #1440 |
+| The models for UniDic are released, embedded and downloaded as the one for IPADIC, under the same license, each with the notice of its dictionary. A release trains them with the dictionaries it has just built, read from a directory. | One mechanism for every model: a feature, a variable, a pin and an archive for each dictionary. Embedding UniDic CWJ or UniDic CSJ to train takes 8 to 11 GiB of memory to compile; reading the directory takes none of it, and the dictionary is the one of the same release. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | The released model is trained on the train file of UD Japanese-GSD only. | The numbers on dev, test and PUD are then the numbers of the file that is released, and anyone can take them again. | #1440 |
 | A released model has the version of Lindera, and is released as a built dictionary is: a release builds it with one script, puts its archive on the page of its version, and writes a `prebuilt.json` into the crate just before it publishes it. A build from the repository embeds a file it is given. | One version for everything a release holds: nobody has to know which model fits which release. The model cannot be trained by a build script, as a dictionary is built, so a build without a pin takes a file. Decided on 2026-11-25, in place of a version of its own and a release with a tag of its own. | #1440 |
 | The release that first has the crate is 7.1.0, with the break of `Token` stated in the migration guide and in the release notes. | Decided by the maintainer. The break touches code that builds a `Token` with a struct expression or destructures all of its fields, not code that reads the tokens of a tokenizer. | #1440 |
@@ -184,7 +185,6 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 | Part | Notes | Issue |
 | --- | --- | --- |
 | IPADIC model | Done: the model is built, measured and published by each release, and the crate is published with it. The first release with both is 7.1.0. | [#1440](https://github.com/lindera/lindera/issues/1440) |
-| UniDic model | A second schema. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
 | The baselines of CaboCha and J.DepP, measured again | The scripts that build and train them. | [#1433](https://github.com/lindera/lindera/issues/1433) |
 
@@ -366,7 +366,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1438](https://github.com/lindera/lindera/issues/1438) | Token filter | Done |
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Done |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
-| [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic model | Open |
+| [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic schema and models | Done |
 | [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | Open |
 
 ## References

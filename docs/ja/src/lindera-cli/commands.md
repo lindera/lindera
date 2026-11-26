@@ -63,7 +63,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 
 ### 係り受け解析のモデル
 
-[係り受け解析](../lindera-dependency/token_filter.md)のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ `embed-dependency-ipadic`）と、`lindera download dependency-ipadic` がインストールしたモデル（`model.json` のあるサブディレクトリ）です。
+[係り受け解析](../lindera-dependency/token_filter.md)のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ `embed-dependency-ipadic` と、`embed-dependency-unidic`・`embed-dependency-unidic-cwj`・`embed-dependency-unidic-csj`）と、`lindera download dependency-ipadic` などがインストールしたモデル（`model.json` のあるサブディレクトリ）です。
 
 ```text
 NAME    VERSION  STATUS  DICT
@@ -925,7 +925,7 @@ CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リ�
 
 ### download パラメータ
 
-- 名前（必須）: 辞書なら `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか。`dependency-ipadic` は、IPADIC 用の係り受け解析のモデル
+- 名前（必須）: 辞書なら `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか。係り受け解析のモデルなら `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj` のいずれか。その名前の辞書用のモデル
 - `--force`: CLI のバージョンがビルドした辞書やモデルでも、再ダウンロードして置き換える
 
 ### 保存場所
@@ -961,7 +961,7 @@ Downloaded dictionary 'ipadic'
 
 ### 係り受け解析のモデルのダウンロード
 
-`lindera download dependency-ipadic` は、トークンフィルター `japanese_dependency` の [IPADIC のモデル](../lindera-dependency/model_file.md#ipadic-のモデル)を取得します。CLI のバージョンのリリースのページにある `lindera-dependency-ipadic-<version>.zip` で、7.1.0 以降のリリースにあります。辞書と並べて `<辞書ディレクトリ>/dependency-ipadic/` にインストールし、その中のモデルファイルのパスを表示します。フィルターの `model` に渡す値です。
+`lindera download dependency-ipadic` は、トークンフィルター `japanese_dependency` の [IPADIC のモデル](../lindera-dependency/model_file.md#ipadic-のモデル)を取得します。CLI のバージョンのリリースのページにある `lindera-dependency-ipadic-<version>.zip` で、7.1.0 以降のリリースにあります。辞書と並べて `<辞書ディレクトリ>/dependency-ipadic/` にインストールし、その中のモデルファイルのパスを表示します。フィルターの `model` に渡す値です。`dependency-unidic`・`dependency-unidic-cwj`・`dependency-unidic-csj` は、同じやり方で [UniDic のモデル](../lindera-dependency/model_file.md#unidic-のモデル)を取得します。
 
 ```shell
 % MODEL=$(lindera download dependency-ipadic)

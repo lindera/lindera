@@ -74,7 +74,7 @@ EOS
 
 ## Training a model
 
-The [model for IPADIC](./model_file.md#the-model-for-ipadic) that Lindera releases has a chunker. To train one of your own from [training data](./training_data.md):
+The [model for IPADIC](./model_file.md#the-model-for-ipadic) that Lindera releases has a chunker, and so have the [models for UniDic](./model_file.md#the-models-for-unidic). To train one of your own from [training data](./training_data.md):
 
 ```shell
 cargo run --release -p lindera-dependency --features train -- train-chunker \

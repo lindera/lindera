@@ -4,7 +4,7 @@ A model file holds what one dictionary needs to be analyzed: the name of the dic
 
 A model belongs to one dictionary. It depends on the feature columns of the dictionary and on how the dictionary segments a text, so the file says which dictionary it is for, and one file serves one dictionary.
 
-A release of Lindera publishes the [model for IPADIC](#the-model-for-ipadic), from 7.1.0 on. [`train-chunker`](./chunking.md#training-a-model) writes a model file with the chunker, and [`train-parser`](./parsing.md#training-a-model) one with the parser, or with both.
+A release of Lindera publishes the [model for IPADIC](#the-model-for-ipadic) and the [models for UniDic](#the-models-for-unidic), from 7.1.0 on. [`train-chunker`](./chunking.md#training-a-model) writes a model file with the chunker, and [`train-parser`](./parsing.md#training-a-model) one with the parser, or with both.
 
 ## Reading a model
 
@@ -102,7 +102,7 @@ The same parts give the same bytes. A part trained with another schema than the 
 
 ## The model for IPADIC
 
-The project trains one model for IPADIC, with a chunker and a parser. A release of Lindera builds it with [`build_model.sh`](#building-it-again) and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: `lindera-dependency-ipadic-<version>.zip` in `v<version>`. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.
+The project trains a model for IPADIC, with a chunker and a parser. A release of Lindera builds it with [`build_model.sh`](#building-it-again) and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: `lindera-dependency-ipadic-<version>.zip` in `v<version>`. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.
 
 [`lindera download dependency-ipadic`](../lindera-cli/commands.md#downloading-the-model-of-the-dependency-parser) installs the archive of the version of the command, and prints the path of the model file.
 
@@ -205,9 +205,23 @@ The model file is distributed under the MIT license, the license of Lindera's co
 
 ## The models for UniDic
 
-[`build_model.sh --dictionary <name>`](#building-it-again) builds the model for `unidic`, `unidic-cwj` or `unidic-csj` in the same way: the directory `lindera-dependency-<name>` with the three files, and its archive. The training data is the train file of UD Japanese-GSD converted with that dictionary, the settings are the ones of [`train-chunker`](./chunking.md#with-unidic) and of `train-parser` for it, and the notice carries the notice of the dictionary. Nothing is embedded: the script takes the directory of the dictionary with `--dict`, or installs the one of the release of the version of the workspace with `lindera download`.
+A release of Lindera publishes a model for each of the three UniDic dictionaries too, from 7.1.0 on: `unidic` (unidic-mecab 2.1.2), `unidic-cwj` and `unidic-csj`. What is said above for IPADIC holds with the name of the dictionary in place of `ipadic`:
 
-A release of Lindera does not publish these models yet, and no feature embeds them ([#1441](https://github.com/lindera/lindera/issues/1441)). Their [accuracy](./parsing.md#with-unidic) is with the dictionaries of the release 7.0.0.
+| | |
+| --- | --- |
+| Archive | `lindera-dependency-unidic-<version>.zip`, `lindera-dependency-unidic-cwj-<version>.zip`, `lindera-dependency-unidic-csj-<version>.zip`, each with one directory of the same three files |
+| Download | `lindera download dependency-unidic`, `dependency-unidic-cwj` or `dependency-unidic-csj` |
+| Embedding | `embed-model-unidic`, `embed-model-unidic-cwj` or `embed-model-unidic-csj` of `lindera-dependency`, forwarded as `embed-dependency-unidic` and the like; the model is then `embedded://unidic`, `embedded://unidic-cwj` or `embedded://unidic-csj` |
+| File for a build from the repository | [`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file), `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE` or `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE` |
+| Building it again | [`build_model.sh --dictionary <name>`](#building-it-again), with `--dict` for the directory of the dictionary |
+| Training data | The train file of UD Japanese-GSD, [converted](./training_data.md) with that dictionary: 7,024 sentences |
+| Settings | The ones of [`train-chunker`](./chunking.md#with-unidic) for UniDic, and the defaults of `train-parser` |
+| Size | 6,257,148 bytes for `unidic`, 6,258,600 for `unidic-cwj`, 6,267,183 for `unidic-csj` |
+| License | MIT, with a notice that carries the notice of the dictionary. UniDic is under the GPL v2.0, the LGPL v2.1 or the BSD license, at the choice of the user |
+
+A model is for one dictionary. The three UniDic dictionaries do not segment and tag alike, and the model for `unidic-cwj` is [refused](#checking-the-dictionary) with the morphemes of `unidic`. UniDic CSJ is a dictionary for spoken language, and the training data is written language.
+
+Nothing embeds UniDic to train a model: `build_model.sh` takes the directory of the dictionary with `--dict`, or installs the one of the release of the version of the workspace with `lindera download`. A release trains each model with the dictionary it has just built, measures it on the files it was not trained on, and stops when a count is not the one of the [documentation](./parsing.md#with-unidic), as it does for IPADIC.
 
 The four models, on the test file of UD Japanese-GSD converted with each dictionary, on one core of an AMD Ryzen AI Max+ 395; the speeds are sentences per second, from one run each, and differ by a few percent from one run to another:
 

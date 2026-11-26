@@ -11,6 +11,7 @@ Lindera は Cargo の feature フラグを使用して、オプション機能�
 | `train` | CRF ベースの辞書学習（`lindera-trainer` に依存。`lindera::dictionary::trainer`） | 下記参照 |
 | `dependency` | トークンフィルター `japanese_dependency`。文節の係り受け解析で、`lindera-dependency` を使う（`analysis` を含む） | 下記参照 |
 | `embed-dependency-ipadic` | そのフィルターの IPADIC のモデルをビルドに埋め込む。`model: "embedded://ipadic"` で使う（`dependency` を含む）。ビルドがモデルをどこから取るかは [IPADIC のモデル](../lindera-dependency/model_file.md#埋め込む)を参照 | 無効 |
+| `embed-dependency-unidic`、`embed-dependency-unidic-cwj`、`embed-dependency-unidic-csj` | そのフィルターの UniDic の辞書のモデルをビルドに埋め込む。`model: "embedded://unidic"` などで使う（どれも `dependency` を含む）。[UniDic のモデル](../lindera-dependency/model_file.md#unidic-のモデル)を参照 | 無効 |
 
 - `analysis` と `mmap` は `lindera` ファサードでどちらもデフォルト有効です。
   `default-features = false` にすると両方とも無効になり、純粋なセグメンター

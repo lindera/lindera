@@ -164,8 +164,10 @@ impl JapaneseDependencyTokenFilter {
     ///
     /// The filter, or an error for a dictionary no model can be embedded
     /// for, and for a build without the feature that embeds it,
-    /// `embed-dependency-ipadic` for IPADIC: the message names the feature
-    /// of `lindera-dependency` behind it, `embed-model-ipadic`.
+    /// `embed-dependency-ipadic` for IPADIC, `embed-dependency-unidic`,
+    /// `embed-dependency-unidic-cwj` and `embed-dependency-unidic-csj` for
+    /// UniDic: the message names the feature of `lindera-dependency`
+    /// behind it, such as `embed-model-ipadic`.
     pub fn from_embedded(dictionary: &str) -> LinderaResult<Self> {
         let bytes = lindera_dependency::embedded::bytes(dictionary).map_err(|error| {
             LinderaErrorKind::FeatureDisabled.with_error(anyhow::anyhow!(
@@ -954,6 +956,84 @@ mod tests {
     #[ignore = "writes resources/dependency/test_model_ipadic.bin"]
     fn write_the_model_file_of_the_other_tests() {
         fs::write(MODEL_FILE, model_bytes("ipadic", 1.0)).unwrap();
+        for dictionary in UNIDIC {
+            fs::write(
+                unidic_model_file(dictionary),
+                unidic_model_bytes(dictionary),
+            )
+            .unwrap();
+        }
+    }
+
+    /// The three UniDic dictionaries a model can be embedded for.
+    const UNIDIC: [&str; 3] = ["unidic", "unidic-cwj", "unidic-csj"];
+
+    /// The model file a test build embeds for a UniDic dictionary: the test
+    /// jobs name it in the variable of the model, such as
+    /// `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE`.
+    fn unidic_model_file(dictionary: &str) -> String {
+        format!(
+            "{}/../resources/dependency/test_model_{dictionary}.bin",
+            env!("CARGO_MANIFEST_DIR")
+        )
+    }
+
+    /// The bytes of that file: the model of these tests under the name of
+    /// the dictionary. What is read of it is its dictionary and that it is
+    /// whole; no test analyzes with it, and its schema is the one of the
+    /// chunker of these tests, which is the one of IPADIC.
+    fn unidic_model_bytes(dictionary: &str) -> Vec<u8> {
+        model_bytes(dictionary, 1.0)
+    }
+
+    #[test]
+    fn the_model_files_for_unidic_are_the_models_of_these_tests() {
+        // Written by write_the_model_file_of_the_other_tests, as the file
+        // for IPADIC.
+        for dictionary in UNIDIC {
+            assert_eq!(
+                fs::read(unidic_model_file(dictionary)).unwrap(),
+                unidic_model_bytes(dictionary),
+                "{dictionary}"
+            );
+        }
+    }
+
+    /// Whether the build embeds the model of a UniDic dictionary.
+    fn embeds(dictionary: &str) -> bool {
+        match dictionary {
+            "unidic" => cfg!(feature = "embed-dependency-unidic"),
+            "unidic-cwj" => cfg!(feature = "embed-dependency-unidic-cwj"),
+            "unidic-csj" => cfg!(feature = "embed-dependency-unidic-csj"),
+            other => panic!("no feature for {other}"),
+        }
+    }
+
+    #[test]
+    fn a_model_for_unidic_is_embedded_by_its_feature() {
+        for dictionary in UNIDIC {
+            let args = json!({"model": format!("embedded://{dictionary}")});
+            match JapaneseDependencyTokenFilter::from_config(&args) {
+                Ok(filter) => {
+                    assert!(embeds(dictionary), "{dictionary}");
+                    // The model of this dictionary, and not of another.
+                    assert_eq!(filter.dictionary(), dictionary);
+                    assert_eq!(
+                        filter.model.as_bytes(),
+                        fs::read(unidic_model_file(dictionary)).unwrap()
+                    );
+                }
+                Err(error) => {
+                    assert!(!embeds(dictionary), "{dictionary}: {error}");
+                    assert_eq!(error.kind(), LinderaErrorKind::FeatureDisabled);
+                    let message = error.to_string();
+                    assert!(
+                        message.contains(&format!("`embed-dependency-{dictionary}`")),
+                        "{message}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
@@ -1058,10 +1138,15 @@ mod tests {
 
     #[test]
     fn a_dictionary_without_an_embedded_model_is_refused() {
-        let args = json!({"model": "embedded://unidic"});
+        let args = json!({"model": "embedded://ko-dic"});
         let error = JapaneseDependencyTokenFilter::from_config(&args).unwrap_err();
         assert_eq!(error.kind(), LinderaErrorKind::FeatureDisabled);
-        assert!(error.to_string().contains("unidic"), "{error}");
+        let message = error.to_string();
+        assert!(message.contains("ko-dic"), "{message}");
+        assert!(
+            message.contains("models for ipadic, unidic, unidic-cwj, unidic-csj"),
+            "{message}"
+        );
         // What does not start with the scheme is a path.
         let args = json!({"model": "models/embedded://ipadic"});
         let error = JapaneseDependencyTokenFilter::from_config(&args).unwrap_err();

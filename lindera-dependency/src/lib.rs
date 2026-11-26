@@ -13,8 +13,10 @@
 //! This crate holds what the analysis is built on, its two steps, the
 //! segmentation into bunsetsu and the parsing of their dependencies, and
 //! the model file of a dictionary. A release of Lindera publishes the model
-//! for IPADIC, which the feature `embed-model-ipadic` embeds; the two steps
-//! can also be trained with the commands of the crate.
+//! for IPADIC, which the feature `embed-model-ipadic` embeds, and the models
+//! for the three UniDic dictionaries (`embed-model-unidic`,
+//! `embed-model-unidic-cwj`, `embed-model-unidic-csj`); the two steps can
+//! also be trained with the commands of the crate.
 //!
 //! - [`Morpheme`], the trait of a morpheme: a surface and the feature columns
 //!   of its dictionary. The crate depends on no tokenizer, and a type outside
@@ -42,7 +44,8 @@
 //!   [`Model::analyze`](model::Model::analyze) takes a sentence from its
 //!   morphemes to its dependencies.
 //! - [`embedded`]: the model of a dictionary that a feature of the crate
-//!   embeds in the build, `embed-model-ipadic` the one for IPADIC.
+//!   embeds in the build, `embed-model-ipadic` the one for IPADIC and
+//!   `embed-model-unidic` and the like the ones for UniDic.
 //! - [`parser`]: finding the head of each bunsetsu, with shift-reduce and a
 //!   classifier over features and pairs of features: the features, the
 //!   loop, and the classifier of a model file, which reads its weights

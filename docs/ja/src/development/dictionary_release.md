@@ -34,11 +34,11 @@ crates.io に公開した辞書クレートには、`metadata.json` の隣に `p
 
 ## lindera-dependency のモデル
 
-リリースは、同じ形でアーカイブをもう 1 つ公開します。[`lindera-dependency`](../lindera-dependency/model_file.md#ipadic-のモデル) の IPADIC のモデル、`lindera-dependency-ipadic-<バージョン>.zip` です（[#1440](https://github.com/lindera/lindera/issues/1440)）。中身は `lindera-dependency-ipadic` という名前のディレクトリ 1 つで、`dependency.model`、リリースのバージョンを `lindera_version` として持つ `model.json`、`NOTICE.txt` が入ります。`lindera download dependency-ipadic` がこれをインストールします。インストール済みのモデルを現行とみなすのは、辞書と同じく、そのバージョンが CLI のバージョンと同じときだけです。
+リリースは、同じ形でアーカイブをもう 4 つ公開します。[`lindera-dependency`](../lindera-dependency/model_file.md#ipadic-のモデル) のモデルで、スキーマのある辞書ごとに 1 つ、`ipadic`・`unidic`・`unidic-cwj`・`unidic-csj` の `lindera-dependency-<辞書>-<バージョン>.zip` です（[#1440](https://github.com/lindera/lindera/issues/1440)、[#1441](https://github.com/lindera/lindera/issues/1441)）。以下は IPADIC について書いていますが、4 つとも同じです。中身は `lindera-dependency-ipadic` という名前のディレクトリ 1 つで、`dependency.model`、リリースのバージョンを `lindera_version` として持つ `model.json`、`NOTICE.txt` が入ります。`lindera download dependency-ipadic` がこれをインストールします。インストール済みのモデルを現行とみなすのは、辞書と同じく、そのバージョンが CLI のバージョンと同じときだけです。
 
-`release.yml` の `build-dependency-model` ジョブが、`scripts/dependency/build_model.sh` でモデルを作ります。UD Japanese-GSD と UD Japanese-PUD を固定の commit で GitHub から取り、train のファイルでモデルを学習し、学習に使っていないファイルで測ります（`scripts/dependency/model_accuracy.py`）。数は `scripts/dependency/model_accuracy_ipadic.json` の値、つまりドキュメントの数字と同じでなければなりません。違う数字のモデルができたリリースは、何かを上げる前に、そこで止まります。モデルのバイト列は、ランナーが作ったものです。ほかの端末で作ったものと同じになるとは約束しません。
+`release.yml` の `build-dependency-model` ジョブが、`scripts/dependency/build_model.sh` でモデルを作ります。UD Japanese-GSD と UD Japanese-PUD を固定の commit で GitHub から取り、train のファイルでモデルを学習し、学習に使っていないファイルで測ります（`scripts/dependency/model_accuracy.py`）。数は `scripts/dependency/model_accuracy_<辞書>.json` の値、つまりドキュメントの数字と同じでなければなりません。違う数字のモデルができたリリースは、何かを上げる前に、そこで止まります。ジョブは辞書ごとに 1 回動きます。IPADIC のモデルは、コマンドに埋め込んだ IPADIC で学習します。UniDic のモデルは、同じ実行の `build-dictionary` ジョブが組み立てた辞書を、その成果物から取り出し、ディレクトリから読んで学習します。UniDic CWJ や UniDic CSJ を埋め込むビルドは行いません。モデルのバイト列は、ランナーが作ったものです。ほかの端末で作ったものと同じになるとは約束しません。
 
-`lindera-dependency` は、辞書クレートと同じように、アーカイブを固定します。リリースがその `prebuilt.json` を書き（`scripts/write_dependency_model_pin.sh`）、公開したクレートを `embed-model-ipadic` 付きでビルドすると、アーカイブをダウンロードして照合します。違いが 1 つあります。固定の無い辞書クレートは、辞書をソースからビルドします。モデルは build script の中では学習できないので、固定の無いビルド、つまりリポジトリからのビルドはすべて、[`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file) が指すファイルを埋め込みます。
+`lindera-dependency` は、辞書クレートと同じように、それぞれのアーカイブを固定します。リリースがモデルごとの固定 `prebuilt-<辞書>.json` を書き（`scripts/write_dependency_model_pin.sh`）、公開したクレートを `embed-model-<辞書>` 付きでビルドすると、そのモデルのアーカイブをダウンロードして照合します。違いが 1 つあります。固定の無い辞書クレートは、辞書をソースからビルドします。モデルは build script の中では学習できないので、固定の無いビルド、つまりリポジトリからのビルドはすべて、[`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file) が指すファイルを埋め込みます。
 
 ## Lindera のリリース
 
@@ -49,7 +49,7 @@ crates.io に公開した辞書クレートには、`metadata.json` の隣に `p
    2. リリースを下書きで作り、成果物を上げます。
    3. リリースを公開します。辞書のアーカイブに公開の URL が付きます。
    4. アーカイブをもう一度ダウンロードし、各辞書クレートの `prebuilt.json` に、そのアーカイブの SHA-256 を書きます（`scripts/write_dictionary_pins.sh`）。`lindera-dependency` の `prebuilt.json` には、モデルのアーカイブの SHA-256 を書きます（`scripts/write_dependency_model_pin.sh`）。
-   5. `lindera-ipadic` を `embed-ipadic` 付きで、`lindera-dependency` を `embed-model-ipadic` 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。
+   5. `lindera-ipadic` を `embed-ipadic` 付きで、`lindera-dependency` を 4 つの `embed-model-<辞書>` 付きでビルドし、固定したアーカイブのダウンロードと照合が通ることを確かめます。固定が働かないクレートを公開しないためです。
    6. クレートを公開します。`prebuilt.json` は commit しないので、辞書クレートと `lindera-dependency` は `cargo publish --allow-dirty` で公開します。
    7. gem をインストールして、トークナイズを試します。gem は、公開したばかりのクレートでコンパイルされます。
    8. PyPI、npm、RubyGems に公開します。

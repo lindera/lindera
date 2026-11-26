@@ -38,6 +38,18 @@ embed-dependency-ipadic = [
     "dependency",
     "lindera-binding/embed-dependency-ipadic",
 ] # Embed the model of the token filter japanese_dependency for IPADIC
+embed-dependency-unidic = [
+    "dependency",
+    "lindera-binding/embed-dependency-unidic",
+] # Embed the model of the token filter japanese_dependency for UniDic
+embed-dependency-unidic-cwj = [
+    "dependency",
+    "lindera-binding/embed-dependency-unidic-cwj",
+] # Embed the model of the token filter japanese_dependency for UniDic CWJ
+embed-dependency-unidic-csj = [
+    "dependency",
+    "lindera-binding/embed-dependency-unidic-csj",
+] # Embed the model of the token filter japanese_dependency for UniDic CSJ
 # `dependency` is in the default build since 7.1.0 (#1440): the code of the
 # token filter japanese_dependency, without a model, which a user downloads.
 default = ["dependency"]

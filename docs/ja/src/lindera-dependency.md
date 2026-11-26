@@ -11,7 +11,7 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 
 ## 状態
 
-> このクレートは、Lindera 7.1.0 から crates.io にあります。Lindera のリリースが、一緒に **IPADIC のモデル**を公開します。形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、`lindera` コマンドとバインディングの既定のビルドに入っています。
+> このクレートは、Lindera 7.1.0 から crates.io にあります。Lindera のリリースが、一緒に **IPADIC と 3 つの UniDic の辞書のモデル**を公開します。形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、`lindera` コマンドとバインディングの既定のビルドに入っています。
 
 [インストール](./lindera-dependency/installation.md)と[クイックスタート](./lindera-dependency/quickstart.md)から始めてください。作業は [#1417](https://github.com/lindera/lindera/issues/1417) で追っています。
 

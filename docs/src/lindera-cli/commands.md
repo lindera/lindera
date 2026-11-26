@@ -63,7 +63,7 @@ Messages go to stderr: a subdirectory with neither `metadata.json` nor `model.js
 
 ### Models of the dependency parser
 
-The models of the [dependency parser](../lindera-dependency/token_filter.md) follow in a table of their own, when there is one: the model embedded in the binary (the `embed-dependency-ipadic` feature flag) and those that `lindera download dependency-ipadic` installed, which are the subdirectories with a `model.json`.
+The models of the [dependency parser](../lindera-dependency/token_filter.md) follow in a table of their own, when there is one: the models embedded in the binary (the `embed-dependency-ipadic` feature flag, and `embed-dependency-unidic`, `embed-dependency-unidic-cwj` and `embed-dependency-unidic-csj`) and those that `lindera download dependency-ipadic` and the like installed, which are the subdirectories with a `model.json`.
 
 ```text
 NAME    VERSION  STATUS  DICT
@@ -925,7 +925,7 @@ Download the pre-built dictionary archive matching the CLI version from the [Git
 
 ### Download parameters
 
-- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`; or `dependency-ipadic`, the model of the dependency parser for IPADIC
+- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`; or a model of the dependency parser, one of `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj`: the one for the dictionary of that name
 - `--force`: Re-download and replace the dictionary or the model even when the CLI's version built it
 
 ### Storage location
@@ -961,7 +961,7 @@ Notes:
 
 ### Downloading the model of the dependency parser
 
-`lindera download dependency-ipadic` gets the [model for IPADIC](../lindera-dependency/model_file.md#the-model-for-ipadic) of the token filter `japanese_dependency`, `lindera-dependency-ipadic-<version>.zip` on the page of the release of the CLI's version, from 7.1.0 on. It installs it in `<dictionaries directory>/dependency-ipadic/`, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as `model`:
+`lindera download dependency-ipadic` gets the [model for IPADIC](../lindera-dependency/model_file.md#the-model-for-ipadic) of the token filter `japanese_dependency`, `lindera-dependency-ipadic-<version>.zip` on the page of the release of the CLI's version, from 7.1.0 on. It installs it in `<dictionaries directory>/dependency-ipadic/`, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as `model`. `dependency-unidic`, `dependency-unidic-cwj` and `dependency-unidic-csj` get the [models for UniDic](../lindera-dependency/model_file.md#the-models-for-unidic) the same way:
 
 ```shell
 % MODEL=$(lindera download dependency-ipadic)

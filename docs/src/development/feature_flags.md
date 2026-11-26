@@ -11,6 +11,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`; `lindera::dictionary::trainer`) | See below |
 | `dependency` | The token filter `japanese_dependency`: bunsetsu dependency analysis, with `lindera-dependency` (implies `analysis`) | See below |
 | `embed-dependency-ipadic` | Embeds the model of that filter for IPADIC in the build, for `model: "embedded://ipadic"` (implies `dependency`); see [The model for IPADIC](../lindera-dependency/model_file.md#embedding-it) for where a build takes it from | No |
+| `embed-dependency-unidic`, `embed-dependency-unidic-cwj`, `embed-dependency-unidic-csj` | Embed the model of that filter for a UniDic dictionary, for `model: "embedded://unidic"` and the like (each implies `dependency`); see [The models for UniDic](../lindera-dependency/model_file.md#the-models-for-unidic) | No |
 
 - `analysis` and `mmap` are both enabled by default in the `lindera` facade.
   `default-features = false` turns both off and leaves the pure segmenter (the

@@ -114,7 +114,7 @@ struct ParseArgs {
     #[clap(
         short = 'm',
         long = "model",
-        help = "Model file with a parser, and a chunker unless the input has its bunsetsu (what train-parser --chunker writes), or embedded://ipadic in a build with embed-model-ipadic"
+        help = "Model file with a parser, and a chunker unless the input has its bunsetsu (what train-parser --chunker writes), or embedded://<dictionary> in a build with embed-model-<dictionary> (ipadic, unidic, unidic-cwj, unidic-csj)"
     )]
     model: String,
     /// The dictionary the text is tokenized with.
@@ -159,7 +159,7 @@ struct ChunkArgs {
     #[clap(
         short = 'm',
         long = "model",
-        help = "Model file that train-chunker wrote, or embedded://ipadic in a build with embed-model-ipadic"
+        help = "Model file that train-chunker wrote, or embedded://<dictionary> in a build with embed-model-<dictionary> (ipadic, unidic, unidic-cwj, unidic-csj)"
     )]
     model: String,
     /// The morphemes.

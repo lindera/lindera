@@ -25,8 +25,8 @@ use std::path::{Path, PathBuf};
 use ureq::Agent;
 
 use super::{
-    ArchiveFormat, MAX_ROUND, PREBUILT_FILE, PUBLISHED_BASE_URL_ENV, PrebuiltDictionary,
-    archive_format, base_url_from, download_with_retry, is_docs_rs_build, read_prebuilt,
+    ArchiveFormat, MAX_ROUND, PUBLISHED_BASE_URL_ENV, PrebuiltDictionary, archive_format,
+    base_url_from, download_with_retry, is_docs_rs_build, read_prebuilt,
 };
 use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
@@ -35,10 +35,14 @@ use crate::error::LinderaErrorKind;
 /// embeds.
 #[derive(Clone, Copy, Debug)]
 pub struct PublishedFile {
-    /// The one directory the archive holds, the `key` of the crate's
-    /// `prebuilt.json`, and the name of the file in messages, such as
-    /// `lindera-dependency-ipadic`.
+    /// The one directory the archive holds, the `key` of the pin, and the
+    /// name of the file in messages, such as `lindera-dependency-ipadic`.
     pub key: &'static str,
+    /// The file of the crate that pins the archive, such as
+    /// `prebuilt-ipadic.json`: a file of its own for each published file,
+    /// so that a crate can embed several. It has the format of the
+    /// `prebuilt.json` of a dictionary crate.
+    pub pin: &'static str,
     /// The file in that directory, such as `dependency.model`.
     pub file: &'static str,
     /// The format version of the file this crate reads. A pin that names
@@ -101,6 +105,7 @@ fn choose_file_source(
     }
     let key = params.key;
     let file_env = params.file_env;
+    let pin = params.pin;
     let Some(prebuilt) = prebuilt else {
         return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
             "{key} is embedded from a release of Lindera, and a build from the repository has \
@@ -111,13 +116,13 @@ fn choose_file_source(
     let hint = format!("set {file_env} to a file to embed instead");
     if prebuilt.key != key {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "{PREBUILT_FILE} pins {}, and this crate embeds {key}; {hint}",
+            "{pin} pins {}, and this crate embeds {key}; {hint}",
             prebuilt.key
         )));
     }
     if prebuilt.format_version != params.format_version {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "{PREBUILT_FILE} pins {key} in the format version {}, and this crate reads the \
+            "{pin} pins {key} in the format version {}, and this crate reads the \
              version {}; {hint}",
             prebuilt.format_version,
             params.format_version
@@ -125,7 +130,7 @@ fn choose_file_source(
     }
     let Some(sha256) = prebuilt.sha256.clone() else {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "{PREBUILT_FILE} pins {key} without a SHA-256; {hint}"
+            "{pin} pins {key} without a SHA-256; {hint}"
         )));
     };
     Ok(FileSource::Published {
@@ -201,7 +206,7 @@ fn rerun_directives(params: &PublishedFile, has_prebuilt: bool) -> Vec<String> {
     // Not the variable of the mirror: the file is the same from any host, as
     // for a dictionary.
     if has_prebuilt {
-        directives.push(format!("cargo:rerun-if-changed={PREBUILT_FILE}"));
+        directives.push(format!("cargo:rerun-if-changed={}", params.pin));
     }
     directives
 }
@@ -238,7 +243,7 @@ pub fn build_embedded_file(
         println!("cargo:rerun-if-changed=build.rs");
         return Ok(());
     }
-    let pin = Path::new(PREBUILT_FILE);
+    let pin = Path::new(params.pin);
     let has_prebuilt = pin.is_file();
     let local = std::env::var_os(params.file_env);
     // Printed before anything can fail, so that a build that failed for want
@@ -289,6 +294,7 @@ mod tests {
 
     const PARAMS: PublishedFile = PublishedFile {
         key: "lindera-dependency-ipadic",
+        pin: "prebuilt-ipadic.json",
         file: "dependency.model",
         format_version: 1,
         file_env: "LINDERA_BUILD_TEST_MODEL_FILE",
@@ -460,7 +466,34 @@ mod tests {
         );
         assert_eq!(
             rerun_directives(&PARAMS, true).last().map(String::as_str),
-            Some("cargo:rerun-if-changed=prebuilt.json")
+            Some("cargo:rerun-if-changed=prebuilt-ipadic.json")
         );
+        // The pin is the one the file names: a crate that embeds several
+        // files has a pin for each.
+        let other = PublishedFile {
+            pin: "prebuilt-unidic.json",
+            ..PARAMS
+        };
+        assert_eq!(
+            rerun_directives(&other, true).last().map(String::as_str),
+            Some("cargo:rerun-if-changed=prebuilt-unidic.json")
+        );
+    }
+
+    #[test]
+    fn an_error_of_a_pin_names_its_file() {
+        // A pin of another file, of another format version, and without a
+        // SHA-256: each message starts with the file of the pin.
+        let mut another = pin("https://example.com", Some("00"));
+        another.key = "lindera-dependency-unidic".to_string();
+        let mut format = pin("https://example.com", Some("00"));
+        format.format_version = PARAMS.format_version + 1;
+        let unsigned = pin("https://example.com", None);
+        for prebuilt in [another, format, unsigned] {
+            let message = choose_file_source(&PARAMS, false, None, Some(&prebuilt))
+                .unwrap_err()
+                .to_string();
+            assert!(message.contains("prebuilt-ipadic.json pins "), "{message}");
+        }
     }
 }
