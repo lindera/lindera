@@ -38,16 +38,16 @@ Run everything from the root of the repository.
 | `projection_stats.py` | The projection onto the morphemes of IPADIC, written independently in Python: the boundaries that fit, the bunsetsu merged. It writes lattice files |
 | `compare_outputs.py` | Compares the lattice files of `projection_stats.py` with those of `convert`, line by line |
 | `baseline_next.py` | The baseline "every bunsetsu depends on the next one", counted independently of `lindera-dependency evaluate` |
-| `chunker_experiments.sh` | The experiments behind the defaults of the chunker: the cross-validation, the pairs of settings, the result |
+| `chunker_experiments.sh` | The experiments behind the defaults of the chunker: the cross-validation, the pairs of settings, the result. `--dictionary <name>` runs them with a UniDic dictionary; the stage `base` has the pairs around the base form, which the settings for UniDic rest on, and the stage `check` the settings for UniDic and their neighbours only |
 | `chunker_experiment.py`, `make_templates.py` | The driver and the feature templates of `chunker_experiments.sh` |
 | `parser_instances.sh` | The training instances of the parser for the four files, with `lindera-dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back. `--dictionary` as for `convert_corpora.sh` |
-| `parser_experiments.sh` | The experiments behind the defaults of the parser: the cross-validations of the algorithm, the feature set, the pairs, their table and the quantization, the pairs of settings, the result on dev, test and PUD, and the speed |
+| `parser_experiments.sh` | The experiments behind the defaults of the parser: the cross-validations of the algorithm, the feature set, the pairs, their table and the quantization, the pairs of settings, the result on dev, test and PUD, and the speed. `--dictionary <name>` runs them with a UniDic dictionary |
 | `parser_experiment.py` | The driver of `parser_experiments.sh` |
-| `parse_speed.sh` | The sentences per second of `lindera-dependency parse` on plain text, in the build with `cli,embed-ipadic`: the text of the test file of UD Japanese-GSD, with and without the time to load the dictionary and the model |
-| `filter_speed.sh` | What the token filter `japanese_dependency` costs in `lindera tokenize`, in the build with `embed-ipadic,dependency`: the tokens per second without and with the filter on the text of the test file of UD Japanese-GSD, and the time the filter adds to a token |
-| `build_model.sh` | The model for IPADIC as a release of Lindera publishes it: the directory `lindera-dependency-ipadic` with the model file, `model.json` and `NOTICE.txt`, and its archive, from the train file of UD Japanese-GSD and the sources of the repository, with the dependencies of `Cargo.lock`. `--check <sha256>` compares the model with a known digest. `release.yml` runs it for a release; a build from the repository embeds its model through `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE` |
-| `model_notice_ipadic.txt` | The template of the notice `build_model.sh` writes |
-| `model_accuracy.py` | The counts of a model file on GSD dev, GSD test and PUD: the dependency accuracy with the bunsetsu of the answer and from the morphemes, and the F of the chunking. With `--expect model_accuracy_ipadic.json` it fails when a count is not the one of the documentation, which is how `release.yml` checks the model it is about to publish |
+| `parse_speed.sh` | The sentences per second of `lindera-dependency parse` on plain text, in the build with `cli,embed-ipadic`: the text of the test file of UD Japanese-GSD, with and without the time to load the dictionary and the model. `--dict` gives another dictionary than the embedded IPADIC |
+| `filter_speed.sh` | What the token filter `japanese_dependency` costs in `lindera tokenize`, in the build with `embed-ipadic,dependency`: the tokens per second without and with the filter on the text of the test file of UD Japanese-GSD, and the time the filter adds to a token. `--dict` as for `parse_speed.sh` |
+| `build_model.sh` | The model for IPADIC as a release of Lindera publishes it: the directory `lindera-dependency-ipadic` with the model file, `model.json` and `NOTICE.txt`, and its archive, from the train file of UD Japanese-GSD and the sources of the repository, with the dependencies of `Cargo.lock`. `--check <sha256>` compares the model with a known digest. `release.yml` runs it for a release; a build from the repository embeds its model through `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`. `--dictionary unidic`, `unidic-cwj` or `unidic-csj` builds the model for that dictionary, `lindera-dependency-<name>`, with the dictionary of `--dict` or the one `lindera download` installs |
+| `model_notice.txt` | The template of the notice `build_model.sh` writes, for any dictionary |
+| `model_accuracy.py` | The counts of a model file on GSD dev, GSD test and PUD: the dependency accuracy with the bunsetsu of the answer and from the morphemes, and the F of the chunking. `--dict` gives the dictionary of a model for UniDic. With `--expect model_accuracy_<dictionary>.json` it fails when a count is not the one of the documentation, which is how `release.yml` checks the model it is about to publish |
 | `model_speed/` | The size of a model file, the time to read it, and the sentences per second of chunking, of parsing and of both; with a training file, also of a chunker in memory |
 | `head_variants/` | The agreement of the head word for CaboCha's rule and for each addition of `Schema::ipadic()`, measured with `corpus::convert`; with `--dict` and a UniDic dictionary, the same for `Schema::unidic()`, and for the changes of it that were not taken |
 | `head_rules.py` | The same in Python, with examples by surface and the variants that were not taken |
@@ -103,6 +103,22 @@ python3 -I -B scripts/dependency/model_accuracy.py target/release/lindera-depend
     $data/model/lindera-dependency-ipadic/dependency.model $data/model/work/corpora \
     $data/model/work/accuracy --expect scripts/dependency/model_accuracy_ipadic.json
 
+# The same for a UniDic dictionary: the experiments, the model, its counts.
+# The chunker: about an hour and a quarter for all the stages; `check`
+# alone, about a quarter of an hour, is what was run for unidic and for
+# unidic-csj.
+scripts/dependency/chunker_experiments.sh --dictionary unidic-cwj all
+scripts/dependency/parser_experiments.sh --dictionary unidic-cwj all
+scripts/dependency/build_model.sh --dictionary unidic-cwj \
+    --dict $data/dictionaries/unidic-cwj $data/model-unidic-cwj
+python3 -I -B scripts/dependency/model_accuracy.py target/release/lindera-dependency \
+    $data/model-unidic-cwj/lindera-dependency-unidic-cwj/dependency.model \
+    $data/model-unidic-cwj/work/corpora $data/model-unidic-cwj/work/accuracy \
+    --dict $data/dictionaries/unidic-cwj \
+    --expect scripts/dependency/model_accuracy_unidic-cwj.json
+scripts/dependency/parse_speed.sh --dict $data/dictionaries/unidic-cwj \
+    $data/model-unidic-cwj/lindera-dependency-unidic-cwj/dependency.model
+
 # The training instances of the parser.
 scripts/dependency/parser_instances.sh
 
@@ -151,6 +167,13 @@ UniDic are with the dictionaries of the release 7.0.0 of Lindera, which
 | `parser_experiments.sh speed` | About 16,700 sentences per second for parsing and 8,700 for chunking and parsing with the default model; the times depend on the machine |
 | `parse_speed.sh <model>` | 543 sentences; about 6,600 sentences per second from the text to the lattice format, about 5 ms to load; the times depend on the machine |
 | `filter_speed.sh <model>` | 12,644 tokens in 543 sentences, 20 times; about 2,900,000 tokens per second without the filter and 180,000 with it (7,700 sentences); the filter adds about 5.2 microseconds per token, and making it takes about 4 ms; the times depend on the machine |
+| `chunker_experiments.sh --dictionary <name> check` | F over the 10 folds with the settings for IPADIC and with those for UniDic: 97.02 and 97.15 with `unidic`, 97.02 and 97.22 with `unidic-cwj`, 96.94 and 97.08 with `unidic-csj`; the README of the crate has the tables of UniDic CWJ |
+| `chunker_experiments.sh --dictionary <name> default` | F on dev, test and PUD: 97.03, 97.24, 98.00 with `unidic`; 96.63, 97.02, 97.89 with `unidic-cwj`; 96.60, 96.95, 97.78 with `unidic-csj`. The chunker has 360,869, 360,019 and 365,215 bytes |
+| `parser_experiments.sh --dictionary <name> final` | With the bunsetsu of the answer on dev, test and PUD: 89.67%, 88.69%, 88.67% with `unidic`; 89.35%, 88.91%, 88.58% with `unidic-cwj`; 89.75%, 88.90%, 88.59% with `unidic-csj`. From the morphemes: 85.06%, 84.88%, 85.93%; 84.22%, 84.71%, 85.73%; 84.58%, 84.65%, 85.58%. The same bytes twice |
+| `build_model.sh --dictionary <name>` | The models are 6,257,148, 6,258,600 and 6,267,183 bytes, with the dictionaries of the release 7.0.0; each the same bytes as the model of `parser_experiments.sh --dictionary <name> final` |
+| `model_accuracy.py --dict <dictionary>` | The counts of `parser_experiments.sh --dictionary <name> final`, and `the counts are those of model_accuracy_<name>.json` |
+| `parse_speed.sh --dict <dictionary> <model>` | About 5,300 sentences per second with `unidic`, 4,500 with `unidic-cwj` and 4,100 with `unidic-csj`; about 60 ms, 390 ms and 390 ms to load; the times depend on the machine |
+| `filter_speed.sh --dict <dictionary> <model>` | The filter adds about 6.4, 6.9 and 7.2 microseconds per token; the times depend on the machine |
 | `parser_instances.sh` | Sentences 7,024, 506, 542, 994, as `convert` kept; instances 66,000, 4,881, 5,377, 12,739. The command stops at a tree that does not come back, so four reports mean that every tree did |
 | `head_variants/` | The head word on the content head of the corpus: from 85.43% with CaboCha's rule to 96.55% with `Schema::ipadic()` on GSD train; 96.96% on dev, 96.92% on test, 97.46% on PUD |
 | `convert_corpora.sh --dictionary <name>` | Bunsetsu boundaries of GSD train on a morpheme boundary: 99.87% with `unidic`, 99.95% with `unidic-cwj`, 99.94% with `unidic-csj`. Bunsetsu written for train: 56,724, 56,763, 56,759 |

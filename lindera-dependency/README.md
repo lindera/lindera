@@ -379,6 +379,74 @@ Among the settings that do not differ from the best one, the default is the
 smallest: 8,656 weights, against 10,934 for the 13 lines and the coefficient
 0.25. The dev file does not tell them apart (F from 96.78 to 96.85).
 
+### The settings for UniDic
+
+For `unidic`, `unidic-cwj` and `unidic-csj` the chunker is trained with four
+columns (the surface, the part of speech, the conjugation form, the base
+form), the template `Template::unidic()` and L1 regularization with the
+coefficient 0.25. `train-chunker --dictionary-name <name>` takes them, and
+`TrainOptions::for_dictionary` gives them. They come from the same
+cross-validation, run again with UniDic CWJ (7,024 sentences, 56,763
+bunsetsu). F over the 10 folds:
+
+| Columns | L1 0.25 | L1 0.5 | L1 1.0 | L2 0.25 | L2 0.5 | L2 1.0 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Surface and part of speech (CaboCha) | 97.06 | 96.97 | 96.81 | 96.93 | 96.90 | 96.84 |
+| With the conjugation form | 97.11 | 97.03 | 96.90 | 97.03 | 96.98 | 96.92 |
+| With the conjugation form, five lines (the settings for IPADIC with L1 0.5) | 97.13 | 97.02 | 96.87 | 97.00 | 96.95 | 96.89 |
+| With the conjugation type | 97.09 | 97.01 | 96.82 | 96.99 | 96.95 | 96.91 |
+| With the base form | 97.25 | 97.17 | 97.09 | 97.21 | 97.19 | 97.16 |
+| With the base form, five lines | 97.12 | 97.05 | 96.95 | 97.11 | 97.09 | 97.05 |
+
+With L1 and the coefficients 0.1 and 0.15, F is 97.08 and 97.05 for
+CaboCha's columns, 97.15 and 97.15 with the conjugation form, 97.29 and 97.24
+with the base form; with the conjugation form and the base form together it
+is 97.22, 97.22 and 97.22 for 0.1, 0.15 and 0.25.
+
+| First | Second | First only / second only | p |
+| --- | --- | --- | --- |
+| CaboCha's columns, L1 0.25 | With the base form, L1 0.25 | 81 / 149 | < 0.0001 |
+| With the conjugation form, L1 0.25 | With the base form too, L1 0.25 | 41 / 80 | 0.0005 |
+| The settings for IPADIC | With the base form, L1 0.25 | 107 / 185 | < 0.0001 |
+| The settings for IPADIC | The settings for UniDic | 59 / 131 | < 0.0001 |
+| With the base form, L1 0.25 | The settings for UniDic | 128 / 122 | 0.7519 |
+| With the base form, L1 0.25 | The same, L1 0.1 | 25 / 33 | 0.3581 |
+| With the base form, L1 0.25 | The same, L1 0.5 | 53 / 25 | 0.0020 |
+| With the base form, L1 0.25 | The same, L2 0.25 | 118 / 112 | 0.7417 |
+| With the base form, L1 0.25 | The same, five lines | 121 / 79 | 0.0036 |
+
+- The base form helps, more than the conjugation form: the base form of
+  UniDic is the lexeme (語彙素), the same for the ways a word is written.
+  With IPADIC it added nothing to the conjugation form.
+- The coefficient 0.25 is better than 0.5, and does not differ from 0.1.
+  L1 and L2 do not differ, and L1 gives the smaller model.
+- The base form with the 13 lines and the two columns together do not
+  differ. The settings are the smaller of the two: 11,823 weights per fold
+  against 18,174.
+
+The settings hold with the two other dictionaries (`chunker_experiments.sh
+--dictionary <name> check`); F with the settings for IPADIC and with those
+for UniDic:
+
+| Dictionary | The settings for IPADIC | The settings for UniDic | First only / second only | p |
+| --- | --- | --- | --- | --- |
+| `unidic` | 97.02 | 97.15 | 75 / 122 | 0.0010 |
+| `unidic-cwj` | 97.02 | 97.22 | 59 / 131 | < 0.0001 |
+| `unidic-csj` | 96.94 | 97.08 | 74 / 131 | 0.0001 |
+
+The files that are not trained on do not tell the two settings apart; F
+with the settings for IPADIC and with those for UniDic, and McNemar's test
+over the sentences:
+
+| Dictionary | UD Japanese-GSD dev | UD Japanese-GSD test | UD Japanese-PUD |
+| --- | --- | --- | --- |
+| `unidic` | 96.89 and 97.03 (p 0.09) | 97.08 and 97.24 (p 0.82) | 98.02 and 98.00 (p 1.00) |
+| `unidic-cwj` | 96.63 and 96.63 (p 1.00) | 96.85 and 97.02 (p 0.50) | 97.96 and 97.89 (p 0.70) |
+| `unidic-csj` | 96.60 and 96.60 (p 0.69) | 96.79 and 96.95 (p 0.48) | 97.94 and 97.78 (p 0.34) |
+
+UD Japanese-PUD is a little lower with the settings for UniDic. The choice
+follows the cross-validation, as the one for IPADIC does.
+
 ## Head and function word
 
 Each bunsetsu has a head (主辞), its last content word, and a function word

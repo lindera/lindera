@@ -3,10 +3,14 @@
 # `lindera tokenize` without and with the filter, and the time the filter
 # adds to a token.
 #
-# Usage: filter_speed.sh <model file> [<repetitions> [<data directory>]]
-#   <model file>      A model with a chunker and a parser for IPADIC, as
-#                     `parser_experiments.sh final` leaves it in
-#                     <data directory>/parser/full/default/model.
+# Usage: filter_speed.sh [--dict <URI or path>] <model file> [<repetitions> [<data directory>]]
+#   --dict            The dictionary of the model, when it is not IPADIC:
+#                     the directory of a dictionary, such as the one
+#                     `lindera download unidic-cwj` installs. The embedded
+#                     IPADIC when it is left out.
+#   <model file>      A model with a chunker and a parser for the
+#                     dictionary, as `parser_experiments.sh final` leaves it
+#                     in <data directory>/parser/full/default/model.
 #   <repetitions>     How often the text is repeated (default 20).
 #   <data directory>  Defaults to scripts/dependency/data and holds gsd/
 #                     (fetch_corpora.sh).
@@ -22,6 +26,16 @@ set -euo pipefail
 
 here=$(dirname "$(readlink -f "$0")")
 root=$(readlink -f "$here/../..")
+dict=embedded://ipadic
+if [ "${1:-}" = --dict ]; then
+    dict=$2
+    shift 2
+    # A directory, not a URI: its full path.
+    case "$dict" in
+    *://*) ;;
+    *) dict=$(readlink -f "$dict") ;;
+    esac
+fi
 model=$(readlink -f "$1")
 repetitions=${2:-20}
 data=$(readlink -f "${3:-$here/data}")
@@ -46,7 +60,7 @@ fastest() {
     shift
     for _ in 1 2 3 4 5; do
         start=${EPOCHREALTIME/,/.}
-        "$command" tokenize --dict embedded://ipadic "$@" "$input" > "$work/out.txt"
+        "$command" tokenize --dict "$dict" "$@" "$input" > "$work/out.txt"
         end=${EPOCHREALTIME/,/.}
         seconds=$(echo "$end - $start" | bc -l)
         if [ -z "$best" ] || [ "$(echo "$seconds < $best" | bc -l)" = 1 ]; then

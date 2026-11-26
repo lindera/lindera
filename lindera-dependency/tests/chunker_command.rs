@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use lindera_dependency::chunker::{ChunkerData, Column};
+use lindera_dependency::chunker::{ChunkerData, Column, Template};
 use lindera_dependency::model::{Model, ModelBuilder};
 use lindera_dependency::{Morpheme, Schema, lattice};
 
@@ -209,6 +209,81 @@ fn the_output_of_chunk_goes_to_evaluate() {
         text.contains("chunking precision: 100.00% (13/13)\nchunking recall: 100.00% (13/13)\n"),
         "{text}"
     );
+}
+
+#[test]
+fn trains_with_the_settings_of_the_dictionary() {
+    let directory = tempfile::tempdir().unwrap();
+    let train_path = directory.path().join("train.lattice");
+    let model_path = directory.path().join("chunker.model");
+    fs::write(&train_path, training_data()).unwrap();
+    let paths: [(&str, &Path); 2] = [("--input", &train_path), ("--output", &model_path)];
+    // The regularization is given, for the few sentences; the columns and
+    // the template are left to the dictionary.
+    let arguments = [
+        "train-chunker",
+        "--regularization",
+        "l2",
+        "--lambda",
+        "0.01",
+    ];
+    let trained = |more: &[&str]| {
+        success(run(&[&arguments[..], more].concat(), &paths));
+        let file = Model::new(fs::read(&model_path).unwrap()).unwrap();
+        let chunker = file.chunker().unwrap();
+        let model = chunker.model();
+        (model.columns().to_vec(), model.template().clone())
+    };
+
+    // IPADIC, named or not: three columns and the default template.
+    let ipadic = [
+        Column::Surface,
+        Column::PartOfSpeech,
+        Column::ConjugationForm,
+    ];
+    assert_eq!(trained(&[]), (ipadic.to_vec(), Template::default()));
+    assert_eq!(
+        trained(&["--dictionary-name", "ipadic"]),
+        (ipadic.to_vec(), Template::default())
+    );
+
+    // UniDic: the base form too, and its template.
+    for name in ["unidic", "unidic-cwj", "unidic-csj"] {
+        let (columns, template) = trained(&["--dictionary-name", name]);
+        assert_eq!(
+            columns,
+            [
+                Column::Surface,
+                Column::PartOfSpeech,
+                Column::ConjugationForm,
+                Column::BaseForm
+            ],
+            "{name}"
+        );
+        assert_eq!(template, Template::unidic(), "{name}");
+    }
+
+    // An option still decides: the columns of the template of CaboCha.
+    let template_path = directory.path().join("chunker.template");
+    fs::write(&template_path, Template::cabocha().to_string()).unwrap();
+    success(run(
+        &[
+            &arguments[..],
+            &[
+                "--dictionary-name",
+                "unidic-cwj",
+                "--columns",
+                "surface,pos",
+            ],
+        ]
+        .concat(),
+        &[paths[0], paths[1], ("--template", &template_path)],
+    ));
+    let file = Model::new(fs::read(&model_path).unwrap()).unwrap();
+    let chunker = file.chunker().unwrap();
+    let model = chunker.model();
+    assert_eq!(model.columns(), [Column::Surface, Column::PartOfSpeech]);
+    assert_eq!(model.template(), &Template::cabocha());
 }
 
 #[test]

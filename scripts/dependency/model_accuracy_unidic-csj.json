@@ -1,0 +1,17 @@
+{
+  "ja_gsd-ud-dev": {
+    "level 1": [3294, 3670],
+    "end to end": [3104, 3670],
+    "chunking F": "96.60"
+  },
+  "ja_gsd-ud-test": {
+    "level 1": [3557, 4001],
+    "end to end": [3387, 4001],
+    "chunking F": "96.95"
+  },
+  "ja_pud-ud-test": {
+    "level 1": [7880, 8895],
+    "end to end": [7612, 8895],
+    "chunking F": "97.78"
+  }
+}

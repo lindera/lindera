@@ -76,6 +76,47 @@ impl Default for TrainOptions {
     }
 }
 
+impl TrainOptions {
+    /// The settings the chunker of a dictionary of Lindera is trained with:
+    /// the ones of the model that is released for it.
+    ///
+    /// For `ipadic` they are the defaults. For `unidic`, `unidic-cwj` and
+    /// `unidic-csj` they are the schema of UniDic, the base form as a
+    /// fourth column with [`Template::unidic`], and L1 regularization with
+    /// the coefficient 0.25: what a cross-validation on UD Japanese-GSD
+    /// chose with UniDic CWJ, and what holds with the two others (#1441).
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The name of the dictionary, as
+    ///   [`Schema::for_dictionary`] takes it.
+    ///
+    /// # Returns
+    ///
+    /// The settings, or `None` for a dictionary without a schema.
+    pub fn for_dictionary(dictionary: &str) -> Option<Self> {
+        let schema = Schema::for_dictionary(dictionary)?;
+        if dictionary == "ipadic" {
+            return Some(Self {
+                schema,
+                ..Self::default()
+            });
+        }
+        Some(Self {
+            schema,
+            columns: vec![
+                Column::Surface,
+                Column::PartOfSpeech,
+                Column::ConjugationForm,
+                Column::BaseForm,
+            ],
+            template: Template::unidic(),
+            lambda: 0.25,
+            ..Self::default()
+        })
+    }
+}
+
 /// A trained chunker model, and how its training ended.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Trained {
@@ -590,6 +631,41 @@ mod tests {
                 .collect();
             assert_eq!(chunker.chunk(&sentence.morphemes).unwrap(), expected);
         }
+    }
+
+    #[test]
+    fn the_settings_of_a_dictionary_are_those_of_its_model() {
+        // IPADIC: the defaults.
+        assert_eq!(
+            TrainOptions::for_dictionary("ipadic"),
+            Some(TrainOptions::default())
+        );
+        // UniDic: the base form too, its template, and a smaller
+        // coefficient.
+        for name in ["unidic", "unidic-cwj", "unidic-csj"] {
+            let options = TrainOptions::for_dictionary(name).unwrap();
+            assert_eq!(options.schema, Schema::unidic(), "{name}");
+            assert_eq!(
+                options.columns,
+                [
+                    Column::Surface,
+                    Column::PartOfSpeech,
+                    Column::ConjugationForm,
+                    Column::BaseForm
+                ],
+                "{name}"
+            );
+            assert_eq!(options.template, Template::unidic(), "{name}");
+            assert_eq!(options.regularization, Regularization::L1, "{name}");
+            assert_eq!(options.lambda, 0.25, "{name}");
+            // The template reads no column the settings do not give.
+            assert_eq!(options.template.columns(), options.columns.len());
+        }
+        // Every dictionary with a schema has settings, and no other has.
+        for name in Schema::DICTIONARIES {
+            assert!(TrainOptions::for_dictionary(name).is_some(), "{name}");
+        }
+        assert_eq!(TrainOptions::for_dictionary("ko-dic"), None);
     }
 
     #[test]

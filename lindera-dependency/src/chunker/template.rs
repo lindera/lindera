@@ -50,6 +50,31 @@ U50:%x[0,1]/%x[0,2]
 U51:%x[-1,1]/%x[-1,2]
 ";
 
+/// What the template for UniDic adds to CaboCha's: the conjugation form
+/// (column 2) with the lines the template of CaboCha for named entities has
+/// for its third column, and the base form (column 3) of the morpheme, of
+/// the one before and of the one after, and with the part of speech. Chosen
+/// by cross-validation on UD Japanese-GSD (#1441).
+const UNIDIC: &str = "\
+U30:%x[-2,2]
+U31:%x[-1,2]
+U32:%x[0,2]
+U33:%x[1,2]
+U34:%x[2,2]
+U35:%x[-2,2]/%x[-1,2]
+U36:%x[-1,2]/%x[0,2]
+U37:%x[0,2]/%x[1,2]
+U38:%x[1,2]/%x[2,2]
+U40:%x[-2,2]/%x[-1,2]/%x[0,2]
+U41:%x[-1,2]/%x[0,2]/%x[1,2]
+U42:%x[0,2]/%x[1,2]/%x[2,2]
+U50:%x[0,1]/%x[0,2]
+U61:%x[-1,3]
+U62:%x[0,3]
+U63:%x[1,3]
+U70:%x[0,1]/%x[0,3]
+";
+
 /// A piece of a unigram line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Part {
@@ -131,6 +156,22 @@ impl Template {
     /// The template.
     pub fn cabocha() -> Self {
         Self::constant(CABOCHA.trim_end_matches("B\n"))
+    }
+
+    /// The template the chunker is trained with for UniDic: the one of
+    /// CaboCha over the surface and the part of speech, the conjugation
+    /// form as a third column and the base form as a fourth. The base form
+    /// of UniDic is the lexeme (語彙素), which is the same for the ways a
+    /// word is written; on UD Japanese-GSD with UniDic the template is
+    /// significantly better than the default one (#1441).
+    ///
+    /// # Returns
+    ///
+    /// The template.
+    pub fn unidic() -> Self {
+        let mut template = Self::cabocha();
+        template.unigrams.extend(Self::constant(UNIDIC).unigrams);
+        template
     }
 
     /// The lines of a template, read without a check: for the constants of
@@ -378,6 +419,35 @@ mod tests {
                 "U33:_B+1",
                 "U50:助動詞/基本形",
                 "U51:動詞-自立/連用タ接続"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_template_for_unidic_adds_the_conjugation_form_and_the_base_form() {
+        let template = Template::unidic();
+        // The 19 lines of CaboCha, 13 for the conjugation form and 4 for
+        // the base form.
+        assert_eq!(template.len(), 36);
+        assert_eq!(template.columns(), 4);
+        let text = format!("{}{UNIDIC}B\n", CABOCHA.trim_end_matches("B\n"));
+        assert_eq!(template.to_string(), text);
+        assert_eq!(Template::parse(&text).unwrap(), template);
+
+        let row = |values: [&str; 4]| values.map(str::to_string).to_vec();
+        let rows = vec![
+            row(["読ん", "動詞-一般", "連用形-撥音便", "読む"]),
+            row(["だ", "助動詞", "終止形-一般", "た"]),
+        ];
+        let features = template.expand(&rows, 1);
+        assert_eq!(
+            features[31..],
+            [
+                "U50:助動詞/終止形-一般",
+                "U61:読む",
+                "U62:た",
+                "U63:_B+1",
+                "U70:助動詞/た"
             ]
         );
     }

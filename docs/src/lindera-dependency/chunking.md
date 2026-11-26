@@ -81,7 +81,7 @@ cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 ```
 
-The model is for IPADIC unless `--dictionary-name` names another dictionary (`unidic`, `unidic-cwj` or `unidic-csj`): the name and the [schema](./head_and_function_word.md) of that dictionary then go into the model.
+The model is for IPADIC unless `--dictionary-name` names another dictionary (`unidic`, `unidic-cwj` or `unidic-csj`): the name and the [schema](./head_and_function_word.md) of that dictionary then go into the model, and the columns, the template and the coefficient are [the ones for it](#with-unidic).
 
 On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:
 
@@ -124,6 +124,28 @@ With the defaults, trained on the train file of UD Japanese-GSD (commit c662dc9)
 | UD Japanese-PUD | 98.04 | 98.05% (9,649 / 9,841) | 98.03% (9,649 / 9,843) | 885 / 994 |
 
 The defaults were chosen by a 10-fold cross-validation on the train file. The conjugation form helps, the conjugation type does not, and L1 is better than L2 with a model about fifty times smaller. The tables of the cross-validation are in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-were-chosen), and [`scripts/dependency`](https://github.com/lindera/lindera/tree/main/scripts/dependency) runs them again.
+
+## With UniDic
+
+`train-chunker --dictionary-name unidic` (or `unidic-cwj`, `unidic-csj`) trains with other settings than for IPADIC: four columns, the surface, the part of speech, the conjugation form and the base form, with `Template::unidic()`, and L1 regularization with the coefficient 0.25. `TrainOptions::for_dictionary` gives the settings of a dictionary. As for IPADIC, an option of the command replaces any of them.
+
+The settings were chosen again by the cross-validation on the train file, with UniDic CWJ, and hold with the two other dictionaries. The base form of UniDic is the lexeme (語彙素), which is the same for the ways a word is written; it helps here, and it did not with IPADIC. F over the 10 folds, the sentences only one of the two settings segments right, and McNemar's test:
+
+| Dictionary | The settings for IPADIC | The settings for UniDic | First only / second only | p |
+| --- | --- | --- | --- | --- |
+| `unidic` | 97.02 | 97.15 | 75 / 122 | 0.0010 |
+| `unidic-cwj` | 97.02 | 97.22 | 59 / 131 | < 0.0001 |
+| `unidic-csj` | 96.94 | 97.08 | 74 / 131 | 0.0001 |
+
+On the files that are not trained on, the two settings cannot be told apart: the files are small (506, 542 and 994 sentences). F with the settings for IPADIC and with those for UniDic:
+
+| Dictionary | UD Japanese-GSD dev | UD Japanese-GSD test | UD Japanese-PUD |
+| --- | --- | --- | --- |
+| `unidic` | 96.89 and 97.03 (p 0.09) | 97.08 and 97.24 (p 0.82) | 98.02 and 98.00 (p 1.00) |
+| `unidic-cwj` | 96.63 and 96.63 (p 1.00) | 96.85 and 97.02 (p 0.50) | 97.96 and 97.89 (p 0.70) |
+| `unidic-csj` | 96.60 and 96.60 (p 0.69) | 96.79 and 96.95 (p 0.48) | 97.94 and 97.78 (p 0.34) |
+
+UD Japanese-PUD is lower with the settings for UniDic, by a difference that is not significant. The settings are the ones the cross-validation chose, as for IPADIC; the tables of the cross-validation are in the [README of the crate](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#the-settings-for-unidic).
 
 ## How the features are made
 

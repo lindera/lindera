@@ -2,10 +2,14 @@
 # The speed of `lindera-dependency parse` on plain text: the sentences per
 # second of the command of a user, from the text to the lattice format.
 #
-# Usage: parse_speed.sh <model file> [<repetitions> [<data directory>]]
-#   <model file>      A model with a chunker and a parser for IPADIC, as
-#                     `parser_experiments.sh final` leaves it in
-#                     <data directory>/parser/full/default/model.
+# Usage: parse_speed.sh [--dict <URI or path>] <model file> [<repetitions> [<data directory>]]
+#   --dict            The dictionary of the model, when it is not IPADIC:
+#                     the directory of a dictionary, such as the one
+#                     `lindera download unidic-cwj` installs. The embedded
+#                     IPADIC when it is left out.
+#   <model file>      A model with a chunker and a parser for the
+#                     dictionary, as `parser_experiments.sh final` leaves it
+#                     in <data directory>/parser/full/default/model.
 #   <repetitions>     How often the text is repeated in the long input
 #                     (default 100).
 #   <data directory>  Defaults to scripts/dependency/data and holds gsd/
@@ -22,6 +26,16 @@ set -euo pipefail
 
 here=$(dirname "$(readlink -f "$0")")
 root=$(readlink -f "$here/../..")
+dict=embedded://ipadic
+if [ "${1:-}" = --dict ]; then
+    dict=$2
+    shift 2
+    # A directory, not a URI: its full path.
+    case "$dict" in
+    *://*) ;;
+    *) dict=$(readlink -f "$dict") ;;
+    esac
+fi
 model=$(readlink -f "$1")
 repetitions=${2:-100}
 data=$(readlink -f "${3:-$here/data}")
@@ -44,7 +58,7 @@ fastest() {
     local best="" start end seconds
     for _ in 1 2 3 4 5; do
         start=${EPOCHREALTIME/,/.}
-        "$command" parse --model "$model" --dict embedded://ipadic \
+        "$command" parse --model "$model" --dict "$dict" \
             --input "$1" --output "$work/out.lattice"
         end=${EPOCHREALTIME/,/.}
         seconds=$(echo "$end - $start" | bc -l)

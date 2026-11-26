@@ -141,7 +141,11 @@ def full(argv):
     os.makedirs(out, exist_ok=True)
     training = os.path.join(data, "ja_gsd-ud-train.lattice")
     chunker = os.path.join(out, "chunker.model")
-    run([command, "train-chunker", "--input", training, "--output", chunker])
+    # The chunker is for the dictionary the parser is trained for.
+    named = []
+    if "--dictionary-name" in options:
+        named = options[options.index("--dictionary-name") :][:2]
+    run([command, "train-chunker", "--input", training, "--output", chunker] + named)
     model = os.path.join(out, "model")
     summary = train(command, training, model, ["--chunker", chunker] + options)
     print(
