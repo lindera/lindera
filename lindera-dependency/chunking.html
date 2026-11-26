@@ -245,7 +245,7 @@ EOS
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
-<p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="./head_and_function_word.html">schema</a> of that dictionary then go into the model.</p>
+<p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="./head_and_function_word.html">schema</a> of that dictionary then go into the model, and the columns, the template and the coefficient are <a href="#with-unidic">the ones for it</a>.</p>
 <p>On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:</p>
 <pre><code class="language-text">train.lattice: 7024 sentences
 iterations: 126
@@ -277,6 +277,23 @@ bytes: 261851
 </tbody></table>
 </div>
 <p>The defaults were chosen by a 10-fold cross-validation on the train file. The conjugation form helps, the conjugation type does not, and L1 is better than L2 with a model about fifty times smaller. The tables of the cross-validation are in the <a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-were-chosen">README of the crate</a>, and <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency</code></a> runs them again.</p>
+<h2 id="with-unidic"><a class="header" href="#with-unidic">With UniDic</a></h2>
+<p><code>train-chunker --dictionary-name unidic</code> (or <code>unidic-cwj</code>, <code>unidic-csj</code>) trains with other settings than for IPADIC: four columns, the surface, the part of speech, the conjugation form and the base form, with <code>Template::unidic()</code>, and L1 regularization with the coefficient 0.25. <code>TrainOptions::for_dictionary</code> gives the settings of a dictionary. As for IPADIC, an option of the command replaces any of them.</p>
+<p>The settings were chosen again by the cross-validation on the train file, with UniDic CWJ, and hold with the two other dictionaries. The base form of UniDic is the lexeme (語彙素), which is the same for the ways a word is written; it helps here, and it did not with IPADIC. F over the 10 folds, the sentences only one of the two settings segments right, and McNemar's test:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>The settings for IPADIC</th><th>The settings for UniDic</th><th>First only / second only</th><th>p</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>97.02</td><td>97.15</td><td>75 / 122</td><td>0.0010</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>97.02</td><td>97.22</td><td>59 / 131</td><td>&lt; 0.0001</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.94</td><td>97.08</td><td>74 / 131</td><td>0.0001</td></tr>
+</tbody></table>
+</div>
+<p>On the files that are not trained on, the two settings cannot be told apart: the files are small (506, 542 and 994 sentences). F with the settings for IPADIC and with those for UniDic:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>96.89 and 97.03 (p 0.09)</td><td>97.08 and 97.24 (p 0.82)</td><td>98.02 and 98.00 (p 1.00)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63 and 96.63 (p 1.00)</td><td>96.85 and 97.02 (p 0.50)</td><td>97.96 and 97.89 (p 0.70)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60 and 96.60 (p 0.69)</td><td>96.79 and 96.95 (p 0.48)</td><td>97.94 and 97.78 (p 0.34)</td></tr>
+</tbody></table>
+</div>
+<p>UD Japanese-PUD is lower with the settings for UniDic, by a difference that is not significant. The settings are the ones the cross-validation chose, as for IPADIC; the tables of the cross-validation are in the <a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#the-settings-for-unidic">README of the crate</a>.</p>
 <h2 id="how-the-features-are-made"><a class="header" href="#how-the-features-are-made">How the features are made</a></h2>
 <p>The feature strings are made in two steps that can each be replaced:</p>
 <ol>

@@ -200,6 +200,8 @@
 <tr><td>並列は京大コーパスと CaboCha の形にする。並列の各要素は次の要素に係り、係りの種類は <code>P</code>。</td><td>UD は後ろの要素を最初の要素に付け、係りが左を向く。解析器はその形を作れない。</td><td>#1417、#1419</td></tr>
 <tr><td>最初のモデルは IPADIC 用で、UniDic が続く。モデルは 1 つの辞書に属する。</td><td>モデルは、辞書の品詞の列と分かち書きに依存する。CaboCha と J.DepP の基準を IPADIC で測ったので、数字を比べられる。</td><td>#1417</td></tr>
 <tr><td>Lindera の 3 つの UniDic の辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）のそれぞれにモデルを作る。スキーマは 1 つ。</td><td>3 つの辞書は、分かち書きと品詞が同じではない。GSD train の文のうち、2 つの辞書で全部の形態素とその品詞が一致する文は 63〜73% である。モデルは、辞書の名前で照合する。スキーマが読む列は、3 つとも同じ位置にある。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
+<tr><td>UniDic の区切りは、独自の設定を持つ。原形を 4 つ目の列にし、L1 の係数を 0.25 にする。解析器の設定は IPADIC と同じ。</td><td>train の交差検証が選ぶ。UniDic の原形（語彙素）は、IPADIC の原形が効かなかったところで効く。学習に使っていないファイルは 2 つの設定を見分けず、UD Japanese-PUD は新しい設定で少し低い。IPADIC と同じく、交差検証に従って選ぶ。解析器は、交差検証を流し直し、IPADIC と同じ設定が選ばれた。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
+<tr><td>UniDic には精度の目標を置かない。数字は IPADIC の数字と並べて報告する。</td><td>目標は IPADIC で測った基準から来ている。また、2 つの辞書の数字は、同じ文節の上で数えたものではない。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>文節の区切りは、<code>B</code> と <code>I</code> の 2 ラベルの条件付き確率場で、<code>lindera-crf</code> で学習する。</td><td>CaboCha と同じ方法で、境界ごとに独立に決める J.DepP より区切りが良い（基準を参照）。</td><td>#1417、#1421</td></tr>
 <tr><td>区切りの推論は、重みの表に対する自前の Viterbi で行い、<code>lindera-crf</code> を使わない。</td><td><code>lindera-crf</code> の <code>search_best_path</code> は、辺のラベルをすべてモデルに登録しておく必要があり（<code>&amp;mut self</code>）、見たことのない文に向かない。既定のビルドを依存なしに保つためでもある。</td><td>#1417、#1421</td></tr>
 <tr><td>解析は shift-reduce で、素性と素性の対に対する線形の二値分類器を使う。</td><td>参照した実装が両方ともこの方法で、文の長さに対して線形の時間で済む。</td><td>#1417</td></tr>
@@ -357,7 +359,7 @@
 <tr><td>一貫の係り受けの精度</td><td>85.0 以上</td><td>84.3 以上</td></tr>
 </tbody></table>
 </div>
-<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準そのものは記録に残る数字で、#1433 で測り直します。</p>
+<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準そのものは記録に残る数字で、#1433 で測り直します。 UniDic には目標を置きません（#1441）。UniDic の数字は、これらと並べて報告します。</p>
 <p>精度のほかの目標: 推論が <code>wasm32-unknown-unknown</code> 向けにビルドできる。解析器がトークンフィルターとしてもコマンドとしても動く。モデルの大きさと処理速度を測って文書にする。モデルは、学習データの出どころとライセンスを明記して公開する。</p>
 <h2 id="数字"><a class="header" href="#数字">数字</a></h2>
 <p>決定の根拠になった数字と、その出どころです。データは UD Japanese-GSD c662dc9 と UD Japanese-PUD cf69c5c で、このリポジトリの IPADIC で解析しています。</p>
@@ -414,6 +416,11 @@
 <tr><td>同じ、<code>Schema::unidic()</code> を <code>unidic</code> と <code>unidic-csj</code> で</td><td>train 97.52% と 97.55%</td><td>スクリプト: <code>head_variants/</code></td></tr>
 <tr><td>GSD train の文節の境界が形態素の境界に合う割合: IPADIC、<code>unidic</code>、<code>unidic-cwj</code>、<code>unidic-csj</code></td><td>99.21%、99.87%、99.95%、99.94%</td><td>スクリプト: <code>convert_corpora.sh</code></td></tr>
 <tr><td>GSD train の文のうち、形態素が同じ文と、品詞まで同じ文: <code>unidic</code> と <code>unidic-cwj</code>、<code>unidic</code> と <code>unidic-csj</code>、<code>unidic-cwj</code> と <code>unidic-csj</code></td><td>85.88% と 66.06%、86.33% と 62.64%、88.10% と 73.22%</td><td>スクリプト: <code>compare_dictionaries.py</code></td></tr>
+<tr><td>UniDic の区切り、交差検証の F: IPADIC の設定と UniDic の設定。<code>unidic</code>、<code>unidic-cwj</code>、<code>unidic-csj</code></td><td>97.02 と 97.15（p 0.0010）、97.02 と 97.22（p &lt; 0.0001）、96.94 と 97.08（p 0.0001）</td><td>スクリプト: <code>chunker_experiments.sh --dictionary &lt;name&gt; check</code></td></tr>
+<tr><td>UniDic のモデル、区切りの F（dev、test、PUD）</td><td><code>unidic</code> 97.03、97.24、98.00。<code>unidic-cwj</code> 96.63、97.02、97.89。<code>unidic-csj</code> 96.60、96.95、97.78</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code>、<code>model_accuracy.py</code></td></tr>
+<tr><td>同じ、正解の文節を与えた場合</td><td><code>unidic</code> 89.67%、88.69%、88.67%。<code>unidic-cwj</code> 89.35%、88.91%、88.58%。<code>unidic-csj</code> 89.75%、88.90%、88.59%</td><td>同じ</td></tr>
+<tr><td>同じ、形態素からの場合</td><td><code>unidic</code> 85.06%、84.88%、85.93%。<code>unidic-cwj</code> 84.22%、84.71%、85.73%。<code>unidic-csj</code> 84.58%、84.65%、85.58%</td><td>同じ</td></tr>
+<tr><td>UniDic のモデルの大きさ</td><td><code>unidic</code> 6,257,148 バイト、<code>unidic-cwj</code> 6,258,600、<code>unidic-csj</code> 6,267,183</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
 <tr><td>GSD の <code>SYN_HEAD</code> と、「記号でない最後の形態素」「主辞の次の形態素」</td><td>87〜88% と 81〜82%</td><td>試作・消失</td></tr>
 </tbody></table>
 </div>

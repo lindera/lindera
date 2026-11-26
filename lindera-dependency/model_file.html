@@ -332,6 +332,18 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <tr><td>Changing the model and distributing the result</td><td>The same</td></tr>
 </tbody></table>
 </div>
+<h2 id="the-models-for-unidic"><a class="header" href="#the-models-for-unidic">The models for UniDic</a></h2>
+<p><a href="#building-it-again"><code>build_model.sh --dictionary &lt;name&gt;</code></a> builds the model for <code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code> in the same way: the directory <code>lindera-dependency-&lt;name&gt;</code> with the three files, and its archive. The training data is the train file of UD Japanese-GSD converted with that dictionary, the settings are the ones of <a href="./chunking.html#with-unidic"><code>train-chunker</code></a> and of <code>train-parser</code> for it, and the notice carries the notice of the dictionary. Nothing is embedded: the script takes the directory of the dictionary with <code>--dict</code>, or installs the one of the release of the version of the workspace with <code>lindera download</code>.</p>
+<p>A release of Lindera does not publish these models yet, and no feature embeds them (<a href="https://github.com/lindera/lindera/issues/1441">#1441</a>). Their <a href="./parsing.html#with-unidic">accuracy</a> is with the dictionaries of the release 7.0.0.</p>
+<p>The four models, on the test file of UD Japanese-GSD converted with each dictionary, on one core of an AMD Ryzen AI Max+ 395; the speeds are sentences per second, from one run each, and differ by a few percent from one run to another:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>Size of the file (bytes)</th><th>Of which the chunker</th><th>Chunking</th><th>Parsing the bunsetsu of the answer</th><th>Chunking and parsing</th><th>From text, with the tokenizer</th><th>Loading the dictionary and the model</th><th>The token filter, microseconds per token</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>6,258,548</td><td>261,851</td><td>20,500</td><td>17,500</td><td>8,900</td><td>7,000</td><td>5 ms</td><td>5.3</td></tr>
+<tr><td><code>unidic</code></td><td>6,257,148</td><td>360,869</td><td>13,100</td><td>17,400</td><td>6,900</td><td>5,300</td><td>59 ms</td><td>6.4</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>6,258,600</td><td>360,019</td><td>13,400</td><td>16,400</td><td>6,900</td><td>4,500</td><td>388 ms</td><td>6.9</td></tr>
+<tr><td><code>unidic-csj</code></td><td>6,267,183</td><td>365,215</td><td>11,900</td><td>15,000</td><td>6,500</td><td>4,100</td><td>389 ms</td><td>7.2</td></tr>
+</tbody></table>
+</div>
+<p>The chunker for UniDic reads four columns through a template of 36 lines, against three columns and 24 lines for IPADIC, and is slower by about a third. From text, most of the difference is the tokenizer: UniDic CWJ and UniDic CSJ are loaded from a directory of 1.3 GB.</p>
 <h2 id="the-format"><a class="header" href="#the-format">The format</a></h2>
 <p>Version 1. Every number is little endian. A string is its length in bytes as a <code>u32</code>, followed by its UTF-8.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>

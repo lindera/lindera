@@ -2896,7 +2896,7 @@ EOS
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
-<p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="lindera-dependency/./head_and_function_word.html">schema</a> of that dictionary then go into the model.</p>
+<p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="lindera-dependency/./head_and_function_word.html">schema</a> of that dictionary then go into the model, and the columns, the template and the coefficient are <a href="lindera-dependency/chunking.html#with-unidic">the ones for it</a>.</p>
 <p>On the train file of UD Japanese-GSD converted with IPADIC, this takes a few seconds and ends with:</p>
 <pre><code class="language-text">train.lattice: 7024 sentences
 iterations: 126
@@ -2928,6 +2928,23 @@ bytes: 261851
 </tbody></table>
 </div>
 <p>The defaults were chosen by a 10-fold cross-validation on the train file. The conjugation form helps, the conjugation type does not, and L1 is better than L2 with a model about fifty times smaller. The tables of the cross-validation are in the <a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-were-chosen">README of the crate</a>, and <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency</code></a> runs them again.</p>
+<h2 id="with-unidic"><a class="header" href="#with-unidic">With UniDic</a></h2>
+<p><code>train-chunker --dictionary-name unidic</code> (or <code>unidic-cwj</code>, <code>unidic-csj</code>) trains with other settings than for IPADIC: four columns, the surface, the part of speech, the conjugation form and the base form, with <code>Template::unidic()</code>, and L1 regularization with the coefficient 0.25. <code>TrainOptions::for_dictionary</code> gives the settings of a dictionary. As for IPADIC, an option of the command replaces any of them.</p>
+<p>The settings were chosen again by the cross-validation on the train file, with UniDic CWJ, and hold with the two other dictionaries. The base form of UniDic is the lexeme (語彙素), which is the same for the ways a word is written; it helps here, and it did not with IPADIC. F over the 10 folds, the sentences only one of the two settings segments right, and McNemar's test:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>The settings for IPADIC</th><th>The settings for UniDic</th><th>First only / second only</th><th>p</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>97.02</td><td>97.15</td><td>75 / 122</td><td>0.0010</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>97.02</td><td>97.22</td><td>59 / 131</td><td>&lt; 0.0001</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.94</td><td>97.08</td><td>74 / 131</td><td>0.0001</td></tr>
+</tbody></table>
+</div>
+<p>On the files that are not trained on, the two settings cannot be told apart: the files are small (506, 542 and 994 sentences). F with the settings for IPADIC and with those for UniDic:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>96.89 and 97.03 (p 0.09)</td><td>97.08 and 97.24 (p 0.82)</td><td>98.02 and 98.00 (p 1.00)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63 and 96.63 (p 1.00)</td><td>96.85 and 97.02 (p 0.50)</td><td>97.96 and 97.89 (p 0.70)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60 and 96.60 (p 0.69)</td><td>96.79 and 96.95 (p 0.48)</td><td>97.94 and 97.78 (p 0.34)</td></tr>
+</tbody></table>
+</div>
+<p>UD Japanese-PUD is lower with the settings for UniDic, by a difference that is not significant. The settings are the ones the cross-validation chose, as for IPADIC; the tables of the cross-validation are in the <a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#the-settings-for-unidic">README of the crate</a>.</p>
 <h2 id="how-the-features-are-made"><a class="header" href="#how-the-features-are-made">How the features are made</a></h2>
 <p>The feature strings are made in two steps that can each be replaced:</p>
 <ol>
@@ -3221,6 +3238,41 @@ cargo run --release -p lindera-dependency --features train -- parse \
 </div>
 <p>The targets of the project, from CaboCha and J.DepP trained on the same data, were 89.0 on dev and 87.8 on test with the bunsetsu of the answer, and 85.0 on dev and 84.3 on test from the morphemes. Those baselines cannot be measured again with what is in this repository (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>), so the comparison is with numbers on record, not with a run of the two tools.</p>
 <p>The model file with the chunker and the parser has 6,258,548 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see <a href="lindera-dependency/./model_file.html#size-and-speed">Model File</a>.</p>
+<h3 id="with-unidic-1"><a class="header" href="#with-unidic-1">With UniDic</a></h3>
+<p>The models for the three UniDic dictionaries, each trained on the train file converted with its dictionary, with the <a href="lindera-dependency/./chunking.html#with-unidic">settings of the chunker for UniDic</a> and the defaults of <code>train-parser</code>. With the bunsetsu of the answer:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>90.11% (3,281 / 3,641)</td><td>88.53% (3,512 / 3,967)</td><td>88.81% (7,859 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>89.67% (3,289 / 3,668)</td><td>88.69% (3,543 / 3,995)</td><td>88.67% (7,888 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>89.35% (3,279 / 3,670)</td><td>88.91% (3,558 / 4,002)</td><td>88.58% (7,879 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>89.75% (3,294 / 3,670)</td><td>88.90% (3,557 / 4,001)</td><td>88.59% (7,880 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>From the morphemes:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>85.39% (3,109 / 3,641)</td><td>84.47% (3,351 / 3,967)</td><td>86.19% (7,627 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>85.06% (3,120 / 3,668)</td><td>84.88% (3,391 / 3,995)</td><td>85.93% (7,644 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>84.22% (3,091 / 3,670)</td><td>84.71% (3,390 / 4,002)</td><td>85.73% (7,626 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>84.58% (3,104 / 3,670)</td><td>84.65% (3,387 / 4,001)</td><td>85.58% (7,612 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>Chunking F:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>96.85</td><td>96.92</td><td>98.04</td></tr>
+<tr><td><code>unidic</code></td><td>97.03</td><td>97.24</td><td>98.00</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63</td><td>97.02</td><td>97.89</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60</td><td>96.95</td><td>97.78</td></tr>
+</tbody></table>
+</div>
+<p>The numbers of two dictionaries are not counted on the same bunsetsu: a dictionary that splits a bunsetsu of the corpus merges it with the next, so the answers differ (3,641 arcs on dev with IPADIC, 3,670 with UniDic CWJ). The targets of the project are stated for IPADIC, and none is set for UniDic: the baselines they come from were measured with IPADIC.</p>
+<p>UniDic CSJ is a dictionary for spoken language, and the training data is written language; its model is trained and measured as the two others are.</p>
+<p>The settings of the parser were not carried over: the cross-validations were run again with each UniDic dictionary, and choose the same settings. Level 1 over the 10 folds of the train file:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>CaboCha's feature set</th><th>Every group</th><th>p</th><th>Hashed into 2^22 weights</th><th>And weights of 1 byte</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>88.67%</td><td>89.26%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.22%</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>88.79%</td><td>89.23%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.25%</td></tr>
+<tr><td><code>unidic-csj</code></td><td>88.65%</td><td>89.08%</td><td>&lt; 0.0001</td><td>89.10%</td><td>89.09%</td></tr>
+</tbody></table>
+</div>
+<p>With UniDic CWJ the cost 0.0015 gives 88.79%, 0.001 gives 88.59% (p 0.0001) and 0.003 gives 88.71% (p 0.2556).</p>
 <h2 id="how-the-defaults-were-chosen"><a class="header" href="#how-the-defaults-were-chosen">How the defaults were chosen</a></h2>
 <p>By a 10-fold cross-validation on the train file, on the bunsetsu of the answer. Settings that do not differ significantly (McNemar's exact test on the arcs) are taken as equal, and the smaller or faster one is chosen; the dev file chooses between sizes the cross-validation does not tell apart.</p>
 <div class="table-wrapper"><table><thead><tr><th>Choice</th><th>Level 1 over the 10 folds</th><th>What it showed</th></tr></thead><tbody>
@@ -3390,6 +3442,18 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <tr><td>Changing the model and distributing the result</td><td>The same</td></tr>
 </tbody></table>
 </div>
+<h2 id="the-models-for-unidic"><a class="header" href="#the-models-for-unidic">The models for UniDic</a></h2>
+<p><a href="lindera-dependency/model_file.html#building-it-again"><code>build_model.sh --dictionary &lt;name&gt;</code></a> builds the model for <code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code> in the same way: the directory <code>lindera-dependency-&lt;name&gt;</code> with the three files, and its archive. The training data is the train file of UD Japanese-GSD converted with that dictionary, the settings are the ones of <a href="lindera-dependency/./chunking.html#with-unidic"><code>train-chunker</code></a> and of <code>train-parser</code> for it, and the notice carries the notice of the dictionary. Nothing is embedded: the script takes the directory of the dictionary with <code>--dict</code>, or installs the one of the release of the version of the workspace with <code>lindera download</code>.</p>
+<p>A release of Lindera does not publish these models yet, and no feature embeds them (<a href="https://github.com/lindera/lindera/issues/1441">#1441</a>). Their <a href="lindera-dependency/./parsing.html#with-unidic">accuracy</a> is with the dictionaries of the release 7.0.0.</p>
+<p>The four models, on the test file of UD Japanese-GSD converted with each dictionary, on one core of an AMD Ryzen AI Max+ 395; the speeds are sentences per second, from one run each, and differ by a few percent from one run to another:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>Size of the file (bytes)</th><th>Of which the chunker</th><th>Chunking</th><th>Parsing the bunsetsu of the answer</th><th>Chunking and parsing</th><th>From text, with the tokenizer</th><th>Loading the dictionary and the model</th><th>The token filter, microseconds per token</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>6,258,548</td><td>261,851</td><td>20,500</td><td>17,500</td><td>8,900</td><td>7,000</td><td>5 ms</td><td>5.3</td></tr>
+<tr><td><code>unidic</code></td><td>6,257,148</td><td>360,869</td><td>13,100</td><td>17,400</td><td>6,900</td><td>5,300</td><td>59 ms</td><td>6.4</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>6,258,600</td><td>360,019</td><td>13,400</td><td>16,400</td><td>6,900</td><td>4,500</td><td>388 ms</td><td>6.9</td></tr>
+<tr><td><code>unidic-csj</code></td><td>6,267,183</td><td>365,215</td><td>11,900</td><td>15,000</td><td>6,500</td><td>4,100</td><td>389 ms</td><td>7.2</td></tr>
+</tbody></table>
+</div>
+<p>The chunker for UniDic reads four columns through a template of 36 lines, against three columns and 24 lines for IPADIC, and is slower by about a third. From text, most of the difference is the tokenizer: UniDic CWJ and UniDic CSJ are loaded from a directory of 1.3 GB.</p>
 <h2 id="the-format"><a class="header" href="#the-format">The format</a></h2>
 <p>Version 1. Every number is little endian. A string is its length in bytes as a <code>u32</code>, followed by its UTF-8.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
@@ -16722,6 +16786,8 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>Coordination is in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next, with the arc type <code>P</code>.</td><td>UD attaches later conjuncts to the first, with an arc to the left, which the parsers cannot produce.</td><td>#1417, #1419</td></tr>
 <tr><td>The first model is for IPADIC; UniDic follows. A model belongs to one dictionary.</td><td>A model depends on the part-of-speech columns and on the segmentation of its dictionary. The baselines of CaboCha and of J.DepP were measured with IPADIC, so the numbers can be compared.</td><td>#1417</td></tr>
 <tr><td>A model for each of the three UniDic dictionaries of Lindera (<code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>), with one schema.</td><td>The three do not segment and tag alike: on the sentences of GSD train, two of them agree on every morpheme and its part of speech for 63% to 73% of the sentences. A model is checked against the name of its dictionary. The columns a schema reads are at the same places in the three.</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
+<tr><td>The chunker for UniDic has settings of its own: the base form as a fourth column, and L1 with the coefficient 0.25. The settings of the parser are the same as for IPADIC.</td><td>The cross-validation on the train file chooses them: the base form of UniDic, the lexeme, helps where the one of IPADIC did not. The files that are not trained on do not tell the two settings apart, and UD Japanese-PUD is a little lower with the new ones; the choice follows the cross-validation, as for IPADIC. For the parser the cross-validations were run again and choose what they chose for IPADIC.</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
+<tr><td>No accuracy target is set for UniDic. The numbers are reported next to those of IPADIC.</td><td>The targets come from baselines measured with IPADIC, and the numbers of two dictionaries are not counted on the same bunsetsu.</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>Chunking is a conditional random field over <code>B</code> and <code>I</code>, trained with <code>lindera-crf</code>.</td><td>It is what CaboCha does, and its chunking is better than J.DepP's independent decisions (see the baselines).</td><td>#1417, #1421</td></tr>
 <tr><td>Chunking inference has a Viterbi of its own over a table of weights, and does not use <code>lindera-crf</code>.</td><td><code>search_best_path</code> of <code>lindera-crf</code> needs every label of an edge registered in the model, through <code>&amp;mut self</code>, so it does not fit sentences it has not seen; and the default build stays without a dependency.</td><td>#1417, #1421</td></tr>
 <tr><td>Parsing is shift-reduce with a linear binary classifier over features and pairs of features.</td><td>Both reference implementations do this; it is linear in the length of the sentence.</td><td>#1417</td></tr>
@@ -16879,7 +16945,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>End-to-end dependency accuracy</td><td>85.0 or more</td><td>84.3 or more</td></tr>
 </tbody></table>
 </div>
-<p>The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines themselves are numbers on record: they are to be measured again in #1433.</p>
+<p>The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines themselves are numbers on record: they are to be measured again in #1433. No target is set for UniDic (#1441): its numbers are reported next to these.</p>
 <p>Besides the accuracy: inference builds for <code>wasm32-unknown-unknown</code>; the parser runs as a token filter and as a command; the size of the model and the throughput are measured and documented; the model is released with the provenance and the license of its training data.</p>
 <h2 id="numbers"><a class="header" href="#numbers">Numbers</a></h2>
 <p>Every number the decisions rest on, with where it comes from. The data is UD Japanese-GSD c662dc9 and UD Japanese-PUD cf69c5c, tokenized with the IPADIC of this repository.</p>
@@ -16936,6 +17002,11 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>The same, <code>Schema::unidic()</code> with <code>unidic</code> and with <code>unidic-csj</code></td><td>train 97.52% and 97.55%</td><td>Script: <code>head_variants/</code></td></tr>
 <tr><td>Bunsetsu boundaries of GSD train on a morpheme boundary: IPADIC, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code></td><td>99.21%, 99.87%, 99.95%, 99.94%</td><td>Script: <code>convert_corpora.sh</code></td></tr>
 <tr><td>Sentences of GSD train with the same morphemes, and with the same part of speech too: <code>unidic</code> and <code>unidic-cwj</code>, <code>unidic</code> and <code>unidic-csj</code>, <code>unidic-cwj</code> and <code>unidic-csj</code></td><td>85.88% and 66.06%, 86.33% and 62.64%, 88.10% and 73.22%</td><td>Script: <code>compare_dictionaries.py</code></td></tr>
+<tr><td>Chunker with UniDic, cross-validation F: the settings for IPADIC and the settings for UniDic, with <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code></td><td>97.02 and 97.15 (p 0.0010), 97.02 and 97.22 (p &lt; 0.0001), 96.94 and 97.08 (p 0.0001)</td><td>Script: <code>chunker_experiments.sh --dictionary &lt;name&gt; check</code></td></tr>
+<tr><td>Models for UniDic, chunking F on dev, test, PUD</td><td><code>unidic</code> 97.03, 97.24, 98.00; <code>unidic-cwj</code> 96.63, 97.02, 97.89; <code>unidic-csj</code> 96.60, 96.95, 97.78</td><td>Script: <code>build_model.sh --dictionary &lt;name&gt;</code>, <code>model_accuracy.py</code></td></tr>
+<tr><td>The same, level 1</td><td><code>unidic</code> 89.67%, 88.69%, 88.67%; <code>unidic-cwj</code> 89.35%, 88.91%, 88.58%; <code>unidic-csj</code> 89.75%, 88.90%, 88.59%</td><td>The same</td></tr>
+<tr><td>The same, end to end</td><td><code>unidic</code> 85.06%, 84.88%, 85.93%; <code>unidic-cwj</code> 84.22%, 84.71%, 85.73%; <code>unidic-csj</code> 84.58%, 84.65%, 85.58%</td><td>The same</td></tr>
+<tr><td>Size of the models for UniDic</td><td><code>unidic</code> 6,257,148 bytes, <code>unidic-cwj</code> 6,258,600, <code>unidic-csj</code> 6,267,183</td><td>Script: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
 <tr><td><code>SYN_HEAD</code> of GSD against "last morpheme that is not a symbol" and "the morpheme after the head"</td><td>87–88% and 81–82%</td><td>Prototype, lost</td></tr>
 </tbody></table>
 </div>

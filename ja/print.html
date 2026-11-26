@@ -2900,7 +2900,7 @@ EOS
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
-<p>モデルは IPADIC のものになります。<code>--dictionary-name</code> でほかの辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）を指定すると、その辞書の名前と<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>がモデルに入ります。</p>
+<p>モデルは IPADIC のものになります。<code>--dictionary-name</code> でほかの辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）を指定すると、その辞書の名前と<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>がモデルに入り、列・テンプレート・係数は<a href="lindera-dependency/chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">その辞書の設定</a>になります。</p>
 <p>IPADIC で変換した UD Japanese-GSD の train では、数秒で終わり、最後に次を出力します。</p>
 <pre><code class="language-text">train.lattice: 7024 sentences
 iterations: 126
@@ -2932,6 +2932,23 @@ bytes: 261851
 </tbody></table>
 </div>
 <p>既定の設定は、train の 10 分割の交差検証で選びました。活用形は効き、活用型は効かず、L1 は L2 より良く、モデルは約 50 分の 1 になります。交差検証の表は<a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-were-chosen">クレートの README</a> にあり、<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency</code></a> で流し直せます。</p>
+<h2 id="unidic-の場合"><a class="header" href="#unidic-の場合">UniDic の場合</a></h2>
+<p><code>train-chunker --dictionary-name unidic</code>（または <code>unidic-cwj</code>・<code>unidic-csj</code>）は、IPADIC とは別の設定で学習します。列は、表層・品詞・活用形・原形の 4 つで、テンプレートは <code>Template::unidic()</code>、正則化は L1 の係数 0.25 です。辞書の設定は <code>TrainOptions::for_dictionary</code> が返します。IPADIC の場合と同じく、コマンドのオプションで、どれも置き換えられます。</p>
+<p>設定は、train の交差検証で UniDic CWJ を使って選び直しました。残りの 2 つの辞書でも同じ結論です。UniDic の原形は語彙素で、表記が違っても同じ値になります。IPADIC では効かなかった原形が、ここでは効きます。10 分割の F、片方の設定だけが正しく区切った文の数、McNemar の検定の結果です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>IPADIC の設定</th><th>UniDic の設定</th><th>前者だけ / 後者だけ</th><th>p</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>97.02</td><td>97.15</td><td>75 / 122</td><td>0.0010</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>97.02</td><td>97.22</td><td>59 / 131</td><td>&lt; 0.0001</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.94</td><td>97.08</td><td>74 / 131</td><td>0.0001</td></tr>
+</tbody></table>
+</div>
+<p>学習に使っていないファイルでは、2 つの設定を見分けられません。ファイルが小さいためです（506・542・994 文）。IPADIC の設定での F と、UniDic の設定での F です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>96.89 と 97.03 (p 0.09)</td><td>97.08 と 97.24 (p 0.82)</td><td>98.02 と 98.00 (p 1.00)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63 と 96.63 (p 1.00)</td><td>96.85 と 97.02 (p 0.50)</td><td>97.96 と 97.89 (p 0.70)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60 と 96.60 (p 0.69)</td><td>96.79 と 96.95 (p 0.48)</td><td>97.94 と 97.78 (p 0.34)</td></tr>
+</tbody></table>
+</div>
+<p>UD Japanese-PUD は、UniDic の設定のほうが低く出ます。有意な差ではありません。設定は、IPADIC と同じく、交差検証が選んだものにしています。交差検証の表は、<a href="https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#the-settings-for-unidic">クレートの README</a> にあります。</p>
 <h2 id="素性の作り方"><a class="header" href="#素性の作り方">素性の作り方</a></h2>
 <p>素性の文字列は 2 段階で作り、どちらも差し替えられます。</p>
 <ol>
@@ -3225,6 +3242,41 @@ cargo run --release -p lindera-dependency --features train -- parse \
 </div>
 <p>このプロジェクトの目標は、同じデータで学習した CaboCha・J.DepP の値から決めたもので、正解の文節で dev 89.0・test 87.8、形態素から dev 85.0・test 84.3 でした。この基準は、今のリポジトリにあるものでは測り直せません（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。比べている相手は記録に残る数字で、2 つのツールを動かした結果ではありません。</p>
 <p>区切りと解析器を入れたモデルファイルは 6,258,548 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。<a href="lindera-dependency/./model_file.html#%E5%A4%A7%E3%81%8D%E3%81%95%E3%81%A8%E9%80%9F%E3%81%95">モデルファイル</a>を参照してください。</p>
+<h3 id="unidic-の場合-1"><a class="header" href="#unidic-の場合-1">UniDic の場合</a></h3>
+<p>3 つの UniDic の辞書のモデルです。それぞれ、その辞書で変換した train で、<a href="lindera-dependency/./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">UniDic 用の区切りの設定</a>と <code>train-parser</code> の既定で学習しました。正解の文節を与えた場合です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>90.11% (3,281 / 3,641)</td><td>88.53% (3,512 / 3,967)</td><td>88.81% (7,859 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>89.67% (3,289 / 3,668)</td><td>88.69% (3,543 / 3,995)</td><td>88.67% (7,888 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>89.35% (3,279 / 3,670)</td><td>88.91% (3,558 / 4,002)</td><td>88.58% (7,879 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>89.75% (3,294 / 3,670)</td><td>88.90% (3,557 / 4,001)</td><td>88.59% (7,880 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>形態素からの場合です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>85.39% (3,109 / 3,641)</td><td>84.47% (3,351 / 3,967)</td><td>86.19% (7,627 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>85.06% (3,120 / 3,668)</td><td>84.88% (3,391 / 3,995)</td><td>85.93% (7,644 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>84.22% (3,091 / 3,670)</td><td>84.71% (3,390 / 4,002)</td><td>85.73% (7,626 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>84.58% (3,104 / 3,670)</td><td>84.65% (3,387 / 4,001)</td><td>85.58% (7,612 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>区切りの F です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>96.85</td><td>96.92</td><td>98.04</td></tr>
+<tr><td><code>unidic</code></td><td>97.03</td><td>97.24</td><td>98.00</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63</td><td>97.02</td><td>97.89</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60</td><td>96.95</td><td>97.78</td></tr>
+</tbody></table>
+</div>
+<p>2 つの辞書の数字は、同じ文節の上で数えたものではありません。コーパスの文節を分ける辞書では、その文節が次の文節と併合されるので、正解が変わります（dev の係り受けは、IPADIC で 3,641 本、UniDic CWJ で 3,670 本）。プロジェクトの目標は IPADIC について定めたもので、UniDic には目標を置いていません。目標のもとになった基準を、IPADIC で測ったためです。</p>
+<p>UniDic CSJ は話し言葉向けの辞書で、学習データは書き言葉です。モデルは、ほかの 2 つと同じように学習し、測っています。</p>
+<p>解析器の設定は、持ち越していません。交差検証を UniDic の辞書ごとに流し直し、同じ設定が選ばれることを確かめました。train の 10 分割の、正解の文節を与えた場合の精度です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>CaboCha の素性</th><th>全部の群</th><th>p</th><th>2^22 個の重みにハッシュ</th><th>さらに重みを 1 バイトに</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>88.67%</td><td>89.26%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.22%</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>88.79%</td><td>89.23%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.25%</td></tr>
+<tr><td><code>unidic-csj</code></td><td>88.65%</td><td>89.08%</td><td>&lt; 0.0001</td><td>89.10%</td><td>89.09%</td></tr>
+</tbody></table>
+</div>
+<p>UniDic CWJ では、コスト 0.0015 が 88.79%、0.001 が 88.59%（p 0.0001）、0.003 が 88.71%（p 0.2556）です。</p>
 <h2 id="既定の選び方"><a class="header" href="#既定の選び方">既定の選び方</a></h2>
 <p>train の 10 分割交差検証を、正解の文節の上で行って選びました。有意な差の無い設定（係り受けごとの McNemar の正確検定）は同じとみなし、小さいほう・速いほうを選びます。交差検証で差の付かない大きさは、dev で選びます。</p>
 <div class="table-wrapper"><table><thead><tr><th>選んだもの</th><th>10 分割の level 1</th><th>分かったこと</th></tr></thead><tbody>
@@ -3394,6 +3446,18 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <tr><td>モデルを変更して配布する</td><td>同じ</td></tr>
 </tbody></table>
 </div>
+<h2 id="unidic-のモデル"><a class="header" href="#unidic-のモデル">UniDic のモデル</a></h2>
+<p><a href="lindera-dependency/model_file.html#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh --dictionary &lt;name&gt;</code></a> は、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> のモデルを同じやり方で作ります。3 つのファイルを持つディレクトリ <code>lindera-dependency-&lt;name&gt;</code> と、そのアーカイブです。学習データは、その辞書で変換した UD Japanese-GSD の train で、設定は、その辞書についての <a href="lindera-dependency/./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88"><code>train-chunker</code></a> と <code>train-parser</code> の設定です。NOTICE には、その辞書の NOTICE が入ります。辞書は埋め込みません。スクリプトは、<code>--dict</code> で辞書のディレクトリを受け取るか、ワークスペースの版のリリースの辞書を <code>lindera download</code> で入れます。</p>
+<p>Lindera のリリースは、これらのモデルをまだ公開していません。埋め込む feature もありません（<a href="https://github.com/lindera/lindera/issues/1441">#1441</a>）。<a href="lindera-dependency/./parsing.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">精度</a>は、7.0.0 のリリースの辞書で測ったものです。</p>
+<p>4 つのモデルを、それぞれの辞書で変換した UD Japanese-GSD の test で、AMD Ryzen AI Max+ 395 の 1 コアで測りました。速さは 1 秒あたりの文の数です。それぞれ 1 回の計測の値で、計測ごとに数 % 変わります。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>ファイルの大きさ（バイト）</th><th>うち区切り</th><th>区切り</th><th>正解の文節の解析</th><th>区切りと解析</th><th>テキストから（形態素解析を含む）</th><th>辞書とモデルの読み込み</th><th>トークンフィルター（1 トークンあたりのマイクロ秒）</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>6,258,548</td><td>261,851</td><td>20,500</td><td>17,500</td><td>8,900</td><td>7,000</td><td>5 ms</td><td>5.3</td></tr>
+<tr><td><code>unidic</code></td><td>6,257,148</td><td>360,869</td><td>13,100</td><td>17,400</td><td>6,900</td><td>5,300</td><td>59 ms</td><td>6.4</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>6,258,600</td><td>360,019</td><td>13,400</td><td>16,400</td><td>6,900</td><td>4,500</td><td>388 ms</td><td>6.9</td></tr>
+<tr><td><code>unidic-csj</code></td><td>6,267,183</td><td>365,215</td><td>11,900</td><td>15,000</td><td>6,500</td><td>4,100</td><td>389 ms</td><td>7.2</td></tr>
+</tbody></table>
+</div>
+<p>UniDic の区切りは、4 つの列を 36 行のテンプレートで読みます。IPADIC は 3 つの列と 24 行で、UniDic のほうが 3 分の 1 ほど遅くなります。テキストからの速さの差は、大半が形態素解析によるものです。UniDic CWJ と UniDic CSJ は、1.3 GB のディレクトリから読み込みます。</p>
 <h2 id="形式"><a class="header" href="#形式">形式</a></h2>
 <p>版は 1 です。数はすべてリトルエンディアンです。文字列は、バイト数を <code>u32</code> で書き、その後に UTF-8 を続けます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
@@ -16269,6 +16333,8 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>並列は京大コーパスと CaboCha の形にする。並列の各要素は次の要素に係り、係りの種類は <code>P</code>。</td><td>UD は後ろの要素を最初の要素に付け、係りが左を向く。解析器はその形を作れない。</td><td>#1417、#1419</td></tr>
 <tr><td>最初のモデルは IPADIC 用で、UniDic が続く。モデルは 1 つの辞書に属する。</td><td>モデルは、辞書の品詞の列と分かち書きに依存する。CaboCha と J.DepP の基準を IPADIC で測ったので、数字を比べられる。</td><td>#1417</td></tr>
 <tr><td>Lindera の 3 つの UniDic の辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）のそれぞれにモデルを作る。スキーマは 1 つ。</td><td>3 つの辞書は、分かち書きと品詞が同じではない。GSD train の文のうち、2 つの辞書で全部の形態素とその品詞が一致する文は 63〜73% である。モデルは、辞書の名前で照合する。スキーマが読む列は、3 つとも同じ位置にある。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
+<tr><td>UniDic の区切りは、独自の設定を持つ。原形を 4 つ目の列にし、L1 の係数を 0.25 にする。解析器の設定は IPADIC と同じ。</td><td>train の交差検証が選ぶ。UniDic の原形（語彙素）は、IPADIC の原形が効かなかったところで効く。学習に使っていないファイルは 2 つの設定を見分けず、UD Japanese-PUD は新しい設定で少し低い。IPADIC と同じく、交差検証に従って選ぶ。解析器は、交差検証を流し直し、IPADIC と同じ設定が選ばれた。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
+<tr><td>UniDic には精度の目標を置かない。数字は IPADIC の数字と並べて報告する。</td><td>目標は IPADIC で測った基準から来ている。また、2 つの辞書の数字は、同じ文節の上で数えたものではない。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>文節の区切りは、<code>B</code> と <code>I</code> の 2 ラベルの条件付き確率場で、<code>lindera-crf</code> で学習する。</td><td>CaboCha と同じ方法で、境界ごとに独立に決める J.DepP より区切りが良い（基準を参照）。</td><td>#1417、#1421</td></tr>
 <tr><td>区切りの推論は、重みの表に対する自前の Viterbi で行い、<code>lindera-crf</code> を使わない。</td><td><code>lindera-crf</code> の <code>search_best_path</code> は、辺のラベルをすべてモデルに登録しておく必要があり（<code>&amp;mut self</code>）、見たことのない文に向かない。既定のビルドを依存なしに保つためでもある。</td><td>#1417、#1421</td></tr>
 <tr><td>解析は shift-reduce で、素性と素性の対に対する線形の二値分類器を使う。</td><td>参照した実装が両方ともこの方法で、文の長さに対して線形の時間で済む。</td><td>#1417</td></tr>
@@ -16426,7 +16492,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>一貫の係り受けの精度</td><td>85.0 以上</td><td>84.3 以上</td></tr>
 </tbody></table>
 </div>
-<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準そのものは記録に残る数字で、#1433 で測り直します。</p>
+<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準そのものは記録に残る数字で、#1433 で測り直します。 UniDic には目標を置きません（#1441）。UniDic の数字は、これらと並べて報告します。</p>
 <p>精度のほかの目標: 推論が <code>wasm32-unknown-unknown</code> 向けにビルドできる。解析器がトークンフィルターとしてもコマンドとしても動く。モデルの大きさと処理速度を測って文書にする。モデルは、学習データの出どころとライセンスを明記して公開する。</p>
 <h2 id="数字"><a class="header" href="#数字">数字</a></h2>
 <p>決定の根拠になった数字と、その出どころです。データは UD Japanese-GSD c662dc9 と UD Japanese-PUD cf69c5c で、このリポジトリの IPADIC で解析しています。</p>
@@ -16483,6 +16549,11 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>同じ、<code>Schema::unidic()</code> を <code>unidic</code> と <code>unidic-csj</code> で</td><td>train 97.52% と 97.55%</td><td>スクリプト: <code>head_variants/</code></td></tr>
 <tr><td>GSD train の文節の境界が形態素の境界に合う割合: IPADIC、<code>unidic</code>、<code>unidic-cwj</code>、<code>unidic-csj</code></td><td>99.21%、99.87%、99.95%、99.94%</td><td>スクリプト: <code>convert_corpora.sh</code></td></tr>
 <tr><td>GSD train の文のうち、形態素が同じ文と、品詞まで同じ文: <code>unidic</code> と <code>unidic-cwj</code>、<code>unidic</code> と <code>unidic-csj</code>、<code>unidic-cwj</code> と <code>unidic-csj</code></td><td>85.88% と 66.06%、86.33% と 62.64%、88.10% と 73.22%</td><td>スクリプト: <code>compare_dictionaries.py</code></td></tr>
+<tr><td>UniDic の区切り、交差検証の F: IPADIC の設定と UniDic の設定。<code>unidic</code>、<code>unidic-cwj</code>、<code>unidic-csj</code></td><td>97.02 と 97.15（p 0.0010）、97.02 と 97.22（p &lt; 0.0001）、96.94 と 97.08（p 0.0001）</td><td>スクリプト: <code>chunker_experiments.sh --dictionary &lt;name&gt; check</code></td></tr>
+<tr><td>UniDic のモデル、区切りの F（dev、test、PUD）</td><td><code>unidic</code> 97.03、97.24、98.00。<code>unidic-cwj</code> 96.63、97.02、97.89。<code>unidic-csj</code> 96.60、96.95、97.78</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code>、<code>model_accuracy.py</code></td></tr>
+<tr><td>同じ、正解の文節を与えた場合</td><td><code>unidic</code> 89.67%、88.69%、88.67%。<code>unidic-cwj</code> 89.35%、88.91%、88.58%。<code>unidic-csj</code> 89.75%、88.90%、88.59%</td><td>同じ</td></tr>
+<tr><td>同じ、形態素からの場合</td><td><code>unidic</code> 85.06%、84.88%、85.93%。<code>unidic-cwj</code> 84.22%、84.71%、85.73%。<code>unidic-csj</code> 84.58%、84.65%、85.58%</td><td>同じ</td></tr>
+<tr><td>UniDic のモデルの大きさ</td><td><code>unidic</code> 6,257,148 バイト、<code>unidic-cwj</code> 6,258,600、<code>unidic-csj</code> 6,267,183</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
 <tr><td>GSD の <code>SYN_HEAD</code> と、「記号でない最後の形態素」「主辞の次の形態素」</td><td>87〜88% と 81〜82%</td><td>試作・消失</td></tr>
 </tbody></table>
 </div>

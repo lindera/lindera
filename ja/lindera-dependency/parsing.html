@@ -462,6 +462,41 @@ cargo run --release -p lindera-dependency --features train -- parse \
 </div>
 <p>このプロジェクトの目標は、同じデータで学習した CaboCha・J.DepP の値から決めたもので、正解の文節で dev 89.0・test 87.8、形態素から dev 85.0・test 84.3 でした。この基準は、今のリポジトリにあるものでは測り直せません（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。比べている相手は記録に残る数字で、2 つのツールを動かした結果ではありません。</p>
 <p>区切りと解析器を入れたモデルファイルは 6,258,548 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。<a href="./model_file.html#%E5%A4%A7%E3%81%8D%E3%81%95%E3%81%A8%E9%80%9F%E3%81%95">モデルファイル</a>を参照してください。</p>
+<h3 id="unidic-の場合"><a class="header" href="#unidic-の場合">UniDic の場合</a></h3>
+<p>3 つの UniDic の辞書のモデルです。それぞれ、その辞書で変換した train で、<a href="./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">UniDic 用の区切りの設定</a>と <code>train-parser</code> の既定で学習しました。正解の文節を与えた場合です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>90.11% (3,281 / 3,641)</td><td>88.53% (3,512 / 3,967)</td><td>88.81% (7,859 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>89.67% (3,289 / 3,668)</td><td>88.69% (3,543 / 3,995)</td><td>88.67% (7,888 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>89.35% (3,279 / 3,670)</td><td>88.91% (3,558 / 4,002)</td><td>88.58% (7,879 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>89.75% (3,294 / 3,670)</td><td>88.90% (3,557 / 4,001)</td><td>88.59% (7,880 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>形態素からの場合です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>85.39% (3,109 / 3,641)</td><td>84.47% (3,351 / 3,967)</td><td>86.19% (7,627 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>85.06% (3,120 / 3,668)</td><td>84.88% (3,391 / 3,995)</td><td>85.93% (7,644 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>84.22% (3,091 / 3,670)</td><td>84.71% (3,390 / 4,002)</td><td>85.73% (7,626 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>84.58% (3,104 / 3,670)</td><td>84.65% (3,387 / 4,001)</td><td>85.58% (7,612 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>区切りの F です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>96.85</td><td>96.92</td><td>98.04</td></tr>
+<tr><td><code>unidic</code></td><td>97.03</td><td>97.24</td><td>98.00</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63</td><td>97.02</td><td>97.89</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60</td><td>96.95</td><td>97.78</td></tr>
+</tbody></table>
+</div>
+<p>2 つの辞書の数字は、同じ文節の上で数えたものではありません。コーパスの文節を分ける辞書では、その文節が次の文節と併合されるので、正解が変わります（dev の係り受けは、IPADIC で 3,641 本、UniDic CWJ で 3,670 本）。プロジェクトの目標は IPADIC について定めたもので、UniDic には目標を置いていません。目標のもとになった基準を、IPADIC で測ったためです。</p>
+<p>UniDic CSJ は話し言葉向けの辞書で、学習データは書き言葉です。モデルは、ほかの 2 つと同じように学習し、測っています。</p>
+<p>解析器の設定は、持ち越していません。交差検証を UniDic の辞書ごとに流し直し、同じ設定が選ばれることを確かめました。train の 10 分割の、正解の文節を与えた場合の精度です。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>CaboCha の素性</th><th>全部の群</th><th>p</th><th>2^22 個の重みにハッシュ</th><th>さらに重みを 1 バイトに</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>88.67%</td><td>89.26%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.22%</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>88.79%</td><td>89.23%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.25%</td></tr>
+<tr><td><code>unidic-csj</code></td><td>88.65%</td><td>89.08%</td><td>&lt; 0.0001</td><td>89.10%</td><td>89.09%</td></tr>
+</tbody></table>
+</div>
+<p>UniDic CWJ では、コスト 0.0015 が 88.79%、0.001 が 88.59%（p 0.0001）、0.003 が 88.71%（p 0.2556）です。</p>
 <h2 id="既定の選び方"><a class="header" href="#既定の選び方">既定の選び方</a></h2>
 <p>train の 10 分割交差検証を、正解の文節の上で行って選びました。有意な差の無い設定（係り受けごとの McNemar の正確検定）は同じとみなし、小さいほう・速いほうを選びます。交差検証で差の付かない大きさは、dev で選びます。</p>
 <div class="table-wrapper"><table><thead><tr><th>選んだもの</th><th>10 分割の level 1</th><th>分かったこと</th></tr></thead><tbody>

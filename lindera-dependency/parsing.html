@@ -462,6 +462,41 @@ cargo run --release -p lindera-dependency --features train -- parse \
 </div>
 <p>The targets of the project, from CaboCha and J.DepP trained on the same data, were 89.0 on dev and 87.8 on test with the bunsetsu of the answer, and 85.0 on dev and 84.3 on test from the morphemes. Those baselines cannot be measured again with what is in this repository (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>), so the comparison is with numbers on record, not with a run of the two tools.</p>
 <p>The model file with the chunker and the parser has 6,258,548 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see <a href="./model_file.html#size-and-speed">Model File</a>.</p>
+<h3 id="with-unidic"><a class="header" href="#with-unidic">With UniDic</a></h3>
+<p>The models for the three UniDic dictionaries, each trained on the train file converted with its dictionary, with the <a href="./chunking.html#with-unidic">settings of the chunker for UniDic</a> and the defaults of <code>train-parser</code>. With the bunsetsu of the answer:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>90.11% (3,281 / 3,641)</td><td>88.53% (3,512 / 3,967)</td><td>88.81% (7,859 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>89.67% (3,289 / 3,668)</td><td>88.69% (3,543 / 3,995)</td><td>88.67% (7,888 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>89.35% (3,279 / 3,670)</td><td>88.91% (3,558 / 4,002)</td><td>88.58% (7,879 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>89.75% (3,294 / 3,670)</td><td>88.90% (3,557 / 4,001)</td><td>88.59% (7,880 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>From the morphemes:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>85.39% (3,109 / 3,641)</td><td>84.47% (3,351 / 3,967)</td><td>86.19% (7,627 / 8,849)</td></tr>
+<tr><td><code>unidic</code></td><td>85.06% (3,120 / 3,668)</td><td>84.88% (3,391 / 3,995)</td><td>85.93% (7,644 / 8,896)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>84.22% (3,091 / 3,670)</td><td>84.71% (3,390 / 4,002)</td><td>85.73% (7,626 / 8,895)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>84.58% (3,104 / 3,670)</td><td>84.65% (3,387 / 4,001)</td><td>85.58% (7,612 / 8,895)</td></tr>
+</tbody></table>
+</div>
+<p>Chunking F:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
+<tr><td>IPADIC</td><td>96.85</td><td>96.92</td><td>98.04</td></tr>
+<tr><td><code>unidic</code></td><td>97.03</td><td>97.24</td><td>98.00</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>96.63</td><td>97.02</td><td>97.89</td></tr>
+<tr><td><code>unidic-csj</code></td><td>96.60</td><td>96.95</td><td>97.78</td></tr>
+</tbody></table>
+</div>
+<p>The numbers of two dictionaries are not counted on the same bunsetsu: a dictionary that splits a bunsetsu of the corpus merges it with the next, so the answers differ (3,641 arcs on dev with IPADIC, 3,670 with UniDic CWJ). The targets of the project are stated for IPADIC, and none is set for UniDic: the baselines they come from were measured with IPADIC.</p>
+<p>UniDic CSJ is a dictionary for spoken language, and the training data is written language; its model is trained and measured as the two others are.</p>
+<p>The settings of the parser were not carried over: the cross-validations were run again with each UniDic dictionary, and choose the same settings. Level 1 over the 10 folds of the train file:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>CaboCha's feature set</th><th>Every group</th><th>p</th><th>Hashed into 2^22 weights</th><th>And weights of 1 byte</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>88.67%</td><td>89.26%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.22%</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>88.79%</td><td>89.23%</td><td>&lt; 0.0001</td><td>89.23%</td><td>89.25%</td></tr>
+<tr><td><code>unidic-csj</code></td><td>88.65%</td><td>89.08%</td><td>&lt; 0.0001</td><td>89.10%</td><td>89.09%</td></tr>
+</tbody></table>
+</div>
+<p>With UniDic CWJ the cost 0.0015 gives 88.79%, 0.001 gives 88.59% (p 0.0001) and 0.003 gives 88.71% (p 0.2556).</p>
 <h2 id="how-the-defaults-were-chosen"><a class="header" href="#how-the-defaults-were-chosen">How the defaults were chosen</a></h2>
 <p>By a 10-fold cross-validation on the train file, on the bunsetsu of the answer. Settings that do not differ significantly (McNemar's exact test on the arcs) are taken as equal, and the smaller or faster one is chosen; the dev file chooses between sizes the cross-validation does not tell apart.</p>
 <div class="table-wrapper"><table><thead><tr><th>Choice</th><th>Level 1 over the 10 folds</th><th>What it showed</th></tr></thead><tbody>
