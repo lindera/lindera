@@ -81,7 +81,7 @@ cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 ```
 
-モデルは IPADIC のものになります。`--dictionary-name` でほかの辞書（`unidic`・`unidic-cwj`・`unidic-csj`）を指定すると、その辞書の名前と[スキーマ](./head_and_function_word.md)がモデルに入ります。
+モデルは IPADIC のものになります。`--dictionary-name` でほかの辞書（`unidic`・`unidic-cwj`・`unidic-csj`）を指定すると、その辞書の名前と[スキーマ](./head_and_function_word.md)がモデルに入り、列・テンプレート・係数は[その辞書の設定](#unidic-の場合)になります。
 
 IPADIC で変換した UD Japanese-GSD の train では、数秒で終わり、最後に次を出力します。
 
@@ -124,6 +124,28 @@ cargo run --release -p lindera-dependency --features train -- chunk \
 | UD Japanese-PUD | 98.04 | 98.05% (9,649 / 9,841) | 98.03% (9,649 / 9,843) | 885 / 994 |
 
 既定の設定は、train の 10 分割の交差検証で選びました。活用形は効き、活用型は効かず、L1 は L2 より良く、モデルは約 50 分の 1 になります。交差検証の表は[クレートの README](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#how-the-defaults-were-chosen) にあり、[`scripts/dependency`](https://github.com/lindera/lindera/tree/main/scripts/dependency) で流し直せます。
+
+## UniDic の場合
+
+`train-chunker --dictionary-name unidic`（または `unidic-cwj`・`unidic-csj`）は、IPADIC とは別の設定で学習します。列は、表層・品詞・活用形・原形の 4 つで、テンプレートは `Template::unidic()`、正則化は L1 の係数 0.25 です。辞書の設定は `TrainOptions::for_dictionary` が返します。IPADIC の場合と同じく、コマンドのオプションで、どれも置き換えられます。
+
+設定は、train の交差検証で UniDic CWJ を使って選び直しました。残りの 2 つの辞書でも同じ結論です。UniDic の原形は語彙素で、表記が違っても同じ値になります。IPADIC では効かなかった原形が、ここでは効きます。10 分割の F、片方の設定だけが正しく区切った文の数、McNemar の検定の結果です。
+
+| 辞書 | IPADIC の設定 | UniDic の設定 | 前者だけ / 後者だけ | p |
+| --- | --- | --- | --- | --- |
+| `unidic` | 97.02 | 97.15 | 75 / 122 | 0.0010 |
+| `unidic-cwj` | 97.02 | 97.22 | 59 / 131 | < 0.0001 |
+| `unidic-csj` | 96.94 | 97.08 | 74 / 131 | 0.0001 |
+
+学習に使っていないファイルでは、2 つの設定を見分けられません。ファイルが小さいためです（506・542・994 文）。IPADIC の設定での F と、UniDic の設定での F です。
+
+| 辞書 | UD Japanese-GSD dev | UD Japanese-GSD test | UD Japanese-PUD |
+| --- | --- | --- | --- |
+| `unidic` | 96.89 と 97.03 (p 0.09) | 97.08 と 97.24 (p 0.82) | 98.02 と 98.00 (p 1.00) |
+| `unidic-cwj` | 96.63 と 96.63 (p 1.00) | 96.85 と 97.02 (p 0.50) | 97.96 と 97.89 (p 0.70) |
+| `unidic-csj` | 96.60 と 96.60 (p 0.69) | 96.79 と 96.95 (p 0.48) | 97.94 と 97.78 (p 0.34) |
+
+UD Japanese-PUD は、UniDic の設定のほうが低く出ます。有意な差ではありません。設定は、IPADIC と同じく、交差検証が選んだものにしています。交差検証の表は、[クレートの README](https://github.com/lindera/lindera/blob/main/lindera-dependency/README.md#the-settings-for-unidic) にあります。
 
 ## 素性の作り方
 

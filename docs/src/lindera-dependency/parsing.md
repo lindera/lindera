@@ -348,6 +348,49 @@ The targets of the project, from CaboCha and J.DepP trained on the same data, we
 
 The model file with the chunker and the parser has 6,258,548 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see [Model File](./model_file.md#size-and-speed).
 
+### With UniDic
+
+The models for the three UniDic dictionaries, each trained on the train file converted with its dictionary, with the [settings of the chunker for UniDic](./chunking.md#with-unidic) and the defaults of `train-parser`. With the bunsetsu of the answer:
+
+| Dictionary | UD Japanese-GSD dev | UD Japanese-GSD test | UD Japanese-PUD |
+| --- | --- | --- | --- |
+| IPADIC | 90.11% (3,281 / 3,641) | 88.53% (3,512 / 3,967) | 88.81% (7,859 / 8,849) |
+| `unidic` | 89.67% (3,289 / 3,668) | 88.69% (3,543 / 3,995) | 88.67% (7,888 / 8,896) |
+| `unidic-cwj` | 89.35% (3,279 / 3,670) | 88.91% (3,558 / 4,002) | 88.58% (7,879 / 8,895) |
+| `unidic-csj` | 89.75% (3,294 / 3,670) | 88.90% (3,557 / 4,001) | 88.59% (7,880 / 8,895) |
+
+From the morphemes:
+
+| Dictionary | UD Japanese-GSD dev | UD Japanese-GSD test | UD Japanese-PUD |
+| --- | --- | --- | --- |
+| IPADIC | 85.39% (3,109 / 3,641) | 84.47% (3,351 / 3,967) | 86.19% (7,627 / 8,849) |
+| `unidic` | 85.06% (3,120 / 3,668) | 84.88% (3,391 / 3,995) | 85.93% (7,644 / 8,896) |
+| `unidic-cwj` | 84.22% (3,091 / 3,670) | 84.71% (3,390 / 4,002) | 85.73% (7,626 / 8,895) |
+| `unidic-csj` | 84.58% (3,104 / 3,670) | 84.65% (3,387 / 4,001) | 85.58% (7,612 / 8,895) |
+
+Chunking F:
+
+| Dictionary | UD Japanese-GSD dev | UD Japanese-GSD test | UD Japanese-PUD |
+| --- | --- | --- | --- |
+| IPADIC | 96.85 | 96.92 | 98.04 |
+| `unidic` | 97.03 | 97.24 | 98.00 |
+| `unidic-cwj` | 96.63 | 97.02 | 97.89 |
+| `unidic-csj` | 96.60 | 96.95 | 97.78 |
+
+The numbers of two dictionaries are not counted on the same bunsetsu: a dictionary that splits a bunsetsu of the corpus merges it with the next, so the answers differ (3,641 arcs on dev with IPADIC, 3,670 with UniDic CWJ). The targets of the project are stated for IPADIC, and none is set for UniDic: the baselines they come from were measured with IPADIC.
+
+UniDic CSJ is a dictionary for spoken language, and the training data is written language; its model is trained and measured as the two others are.
+
+The settings of the parser were not carried over: the cross-validations were run again with each UniDic dictionary, and choose the same settings. Level 1 over the 10 folds of the train file:
+
+| Dictionary | CaboCha's feature set | Every group | p | Hashed into 2^22 weights | And weights of 1 byte |
+| --- | --- | --- | --- | --- | --- |
+| `unidic` | 88.67% | 89.26% | < 0.0001 | 89.23% | 89.22% |
+| `unidic-cwj` | 88.79% | 89.23% | < 0.0001 | 89.23% | 89.25% |
+| `unidic-csj` | 88.65% | 89.08% | < 0.0001 | 89.10% | 89.09% |
+
+With UniDic CWJ the cost 0.0015 gives 88.79%, 0.001 gives 88.59% (p 0.0001) and 0.003 gives 88.71% (p 0.2556).
+
 ## How the defaults were chosen
 
 By a 10-fold cross-validation on the train file, on the bunsetsu of the answer. Settings that do not differ significantly (McNemar's exact test on the arcs) are taken as equal, and the smaller or faster one is chosen; the dev file chooses between sizes the cross-validation does not tell apart.

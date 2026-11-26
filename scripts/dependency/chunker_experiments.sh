@@ -2,9 +2,12 @@
 # The experiments behind the defaults of the chunker of lindera-dependency:
 # the numbers of "How the defaults were chosen" in its README.
 #
-# Usage: chunker_experiments.sh <stage>... [-- <data directory>]
+# Usage: chunker_experiments.sh [--dictionary <name>] <stage>... [-- <data directory>]
+#   --dictionary  ipadic (the default), unidic, unidic-cwj or unidic-csj:
+#                 the dictionary convert_corpora.sh was run with.
 #   <data directory> defaults to scripts/dependency/data and holds lattice/
-#   (convert_corpora.sh). The outputs go to <data directory>/chunker.
+#   (convert_corpora.sh). The outputs go to <data directory>/chunker. For
+#   another dictionary than ipadic, both are in <data directory>/<name>.
 #
 # Stages, each one line of result per setting:
 #   table    CaboCha's template on the whole train file, with L2 and L1 and
@@ -15,6 +18,13 @@
 #            the conjugation form and the base form together.
 #   compare  Pairs of settings of the cross-validation, by the segmentation
 #            of each sentence, with McNemar's exact test. Needs cv and small.
+#   base     The cross-validation of the base form with smaller coefficients
+#            of L1, and the pairs of settings around the base form: what the
+#            settings for UniDic, whose base form is the lexeme, rest on.
+#            Needs cv and small.
+#   check    The cross-validation of the setting for UniDic and of four
+#            settings next to it, and their pairs: for a dictionary the
+#            other stages were not run for. Needs no other stage.
 #   default  The defaults of `train-chunker` on the whole train file,
 #            evaluated on dev, test and PUD, and trained twice to see the
 #            same bytes.
@@ -26,6 +36,10 @@ set -euo pipefail
 
 here=$(dirname "$(readlink -f "$0")")
 root=$(readlink -f "$here/../..")
+# shellcheck source=scripts/dependency/dictionary.sh
+. "$here/dictionary.sh"
+parse_dictionary_arguments "$@"
+set -- "${rest[@]}"
 data=$here/data
 stages=()
 while [ $# -gt 0 ]; do
@@ -36,7 +50,13 @@ while [ $# -gt 0 ]; do
     stages+=("$1")
     shift
 done
-data=$(readlink -f "$data")
+data=$(dictionary_directory "$(readlink -f "$data")")
+# The option of the training commands that names the dictionary; none for
+# ipadic, which is their default.
+named=()
+if [ "$dictionary" != ipadic ]; then
+    named=(--dictionary-name "$dictionary")
+fi
 lattice=$data/lattice
 work=$data/chunker
 experiment=(python3 -I -B "$here/chunker_experiment.py")
@@ -73,7 +93,7 @@ cross_validate() {
     fi
     "${experiment[@]}" cv "$bin" "$work/folds" "$work" "$1-$2-$3" \
         --regularization "$2" --lambda "$3" --columns "$columns" \
-        --template "$work/templates/$template.template"
+        --template "$work/templates/$template.template" "${named[@]}"
 }
 
 table() {
@@ -83,7 +103,8 @@ table() {
         "${experiment[@]}" full "$bin" "$lattice" "$work" \
             "cabocha-$regularization-$coefficient" ja_gsd-ud-dev,ja_gsd-ud-test \
             --regularization "$regularization" --lambda "$coefficient" \
-            --columns surface,pos --template "$work/templates/cabocha.template"
+            --columns surface,pos --template "$work/templates/cabocha.template" \
+            "${named[@]}"
     done
 }
 
@@ -125,11 +146,48 @@ compare() {
     done
 }
 
+base() {
+    for coefficient in 0.1 0.15; do
+        cross_validate base l1 "$coefficient"
+    done
+    # cform-light-l1-0.5 is the setting for IPADIC.
+    for pair in \
+        cform-light-l1-0.5:base-l1-0.25 \
+        cform-light-l1-0.5:base-l1-0.5 \
+        cform-light-l1-0.5:base-light-l1-0.25 \
+        base-l1-0.25:base-l1-0.1 \
+        base-l1-0.25:base-l1-0.5 \
+        base-l1-0.25:base-l1-1.0 \
+        base-l1-0.25:base-l2-0.25 \
+        base-l1-0.25:base-light-l1-0.25 \
+        base-l1-0.25:cform-base-l1-0.25; do
+        "${experiment[@]}" compare "$bin" "$work" "${pair%%:*}" "${pair##*:}"
+    done
+}
+
+check() {
+    local columns regularization coefficient
+    for setting in "cabocha l1 0.25" "cform-light l1 0.5" "cform l1 0.25" \
+        "base l1 0.25" "cform-base l1 0.25"; do
+        read -r columns regularization coefficient <<< "$setting"
+        cross_validate "$columns" "$regularization" "$coefficient"
+    done
+    # cform-light-l1-0.5 is the setting for IPADIC, cform-base-l1-0.25 the
+    # one for UniDic.
+    for pair in \
+        cabocha-l1-0.25:cform-base-l1-0.25 \
+        cform-light-l1-0.5:cform-base-l1-0.25 \
+        cform-l1-0.25:cform-base-l1-0.25 \
+        base-l1-0.25:cform-base-l1-0.25; do
+        "${experiment[@]}" compare "$bin" "$work" "${pair%%:*}" "${pair##*:}"
+    done
+}
+
 default() {
     "${experiment[@]}" full "$bin" "$lattice" "$work" default \
-        ja_gsd-ud-dev,ja_gsd-ud-test,ja_pud-ud-test
+        ja_gsd-ud-dev,ja_gsd-ud-test,ja_pud-ud-test "${named[@]}"
     "$bin" train-chunker --input "$lattice/ja_gsd-ud-train.lattice" \
-        --output "$work/full/default/again.model" 2> /dev/null
+        --output "$work/full/default/again.model" "${named[@]}" 2> /dev/null
     if cmp -s "$work/full/default/chunker.model" "$work/full/default/again.model"; then
         echo "default: trained twice, the same bytes"
     else
@@ -140,12 +198,13 @@ default() {
 
 for stage in "${stages[@]}"; do
     case "$stage" in
-    table | cv | small | compare | default) "$stage" ;;
+    table | cv | small | compare | base | check | default) "$stage" ;;
     all)
         table
         cv
         small
         compare
+        base
         default
         ;;
     *)

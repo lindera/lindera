@@ -36,6 +36,8 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | Coordination is in the form of the Kyoto corpus and CaboCha: each conjunct depends on the next, with the arc type `P`. | UD attaches later conjuncts to the first, with an arc to the left, which the parsers cannot produce. | #1417, #1419 |
 | The first model is for IPADIC; UniDic follows. A model belongs to one dictionary. | A model depends on the part-of-speech columns and on the segmentation of its dictionary. The baselines of CaboCha and of J.DepP were measured with IPADIC, so the numbers can be compared. | #1417 |
 | A model for each of the three UniDic dictionaries of Lindera (`unidic`, `unidic-cwj`, `unidic-csj`), with one schema. | The three do not segment and tag alike: on the sentences of GSD train, two of them agree on every morpheme and its part of speech for 63% to 73% of the sentences. A model is checked against the name of its dictionary. The columns a schema reads are at the same places in the three. | [#1441](https://github.com/lindera/lindera/issues/1441) |
+| The chunker for UniDic has settings of its own: the base form as a fourth column, and L1 with the coefficient 0.25. The settings of the parser are the same as for IPADIC. | The cross-validation on the train file chooses them: the base form of UniDic, the lexeme, helps where the one of IPADIC did not. The files that are not trained on do not tell the two settings apart, and UD Japanese-PUD is a little lower with the new ones; the choice follows the cross-validation, as for IPADIC. For the parser the cross-validations were run again and choose what they chose for IPADIC. | [#1441](https://github.com/lindera/lindera/issues/1441) |
+| No accuracy target is set for UniDic. The numbers are reported next to those of IPADIC. | The targets come from baselines measured with IPADIC, and the numbers of two dictionaries are not counted on the same bunsetsu. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | Chunking is a conditional random field over `B` and `I`, trained with `lindera-crf`. | It is what CaboCha does, and its chunking is better than J.DepP's independent decisions (see the baselines). | #1417, #1421 |
 | Chunking inference has a Viterbi of its own over a table of weights, and does not use `lindera-crf`. | `search_best_path` of `lindera-crf` needs every label of an edge registered in the model, through `&mut self`, so it does not fit sentences it has not seen; and the default build stays without a dependency. | #1417, #1421 |
 | Parsing is shift-reduce with a linear binary classifier over features and pairs of features. | Both reference implementations do this; it is linear in the length of the sentence. | #1417 |
@@ -202,7 +204,7 @@ On UD Japanese-GSD with IPADIC, from the baselines below:
 | Dependency accuracy with the bunsetsu of the answer (level 1) | 89.0 or more | 87.8 or more |
 | End-to-end dependency accuracy | 85.0 or more | 84.3 or more |
 
-The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines themselves are numbers on record: they are to be measured again in #1433.
+The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines themselves are numbers on record: they are to be measured again in #1433. No target is set for UniDic (#1441): its numbers are reported next to these.
 
 Besides the accuracy: inference builds for `wasm32-unknown-unknown`; the parser runs as a token filter and as a command; the size of the model and the throughput are measured and documented; the model is released with the provenance and the license of its training data.
 
@@ -272,6 +274,11 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | The same, `Schema::unidic()` with `unidic` and with `unidic-csj` | train 97.52% and 97.55% | Script: `head_variants/` |
 | Bunsetsu boundaries of GSD train on a morpheme boundary: IPADIC, `unidic`, `unidic-cwj`, `unidic-csj` | 99.21%, 99.87%, 99.95%, 99.94% | Script: `convert_corpora.sh` |
 | Sentences of GSD train with the same morphemes, and with the same part of speech too: `unidic` and `unidic-cwj`, `unidic` and `unidic-csj`, `unidic-cwj` and `unidic-csj` | 85.88% and 66.06%, 86.33% and 62.64%, 88.10% and 73.22% | Script: `compare_dictionaries.py` |
+| Chunker with UniDic, cross-validation F: the settings for IPADIC and the settings for UniDic, with `unidic`, `unidic-cwj`, `unidic-csj` | 97.02 and 97.15 (p 0.0010), 97.02 and 97.22 (p < 0.0001), 96.94 and 97.08 (p 0.0001) | Script: `chunker_experiments.sh --dictionary <name> check` |
+| Models for UniDic, chunking F on dev, test, PUD | `unidic` 97.03, 97.24, 98.00; `unidic-cwj` 96.63, 97.02, 97.89; `unidic-csj` 96.60, 96.95, 97.78 | Script: `build_model.sh --dictionary <name>`, `model_accuracy.py` |
+| The same, level 1 | `unidic` 89.67%, 88.69%, 88.67%; `unidic-cwj` 89.35%, 88.91%, 88.58%; `unidic-csj` 89.75%, 88.90%, 88.59% | The same |
+| The same, end to end | `unidic` 85.06%, 84.88%, 85.93%; `unidic-cwj` 84.22%, 84.71%, 85.73%; `unidic-csj` 84.58%, 84.65%, 85.58% | The same |
+| Size of the models for UniDic | `unidic` 6,257,148 bytes, `unidic-cwj` 6,258,600, `unidic-csj` 6,267,183 | Script: `build_model.sh --dictionary <name>` |
 | `SYN_HEAD` of GSD against "last morpheme that is not a symbol" and "the morpheme after the head" | 87–88% and 81–82% | Prototype, lost |
 
 ### Parser

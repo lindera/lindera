@@ -3,9 +3,12 @@
 # the numbers of "How the defaults were chosen" of the parser in its README
 # and of the design notes.
 #
-# Usage: parser_experiments.sh <stage>... [-- <data directory>]
+# Usage: parser_experiments.sh [--dictionary <name>] <stage>... [-- <data directory>]
+#   --dictionary  ipadic (the default), unidic, unidic-cwj or unidic-csj:
+#                 the dictionary convert_corpora.sh was run with.
 #   <data directory> defaults to scripts/dependency/data and holds lattice/
-#   (convert_corpora.sh). The outputs go to <data directory>/parser.
+#   (convert_corpora.sh). The outputs go to <data directory>/parser. For
+#   another dictionary than ipadic, both are in <data directory>/<name>.
 #
 # Stages, each one line of result per setting. A cross-validation is over
 # the 10 folds of the train file, on the bunsetsu of the answer.
@@ -42,6 +45,10 @@ set -euo pipefail
 
 here=$(dirname "$(readlink -f "$0")")
 root=$(readlink -f "$here/../..")
+# shellcheck source=scripts/dependency/dictionary.sh
+. "$here/dictionary.sh"
+parse_dictionary_arguments "$@"
+set -- "${rest[@]}"
 data=$here/data
 stages=()
 while [ $# -gt 0 ]; do
@@ -52,7 +59,13 @@ while [ $# -gt 0 ]; do
     stages+=("$1")
     shift
 done
-data=$(readlink -f "$data")
+data=$(dictionary_directory "$(readlink -f "$data")")
+# The option of the training commands that names the dictionary; none for
+# ipadic, which is their default.
+named=()
+if [ "$dictionary" != ipadic ]; then
+    named=(--dictionary-name "$dictionary")
+fi
 lattice=$data/lattice
 work=$data/parser
 experiment=(python3 -I -B "$here/parser_experiment.py")
@@ -94,6 +107,7 @@ settings() {
     if [ -n "$averaged" ]; then
         options+=("$averaged")
     fi
+    options+=("${named[@]}")
 }
 
 # cross_validate <name> <train-parser options...>
@@ -212,10 +226,10 @@ compare() {
 
 final() {
     # No option: the defaults of the command.
-    "${experiment[@]}" full "$bin" "$lattice" "$work" default "$files"
+    "${experiment[@]}" full "$bin" "$lattice" "$work" default "$files" "${named[@]}"
     "$bin" train-parser --input "$lattice/ja_gsd-ud-train.lattice" \
         --chunker "$work/full/default/chunker.model" \
-        --output "$work/full/default/again" 2> /dev/null
+        --output "$work/full/default/again" "${named[@]}" 2> /dev/null
     if cmp -s "$work/full/default/model" "$work/full/default/again"; then
         echo "default: trained twice, the same bytes"
     else
@@ -223,13 +237,13 @@ final() {
         exit 1
     fi
     "${experiment[@]}" full "$bin" "$lattice" "$work" default-cabocha "$files" \
-        --features "$cabocha"
+        --features "$cabocha" "${named[@]}"
 }
 
 speed() {
     local name
     cargo build --release --manifest-path "$here/model_speed/Cargo.toml"
-    "${experiment[@]}" full "$bin" "$lattice" "$work" default "$files" > /dev/null
+    "${experiment[@]}" full "$bin" "$lattice" "$work" default "$files" "${named[@]}" > /dev/null
     whole speed-hashed-22-f32 ja_gsd-ud-dev --features "$all" --pairs hashed --bits 22 > /dev/null
     whole speed-exact-i8 ja_gsd-ud-dev --features "$all" --quantization i8 > /dev/null
     whole speed-exact-f32 ja_gsd-ud-dev --features "$all" > /dev/null

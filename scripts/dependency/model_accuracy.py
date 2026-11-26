@@ -2,21 +2,25 @@
 the counts with the ones the documentation gives.
 
 Converts the dev and test files of UD Japanese-GSD and the test file of UD
-Japanese-PUD with the embedded IPADIC, parses each with the model, from the
+Japanese-PUD with the dictionary of the model, parses each with the model,
+from the
 bunsetsu of the answer and from the morphemes, and counts with
 `lindera-dependency evaluate`: the dependency accuracy with the bunsetsu of
 the answer (level 1), the dependency accuracy from the morphemes (end to
 end), and the F of the chunking.
 
-    python3 -I -B model_accuracy.py <command> <model> <corpora directory> <work directory> [--expect <file>]
+    python3 -I -B model_accuracy.py <command> <model> <corpora directory> <work directory> [--dict <URI or path>] [--expect <file>]
 
 `<command>` is `lindera-dependency` built with `train,embed-ipadic`,
 `<corpora directory>` holds `gsd/` and `pud/` (fetch_corpora.sh), and the
-lattice files go to `<work directory>`. With `--expect`, the counts have to
-be those of the file, `model_accuracy_ipadic.json` for the model of
-build_model.sh, or the script fails: `release.yml` runs it on the model it
-is about to publish, so that a release does not carry a model whose numbers
-are not the ones of the documentation.
+lattice files go to `<work directory>`. `--dict` is the dictionary the
+files are tokenized with, which has to be the one of the model: the
+embedded IPADIC when it is left out, and the directory of the dictionary
+for a model for UniDic. With `--expect`, the counts have to be those of the
+file, `model_accuracy_<dictionary>.json` for the model of build_model.sh,
+or the script fails: `release.yml` runs it on the model it is about to
+publish, so that a release does not carry a model whose numbers are not the
+ones of the documentation.
 """
 
 import json
@@ -55,7 +59,7 @@ def parsed(command, layer, model, gold, output):
     return json.loads(result.stdout)
 
 
-def measure(command, model, corpora, work):
+def measure(command, model, corpora, work, dictionary):
     """The counts of the model for each file."""
     counts = {}
     for name, corpus in FILES:
@@ -66,7 +70,7 @@ def measure(command, model, corpora, work):
                 command,
                 "convert",
                 "--dict",
-                "embedded://ipadic",
+                dictionary,
                 "--input",
                 f"{name}.conllu",
                 "--output",
@@ -96,9 +100,17 @@ def main(argv):
         at = argv.index("--expect")
         expect = argv[at + 1]
         argv = argv[:at] + argv[at + 2 :]
+    dictionary = "embedded://ipadic"
+    if "--dict" in argv:
+        at = argv.index("--dict")
+        dictionary = argv[at + 1]
+        argv = argv[:at] + argv[at + 2 :]
+        # A directory is given to a command that runs in another one.
+        if "://" not in dictionary:
+            dictionary = os.path.abspath(dictionary)
     command, model, corpora, work = (os.path.abspath(one) for one in argv)
     os.makedirs(work, exist_ok=True)
-    counts = measure(command, model, corpora, work)
+    counts = measure(command, model, corpora, work, dictionary)
     for name, one in counts.items():
         level1, end = one["level 1"], one["end to end"]
         print(

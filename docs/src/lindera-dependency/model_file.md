@@ -203,6 +203,23 @@ The model file is distributed under the MIT license, the license of Lindera's co
 | Distributing the file, or a program that embeds it | `NOTICE.txt` goes with it: the text of the MIT license and the notice of IPADIC |
 | Changing the model and distributing the result | The same |
 
+## The models for UniDic
+
+[`build_model.sh --dictionary <name>`](#building-it-again) builds the model for `unidic`, `unidic-cwj` or `unidic-csj` in the same way: the directory `lindera-dependency-<name>` with the three files, and its archive. The training data is the train file of UD Japanese-GSD converted with that dictionary, the settings are the ones of [`train-chunker`](./chunking.md#with-unidic) and of `train-parser` for it, and the notice carries the notice of the dictionary. Nothing is embedded: the script takes the directory of the dictionary with `--dict`, or installs the one of the release of the version of the workspace with `lindera download`.
+
+A release of Lindera does not publish these models yet, and no feature embeds them ([#1441](https://github.com/lindera/lindera/issues/1441)). Their [accuracy](./parsing.md#with-unidic) is with the dictionaries of the release 7.0.0.
+
+The four models, on the test file of UD Japanese-GSD converted with each dictionary, on one core of an AMD Ryzen AI Max+ 395; the speeds are sentences per second, from one run each, and differ by a few percent from one run to another:
+
+| Dictionary | Size of the file (bytes) | Of which the chunker | Chunking | Parsing the bunsetsu of the answer | Chunking and parsing | From text, with the tokenizer | Loading the dictionary and the model | The token filter, microseconds per token |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| IPADIC | 6,258,548 | 261,851 | 20,500 | 17,500 | 8,900 | 7,000 | 5 ms | 5.3 |
+| `unidic` | 6,257,148 | 360,869 | 13,100 | 17,400 | 6,900 | 5,300 | 59 ms | 6.4 |
+| `unidic-cwj` | 6,258,600 | 360,019 | 13,400 | 16,400 | 6,900 | 4,500 | 388 ms | 6.9 |
+| `unidic-csj` | 6,267,183 | 365,215 | 11,900 | 15,000 | 6,500 | 4,100 | 389 ms | 7.2 |
+
+The chunker for UniDic reads four columns through a template of 36 lines, against three columns and 24 lines for IPADIC, and is slower by about a third. From text, most of the difference is the tokenizer: UniDic CWJ and UniDic CSJ are loaded from a directory of 1.3 GB.
+
 ## The format
 
 Version 1. Every number is little endian. A string is its length in bytes as a `u32`, followed by its UTF-8.

@@ -146,21 +146,19 @@ pub(crate) struct TrainChunkerArgs {
     /// The coefficient of the regularization.
     #[clap(
         long = "lambda",
-        default_value_t = 0.5,
-        help = "Coefficient of the regularization; the larger, the smaller the weights"
+        help = "Coefficient of the regularization; the larger, the smaller the weights (default: 0.5 for ipadic, 0.25 for UniDic)"
     )]
-    lambda: f64,
+    lambda: Option<f64>,
     /// The columns the template reads.
     #[clap(
         long = "columns",
-        default_value = "surface,pos,cform",
-        help = "Columns the template reads, by number: surface, pos, ctype, cform, base"
+        help = "Columns the template reads, by number: surface, pos, ctype, cform, base (default: surface,pos,cform for ipadic, surface,pos,cform,base for UniDic)"
     )]
-    columns: String,
+    columns: Option<String>,
     /// The template.
     #[clap(
         long = "template",
-        help = "Template file in the format of CRF++ (default: the template of CaboCha, and the conjugation form as column 2)"
+        help = "Template file in the format of CRF++ (default: the template of CaboCha with the conjugation form as column 2, and for UniDic also the base form as column 3)"
     )]
     template: Option<PathBuf>,
     /// The largest number of iterations.
@@ -634,8 +632,11 @@ pub(crate) fn split(args: SplitArgs) -> Result<(), CommandError> {
 /// cannot be read or written, columns or a template that cannot be read, or
 /// training data that cannot be trained on.
 pub(crate) fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> {
+    // The settings of the dictionary, for what no option gives.
+    let schema = schema_of(&args.dictionary_name)?;
+    let defaults = TrainOptions::for_dictionary(&args.dictionary_name).unwrap_or_default();
     let template = match &args.template {
-        None => Template::default(),
+        None => defaults.template,
         Some(path) => {
             let text = fs::read_to_string(path)
                 .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
@@ -643,14 +644,17 @@ pub(crate) fn train_chunker(args: TrainChunkerArgs) -> Result<(), CommandError> 
         }
     };
     let options = TrainOptions {
-        schema: schema_of(&args.dictionary_name)?,
-        columns: chunker::parse_columns(&args.columns)?,
+        schema,
+        columns: match &args.columns {
+            None => defaults.columns,
+            Some(columns) => chunker::parse_columns(columns)?,
+        },
         template,
         regularization: match args.regularization {
             RegularizationArg::L1 => Regularization::L1,
             RegularizationArg::L2 => Regularization::L2,
         },
-        lambda: args.lambda,
+        lambda: args.lambda.unwrap_or(defaults.lambda),
         max_iterations: args.max_iterations,
         threads: args
             .threads
