@@ -246,7 +246,7 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <tr><td><code>-n</code>、固有表現</td><td>無い</td></tr>
 </tbody></table>
 </div>
-<p>CaboCha の道具で出力を読むことは、試していません。ここではビルドしていないためです（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。出力は、このクレートの読み込みと <a href="./evaluation.html"><code>evaluate</code></a> で読めます。</p>
+<p>出力は、CaboCha の道具で読めます（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。<code>cabocha-system-eval</code> は、この出力で <a href="./evaluation.html"><code>evaluate</code></a> と同じ数を数えます。<code>cabocha -I 2</code> は、文節つきの入力として受け取ります。</p>
 <h2 id="速度"><a class="header" href="#速度">速度</a></h2>
 <p>UD Japanese-GSD の test のテキスト（543 文）で、既定のモデルと埋め込んだ IPADIC を使うと、コマンドは、テキストからラティス形式まで、毎秒約 6,600 文を書き出します。辞書とモデルの読み込みは約 5 ミリ秒です。数字はマシンによって変わります。<code>scripts/dependency/parse_speed.sh</code> で測れます。</p>
 <h2 id="lindera-コマンド"><a class="header" href="#lindera-コマンド"><code>lindera</code> コマンド</a></h2>

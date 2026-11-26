@@ -246,7 +246,7 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <tr><td><code>-n</code>, named entities</td><td>Not kept</td></tr>
 </tbody></table>
 </div>
-<p>Reading the output with CaboCha's own tools has not been tried: they are not built here (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>). The output is read back by the reader of this crate, and by <a href="./evaluation.html"><code>evaluate</code></a>.</p>
+<p>CaboCha's own tools read the output (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>): <code>cabocha-system-eval</code> counts on it what <a href="./evaluation.html"><code>evaluate</code></a> counts, and <code>cabocha -I 2</code> takes it as its input with bunsetsu.</p>
 <h2 id="speed"><a class="header" href="#speed">Speed</a></h2>
 <p>On the text of the test file of UD Japanese-GSD (543 sentences), with the default model and the embedded IPADIC, the command writes about 6,600 sentences per second, from the text to the lattice format. Loading the dictionary and the model takes about 5 ms. The numbers depend on the machine; <code>scripts/dependency/parse_speed.sh</code> measures them.</p>
 <h2 id="the-lindera-command"><a class="header" href="#the-lindera-command">The <code>lindera</code> command</a></h2>
