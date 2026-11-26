@@ -558,13 +558,51 @@ fn a_build_without_the_embedded_model_names_the_feature() {
 
 #[test]
 fn a_dictionary_without_an_embedded_model_is_refused() {
-    let mut embedded = vec!["--model", "embedded://unidic"];
+    let mut embedded = vec!["--model", "embedded://ko-dic"];
     embedded.extend_from_slice(&IPADIC);
     let error = failure(run(&embedded, &[], "彼は本を読んだ。\n"));
     assert!(
         error.starts_with(
-            "Error: embedded://unidic: no model can be embedded for the dictionary unidic"
+            "Error: embedded://ko-dic: no model can be embedded for the dictionary ko-dic: there \
+             are models for ipadic, unidic, unidic-cwj, unidic-csj"
         ),
         "{error}"
     );
+}
+
+/// The models for UniDic: embedded by their features, and each for its
+/// dictionary only. The builds of the tests embed the small models of the
+/// tests, whose morphemes no test reads.
+#[test]
+fn a_model_for_unidic_is_embedded_by_its_feature_and_is_for_its_dictionary() {
+    for (dictionary, embedded) in [
+        ("unidic", cfg!(feature = "embed-model-unidic")),
+        ("unidic-cwj", cfg!(feature = "embed-model-unidic-cwj")),
+        ("unidic-csj", cfg!(feature = "embed-model-unidic-csj")),
+    ] {
+        let model = format!("embedded://{dictionary}");
+        let mut arguments = vec!["--model", model.as_str()];
+        arguments.extend_from_slice(&IPADIC);
+        let error = failure(run(&arguments, &[], "彼は本を読んだ。\n"));
+        if embedded {
+            // The model is read, and refused for the morphemes of IPADIC.
+            assert!(
+                error.contains(&format!(
+                    "the model is for the dictionary \"{dictionary}\", and the morphemes are of \"ipadic\""
+                )),
+                "{error}"
+            );
+        } else {
+            assert!(
+                error.starts_with(&format!(
+                    "Error: {model}: the model for {dictionary} is not embedded in this build"
+                )),
+                "{error}"
+            );
+            assert!(
+                error.contains(&format!("`embed-model-{dictionary}`")),
+                "{error}"
+            );
+        }
+    }
 }

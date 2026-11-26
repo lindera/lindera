@@ -28,11 +28,17 @@ pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 9] = [
 
 /// Model names accepted by `lindera download`: the models of the dependency
 /// parser (`lindera-dependency`), which a release publishes next to the
-/// dictionaries, one per dictionary (#1440).
-pub(crate) const DOWNLOADABLE_MODELS: [&str; 1] = ["dependency-ipadic"];
+/// dictionaries, one per dictionary (#1440, #1441): `dependency-` and the
+/// name of the dictionary.
+pub(crate) const DOWNLOADABLE_MODELS: [&str; 4] = [
+    "dependency-ipadic",
+    "dependency-unidic",
+    "dependency-unidic-cwj",
+    "dependency-unidic-csj",
+];
 
 /// Every name `lindera download` accepts: the dictionaries, then the models.
-pub(crate) const DOWNLOADABLE_NAMES: [&str; 10] = [
+pub(crate) const DOWNLOADABLE_NAMES: [&str; 13] = [
     "ipadic",
     "ipadic-neologd",
     "unidic",
@@ -43,6 +49,9 @@ pub(crate) const DOWNLOADABLE_NAMES: [&str; 10] = [
     "cc-cedict",
     "jieba",
     "dependency-ipadic",
+    "dependency-unidic",
+    "dependency-unidic-cwj",
+    "dependency-unidic-csj",
 ];
 
 /// The model file of a downloaded model, in its directory.
@@ -491,6 +500,34 @@ mod tests {
             download_url("ipadic", "5.1.0"),
             "https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip"
         );
+    }
+
+    #[test]
+    fn a_model_is_downloaded_from_the_archive_of_its_dictionary() {
+        // One model for each dictionary lindera-dependency has a schema
+        // for, named after it.
+        assert_eq!(
+            DOWNLOADABLE_MODELS,
+            [
+                "dependency-ipadic",
+                "dependency-unidic",
+                "dependency-unidic-cwj",
+                "dependency-unidic-csj"
+            ]
+        );
+        for name in DOWNLOADABLE_MODELS {
+            let dictionary = name.strip_prefix("dependency-").unwrap();
+            assert!(is_downloadable_dictionary(dictionary), "{name}");
+            assert_eq!(Downloadable::of(name), Downloadable::DependencyModel);
+            assert_eq!(
+                download_url(name, "7.1.0"),
+                format!(
+                    "https://github.com/lindera/lindera/releases/download/v7.1.0/lindera-dependency-{dictionary}-7.1.0.zip"
+                )
+            );
+        }
+        // The dictionary of the same name is a dictionary.
+        assert_eq!(Downloadable::of("unidic-cwj"), Downloadable::Dictionary);
     }
 
     #[test]

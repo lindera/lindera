@@ -128,7 +128,7 @@ pub struct DownloadArgs {
     /// Name of the dictionary to download.
     #[clap(
         value_parser = clap::builder::PossibleValuesParser::new(DOWNLOADABLE_NAMES),
-        help = "Dictionary name, or dependency-ipadic for the model of the dependency parser for IPADIC"
+        help = "Dictionary name, or dependency-<dictionary> for the model of the dependency parser for ipadic, unidic, unidic-cwj or unidic-csj"
     )]
     name: String,
     /// Replaces an already downloaded dictionary when set.

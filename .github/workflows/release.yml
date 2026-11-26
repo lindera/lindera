@@ -41,7 +41,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dependency
-      features: "--features train,embed-ipadic,embed-model-ipadic"
+      features: "--features train,embed-ipadic,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj"
       cache: true
 
   test-lindera-dictionary:
@@ -1138,17 +1138,28 @@ jobs:
           path: lindera-nodejs/*.node
           if-no-files-found: error
 
-  # The model of lindera-dependency for IPADIC, which a release publishes on
-  # the page of its version as it does the dictionaries (#1440). It is
-  # trained here, from UD Japanese-GSD at its fixed commit, and measured on
-  # the files it was not trained on: the release stops when a count is not
-  # the one of the documentation. Its bytes are those of this runner, and
+  # The models of lindera-dependency, one for each dictionary it has a
+  # schema for, which a release publishes on the page of its version as it
+  # does the dictionaries (#1440, #1441). Each is trained here, from UD
+  # Japanese-GSD at its fixed commit, and measured on the files it was not
+  # trained on: the release stops when a count is not the one of the
+  # documentation. Its bytes are those of this runner, and
   # lindera-dependency pins them when it is published (see publish-crates).
+  #
+  # The model for IPADIC is trained with the IPADIC the command embeds. A
+  # model for UniDic is trained with the dictionary build-dictionary has
+  # just built, from its artifact: nothing embeds UniDic here, as embedding
+  # UniDic CWJ or CSJ takes 8 to 11 GiB of memory to compile.
   build-dependency-model:
-    name: Build the dependency model (ipadic)
-    needs: [test-lindera-dependency]
+    name: Build the dependency model (${{ matrix.dictionary }})
+    needs: [test-lindera-dependency, build-dictionary]
+    strategy:
+      matrix:
+        dictionary: [ipadic, unidic, unidic-cwj, unidic-csj]
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      DICTIONARY: ${{ matrix.dictionary }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -1168,11 +1179,30 @@ jobs:
       # list goes outside the checkout: build_model.sh, below, refuses a tree
       # with a file that is not committed.
       - name: Package the crate
+        if: matrix.dictionary == 'ipadic'
         run: |
           cargo package -p lindera-dependency --no-verify --exclude-lockfile --list > "$RUNNER_TEMP/package-files.txt"
           for file in Cargo.toml README.md build.rs src/lib.rs src/embedded.rs; do
             grep -Fqx "$file" "$RUNNER_TEMP/package-files.txt" || { echo "::error::$file is not in the package of lindera-dependency"; exit 1; }
           done
+
+      # The dictionary of this run, as release-assets will upload it: one
+      # directory, lindera-<dictionary>, in the archive. Outside the
+      # checkout, whose tree build_model.sh wants without changes.
+      - name: Download the dictionary
+        if: matrix.dictionary != 'ipadic'
+        uses: actions/download-artifact@v8
+        with:
+          name: dictionary-lindera-${{ matrix.dictionary }}
+          path: ${{ runner.temp }}/dictionary-archive
+
+      - name: Unpack the dictionary
+        if: matrix.dictionary != 'ipadic'
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          unzip -q "$RUNNER_TEMP/dictionary-archive/lindera-$DICTIONARY-$VERSION.zip" -d "$RUNNER_TEMP/dictionaries"
+          test -f "$RUNNER_TEMP/dictionaries/lindera-$DICTIONARY/metadata.json"
 
       # From the sources of this commit, with the dependencies of Cargo.lock.
       # The directory is outside the checkout, whose tree the script wants
@@ -1180,26 +1210,37 @@ jobs:
       - name: Build the model
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
-        run: scripts/dependency/build_model.sh --version "$VERSION" "$RUNNER_TEMP/model"
+        run: |
+          if [ "$DICTIONARY" = ipadic ]; then
+            scripts/dependency/build_model.sh --version "$VERSION" "$RUNNER_TEMP/model"
+          else
+            scripts/dependency/build_model.sh --dictionary "$DICTIONARY" \
+              --dict "$RUNNER_TEMP/dictionaries/lindera-$DICTIONARY" \
+              --version "$VERSION" "$RUNNER_TEMP/model"
+          fi
 
       - name: Measure the model
         run: |
+          dict=()
+          if [ "$DICTIONARY" != ipadic ]; then
+            dict=(--dict "$RUNNER_TEMP/dictionaries/lindera-$DICTIONARY")
+          fi
           python3 -I -B scripts/dependency/model_accuracy.py \
             target/release/lindera-dependency \
-            "$RUNNER_TEMP/model/lindera-dependency-ipadic/dependency.model" \
+            "$RUNNER_TEMP/model/lindera-dependency-$DICTIONARY/dependency.model" \
             "$RUNNER_TEMP/model/work/corpora" "$RUNNER_TEMP/model/work/accuracy" \
-            --expect scripts/dependency/model_accuracy_ipadic.json
+            "${dict[@]}" --expect "scripts/dependency/model_accuracy_$DICTIONARY.json"
 
       - name: Create artifact
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
-        run: cp "$RUNNER_TEMP/model/lindera-dependency-ipadic-$VERSION.zip" .
+        run: cp "$RUNNER_TEMP/model/lindera-dependency-$DICTIONARY-$VERSION.zip" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: dependency-model-ipadic
-          path: lindera-dependency-ipadic-${{ steps.get_version.outputs.version }}.zip
+          name: dependency-model-${{ matrix.dictionary }}
+          path: lindera-dependency-${{ matrix.dictionary }}-${{ steps.get_version.outputs.version }}.zip
           if-no-files-found: error
 
   release-assets:
@@ -1262,10 +1303,11 @@ jobs:
           merge-multiple: true
           path: release-assets
 
-      - name: Download the dependency model
+      - name: Download the dependency models
         uses: actions/download-artifact@v8
         with:
-          name: dependency-model-ipadic
+          pattern: dependency-model-*
+          merge-multiple: true
           path: release-assets
 
       - name: Download the CLI archives
@@ -1395,16 +1437,19 @@ jobs:
           # shellcheck disable=SC2086 # one argument per crate
           scripts/write_dictionary_pins.sh "$TAG" "$VERSION" dictionary-archives $crates
 
-      # lindera-dependency gets its prebuilt.json the same way: it pins the
-      # archive of the model for IPADIC on this release's page (#1440).
-      - name: Pin the dependency model of this release
+      # lindera-dependency gets a pin the same way for each model it can
+      # embed, prebuilt-<dictionary>.json: it pins the archive of that model
+      # on this release's page (#1440, #1441).
+      - name: Pin the dependency models of this release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
           VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dependency") | .version')
           mkdir -p model-archives
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "lindera-dependency-ipadic-$VERSION.zip" --dir model-archives
+          for dictionary in ipadic unidic unidic-cwj unidic-csj; do
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "lindera-dependency-$dictionary-$VERSION.zip" --dir model-archives
+          done
           scripts/write_dependency_model_pin.sh "$TAG" "$VERSION" model-archives
 
       # An embed build of one pinned dictionary (IPADIC, about 10 MB) downloads
@@ -1413,10 +1458,10 @@ jobs:
       - name: Check a pinned dictionary
         run: cargo build -p lindera-ipadic --features embed-ipadic
 
-      # And the same for the model: the build downloads the archive the pin
-      # names and checks it, and the tests read the model it embedded.
-      - name: Check the pinned dependency model
-        run: cargo test -p lindera-dependency --features embed-model-ipadic --lib embedded
+      # And the same for the models: the build downloads the archive each
+      # pin names and checks it, and the tests read the models it embedded.
+      - name: Check the pinned dependency models
+        run: cargo test -p lindera-dependency --features embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj --lib embedded
 
       - name: Publish crates
         run: |
@@ -1431,8 +1476,11 @@ jobs:
             else
               echo "Publishing $crate $VERSION..."
               pushd $crate
-              if [ -f prebuilt.json ]; then
-                # The pin written above is the crate's only uncommitted file.
+              if ls prebuilt*.json > /dev/null 2>&1; then
+                # The pins written above are the crate's only uncommitted
+                # files: prebuilt.json for a dictionary, and
+                # prebuilt-<dictionary>.json for each model of
+                # lindera-dependency.
                 cargo publish --allow-dirty
               else
                 cargo publish

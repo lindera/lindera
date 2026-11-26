@@ -174,5 +174,6 @@ The command is in this crate, not in `lindera-cli`: it writes the lattice format
 | `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and their subcommands (implies `cli`) | No |
 | `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `cli`) | No |
 | `embed-model-ipadic` | Embeds the [model for IPADIC](./model_file.md#embedding-it), for `embedded::model("ipadic")` and `--model embedded://ipadic`. A build dependency, and none of the library | No |
+| `embed-model-unidic`, `embed-model-unidic-cwj`, `embed-model-unidic-csj` | Embed the [models for UniDic](./model_file.md#the-models-for-unidic), for `embedded::model("unidic")` and `--model embedded://unidic`, and the same with the two other names | No |
 
 The crate depends on `lindera-segmenter` at most, never on `lindera` or `lindera-analysis`: the token filter makes `lindera-analysis` depend on this crate, behind its `dependency` feature.

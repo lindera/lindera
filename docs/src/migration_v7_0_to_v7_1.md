@@ -62,4 +62,4 @@ The compiler names each place: `cannot create non-exhaustive struct using struct
 - `Token::details` holds the fields of the dictionary, as before: the result of a dependency analysis is not written there.
 - A token grows by the size of one pointer.
 - The `lindera` command and the bindings have the `dependency` feature in their default builds: the token filter `japanese_dependency` is in the packages, and they depend on the `lindera-dependency` crate, which has no dependency of its own. The command grows by 134 kB. `default-features = false` gives the build without it. The libraries `lindera` and `lindera-analysis` have the feature only when it is named.
-- No model is in a package or embedded by default; `lindera download dependency-ipadic` gets the one for IPADIC.
+- No model is in a package or embedded by default; `lindera download dependency-ipadic` gets the one for IPADIC, and `dependency-unidic`, `dependency-unidic-cwj` and `dependency-unidic-csj` the ones for UniDic.

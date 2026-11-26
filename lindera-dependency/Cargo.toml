@@ -29,6 +29,14 @@ embed-ipadic = ["cli", "lindera-segmenter/embed-ipadic"]
 # the file LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE names (#1440). It
 # brings a build dependency, and no dependency of the library.
 embed-model-ipadic = ["dep:lindera-dictionary"]
+# The same for the models for UniDic (#1441): `embedded://unidic`,
+# `embedded://unidic-cwj` and `embedded://unidic-csj`, and the files
+# LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE,
+# LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE and
+# LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE.
+embed-model-unidic = ["dep:lindera-dictionary"]
+embed-model-unidic-cwj = ["dep:lindera-dictionary"]
+embed-model-unidic-csj = ["dep:lindera-dictionary"]
 
 # No dependency in the default build: the core takes any sequence of
 # morphemes, and has to build without a tokenizer or a dictionary, for

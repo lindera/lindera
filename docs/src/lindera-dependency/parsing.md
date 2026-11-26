@@ -2,7 +2,7 @@
 
 Parsing finds, for each bunsetsu of a sentence, the bunsetsu it depends on. The `parser` module does it the way CaboCha and J.DepP do: it goes through the bunsetsu from left to right with a stack (shift-reduce), and a classifier answers one question at a time.
 
-Lindera releases the [model for IPADIC](./model_file.md#the-model-for-ipadic). To make one of your own, [train it](#training-a-model) from [training data](./training_data.md): it takes a few seconds.
+Lindera releases the [model for IPADIC](./model_file.md#the-model-for-ipadic) and the [models for UniDic](./model_file.md#the-models-for-unidic). To make one of your own, [train it](#training-a-model) from [training data](./training_data.md): it takes a few seconds.
 
 ## Parsing with a model
 

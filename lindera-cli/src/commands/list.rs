@@ -98,9 +98,10 @@ struct DirectoryListing {
 /// directory without dictionaries.
 ///
 /// The models of the dependency parser follow in a table of their own, when
-/// there is one: the model embedded in the binary (`embed-dependency-ipadic`)
-/// and those `lindera download` installed, each with the value to pass as
-/// `model` to the token filter `japanese_dependency` (#1440).
+/// there is one: the models embedded in the binary
+/// (`embed-dependency-ipadic`, `embed-dependency-unidic` and the like) and
+/// those `lindera download` installed, each with the value to pass as
+/// `model` to the token filter `japanese_dependency` (#1440, #1441).
 ///
 /// # Arguments
 ///
@@ -160,25 +161,32 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
 ///
 /// # Returns
 ///
-/// One row for the model for IPADIC in a build with
-/// `embed-dependency-ipadic`, with `embedded://ipadic` as the value of
-/// `model`; no row otherwise. An embedded model does not say which version
-/// of Lindera built it, and is the one this binary was built with.
+/// One row for each model a feature embeds, `embed-dependency-ipadic` for
+/// IPADIC and `embed-dependency-<dictionary>` for a UniDic dictionary, with
+/// `embedded://<dictionary>` as the value of `model`; no row for a build
+/// without such a feature. An embedded model does not say which version of
+/// Lindera built it, and is the one this binary was built with.
 fn embedded_model_rows() -> Vec<DictionaryRow> {
-    #[cfg(feature = "embed-dependency-ipadic")]
-    {
-        vec![DictionaryRow {
-            name: "dependency-ipadic".to_string(),
+    EMBEDDED_MODELS
+        .iter()
+        .filter(|(_, embedded)| *embedded)
+        .map(|(dictionary, _)| DictionaryRow {
+            name: format!("dependency-{dictionary}"),
             version: None,
             status: Status::Ok,
-            dict: "embedded://ipadic".to_string(),
-        }]
-    }
-    #[cfg(not(feature = "embed-dependency-ipadic"))]
-    {
-        Vec::new()
-    }
+            dict: format!("embedded://{dictionary}"),
+        })
+        .collect()
 }
+
+/// The dictionaries a model can be embedded for, each with whether this
+/// build embeds it.
+const EMBEDDED_MODELS: [(&str, bool); 4] = [
+    ("ipadic", cfg!(feature = "embed-dependency-ipadic")),
+    ("unidic", cfg!(feature = "embed-dependency-unidic")),
+    ("unidic-cwj", cfg!(feature = "embed-dependency-unidic-cwj")),
+    ("unidic-csj", cfg!(feature = "embed-dependency-unidic-csj")),
+];
 
 /// Decides the state of a dictionary.
 ///
@@ -610,13 +618,31 @@ dependency-ipadic  7.1.0    ok      /data/dependency-ipadic/dependency.model
     #[test]
     fn the_embedded_model_is_listed_in_a_build_that_has_one() {
         let rows = embedded_model_rows();
-        if cfg!(feature = "embed-dependency-ipadic") {
-            assert_eq!(rows.len(), 1);
-            assert_eq!(rows[0].name, "dependency-ipadic");
-            assert_eq!(rows[0].dict, "embedded://ipadic");
-            assert_eq!(rows[0].status, Status::Ok);
-        } else {
-            assert!(rows.is_empty());
+        let embedded: Vec<&str> = EMBEDDED_MODELS
+            .iter()
+            .filter(|(_, embedded)| *embedded)
+            .map(|(dictionary, _)| *dictionary)
+            .collect();
+        assert_eq!(rows.len(), embedded.len());
+        for (row, dictionary) in rows.iter().zip(embedded) {
+            assert_eq!(row.name, format!("dependency-{dictionary}"));
+            assert_eq!(row.dict, format!("embedded://{dictionary}"));
+            assert_eq!(row.status, Status::Ok);
         }
+        assert_eq!(
+            rows.iter().any(|row| row.name == "dependency-ipadic"),
+            cfg!(feature = "embed-dependency-ipadic")
+        );
+    }
+
+    #[test]
+    fn a_model_that_can_be_embedded_can_be_downloaded() {
+        use crate::dictionary_registry::DOWNLOADABLE_MODELS;
+
+        let names: Vec<String> = EMBEDDED_MODELS
+            .iter()
+            .map(|(dictionary, _)| format!("dependency-{dictionary}"))
+            .collect();
+        assert_eq!(names, DOWNLOADABLE_MODELS);
     }
 }

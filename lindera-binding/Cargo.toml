@@ -22,6 +22,10 @@ embed-ko-dic = ["lindera/embed-ko-dic"]
 dependency = ["lindera/dependency"]
 # The model of that filter for IPADIC, embedded in the build (#1440).
 embed-dependency-ipadic = ["dependency", "lindera/embed-dependency-ipadic"]
+# The same for the models for the three UniDic dictionaries (#1441).
+embed-dependency-unidic = ["dependency", "lindera/embed-dependency-unidic"]
+embed-dependency-unidic-cwj = ["dependency", "lindera/embed-dependency-unidic-cwj"]
+embed-dependency-unidic-csj = ["dependency", "lindera/embed-dependency-unidic-csj"]
 
 [dependencies]
 lindera = { workspace = true, features = ["analysis"] }

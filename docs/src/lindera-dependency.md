@@ -11,7 +11,7 @@ Lindera Dependency (`lindera-dependency`) is a crate for Japanese bunsetsu depen
 
 ## Status
 
-> The crate is on crates.io from Lindera 7.1.0 on, and each release of Lindera publishes the **model for IPADIC** with it. The analysis is complete from morphemes to dependencies: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here, and the token filter of Lindera is in the default builds of the `lindera` command and of the bindings.
+> The crate is on crates.io from Lindera 7.1.0 on, and each release of Lindera publishes the **models for IPADIC and for the three UniDic dictionaries** with it. The analysis is complete from morphemes to dependencies: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here, and the token filter of Lindera is in the default builds of the `lindera` command and of the bindings.
 
 Start with the [Installation](./lindera-dependency/installation.md) and the [Quick Start](./lindera-dependency/quickstart.md). The work is tracked in [#1417](https://github.com/lindera/lindera/issues/1417).
 

@@ -53,11 +53,14 @@ on:
         default: ""
 
 # What a build with a feature that embeds a model of lindera-dependency
-# embeds here (#1440): the small model of the tests. The repository has no
-# pin of a published model, and a build without such a feature does not
-# read the variable.
+# embeds here (#1440, #1441): the small model of the tests for its
+# dictionary. The repository has no pin of a published model, and a build
+# without such a feature does not read the variable.
 env:
   LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE: ${{ github.workspace }}/resources/dependency/test_model_ipadic.bin
+  LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE: ${{ github.workspace }}/resources/dependency/test_model_unidic.bin
+  LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE: ${{ github.workspace }}/resources/dependency/test_model_unidic-cwj.bin
+  LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE: ${{ github.workspace }}/resources/dependency/test_model_unidic-csj.bin
 
 jobs:
   test:

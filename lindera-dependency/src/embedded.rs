@@ -1,7 +1,9 @@
 //! The models embedded in the build.
 //!
 //! A feature of the crate embeds the model that a release of Lindera
-//! publishes for a dictionary: `embed-model-ipadic` the one for IPADIC. The
+//! publishes for a dictionary: `embed-model-ipadic` the one for IPADIC,
+//! and `embed-model-unidic`, `embed-model-unidic-cwj` and
+//! `embed-model-unidic-csj` the ones for the three UniDic dictionaries. The
 //! bytes are part of the program, and [`model`] reads them where they are.
 //!
 //! A model is named by its dictionary, and written as the embedded
@@ -24,8 +26,9 @@
 //!
 //! Where the bytes come from at build time is in the model file page of the
 //! documentation: the archive of a release for a build of the published
-//! crate, and a file named by `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`
-//! for a build from the repository.
+//! crate, and a file named by the variable of the model, such as
+//! `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`, for a build from the
+//! repository.
 
 use crate::error::{Error, Result};
 use crate::model::Model;
@@ -36,11 +39,28 @@ pub const SCHEME: &str = "embedded://";
 
 /// The dictionaries a feature of this crate can embed a model for, each
 /// with its feature.
-const KNOWN: [(&str, &str); 1] = [("ipadic", "embed-model-ipadic")];
+const KNOWN: [(&str, &str); 4] = [
+    ("ipadic", "embed-model-ipadic"),
+    ("unidic", "embed-model-unidic"),
+    ("unidic-cwj", "embed-model-unidic-cwj"),
+    ("unidic-csj", "embed-model-unidic-csj"),
+];
 
 /// The model for IPADIC, as the build script put it in `OUT_DIR`.
 #[cfg(feature = "embed-model-ipadic")]
 static IPADIC: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/dependency-ipadic.model"));
+
+/// The model for UniDic (unidic-mecab 2.1.2).
+#[cfg(feature = "embed-model-unidic")]
+static UNIDIC: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/dependency-unidic.model"));
+
+/// The model for UniDic CWJ.
+#[cfg(feature = "embed-model-unidic-cwj")]
+static UNIDIC_CWJ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/dependency-unidic-cwj.model"));
+
+/// The model for UniDic CSJ.
+#[cfg(feature = "embed-model-unidic-csj")]
+static UNIDIC_CSJ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/dependency-unidic-csj.model"));
 
 /// The dictionary of an embedded model, from how it is written.
 ///
@@ -79,6 +99,12 @@ pub fn bytes(dictionary: &str) -> Result<&'static [u8]> {
     let embedded: Option<&'static [u8]> = match dictionary {
         #[cfg(feature = "embed-model-ipadic")]
         "ipadic" => Some(IPADIC),
+        #[cfg(feature = "embed-model-unidic")]
+        "unidic" => Some(UNIDIC),
+        #[cfg(feature = "embed-model-unidic-cwj")]
+        "unidic-cwj" => Some(UNIDIC_CWJ),
+        #[cfg(feature = "embed-model-unidic-csj")]
+        "unidic-csj" => Some(UNIDIC_CSJ),
         _ => None,
     };
     answer(dictionary, feature, embedded)
@@ -145,9 +171,12 @@ mod tests {
 
     #[test]
     fn a_dictionary_without_a_model_names_the_ones_there_are() {
-        let message = bytes("unidic").unwrap_err().to_string();
-        assert!(message.contains("unidic"), "{message}");
-        assert!(message.contains("models for ipadic"), "{message}");
+        let message = bytes("ko-dic").unwrap_err().to_string();
+        assert!(message.contains("ko-dic"), "{message}");
+        assert!(
+            message.contains("models for ipadic, unidic, unidic-cwj, unidic-csj"),
+            "{message}"
+        );
         assert!(matches!(model("").unwrap_err(), Error::Embedded(_)));
     }
 
@@ -170,6 +199,60 @@ mod tests {
         assert!(model.parser().is_some());
     }
 
+    /// Whether the build has the feature of a dictionary.
+    fn has_feature(dictionary: &str) -> bool {
+        match dictionary {
+            "ipadic" => cfg!(feature = "embed-model-ipadic"),
+            "unidic" => cfg!(feature = "embed-model-unidic"),
+            "unidic-cwj" => cfg!(feature = "embed-model-unidic-cwj"),
+            "unidic-csj" => cfg!(feature = "embed-model-unidic-csj"),
+            other => panic!("no feature for {other}"),
+        }
+    }
+
+    #[test]
+    fn every_model_is_embedded_by_its_feature_and_by_no_other() {
+        for (dictionary, feature) in KNOWN {
+            assert_eq!(feature, format!("embed-model-{dictionary}"));
+            match model(dictionary) {
+                Ok(model) => {
+                    assert!(has_feature(dictionary), "{dictionary}");
+                    // The model of one dictionary is not the one of another.
+                    assert_eq!(model.dictionary(), dictionary);
+                    assert!(model.chunker().is_some() && model.parser().is_some());
+                }
+                Err(error) => {
+                    assert!(!has_feature(dictionary), "{dictionary}: {error}");
+                    let message = error.to_string();
+                    assert!(message.contains(&format!("`{feature}`")), "{message}");
+                    assert!(
+                        message.contains(&format!("`embed-dependency-{dictionary}`")),
+                        "{message}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_build_script_has_a_model_for_every_dictionary() {
+        let script = include_str!("../build.rs");
+        for (dictionary, feature) in KNOWN {
+            let variable = dictionary.to_uppercase().replace('-', "_");
+            for text in [
+                format!("cfg!(feature = \"{feature}\")"),
+                format!("\"lindera-dependency-{dictionary}\""),
+                format!("\"prebuilt-{dictionary}.json\""),
+                format!("\"LINDERA_BUILD_DEPENDENCY_MODEL_{variable}_FILE\""),
+                format!("\"dependency-{dictionary}.model\""),
+            ] {
+                assert!(script.contains(&text), "build.rs has no {text}");
+            }
+        }
+        let count = script.matches("cfg!(feature = \"embed-model-").count();
+        assert_eq!(count, KNOWN.len());
+    }
+
     #[test]
     fn the_empty_file_of_a_documentation_build_is_an_error() {
         let message = answer("ipadic", "embed-model-ipadic", Some(&[]))
@@ -190,6 +273,7 @@ mod tests {
     fn the_build_script_pins_the_format_version_this_crate_reads() {
         let script = include_str!("../build.rs");
         let line = format!("format_version: {},", crate::model::VERSION);
+        assert_eq!(script.matches("format_version: ").count(), 1);
         assert!(script.contains(&line), "build.rs has no `{line}`");
     }
 }

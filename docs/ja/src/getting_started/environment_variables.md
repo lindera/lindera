@@ -9,7 +9,7 @@ Lindera は次の環境変数を読みます。どれも設定しなくても動
 | [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | 辞書クレートの build script | `http` か `https` の URL | 公開済みの辞書を GitHub のリリースからダウンロードする |
 | [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | 辞書クレートの build script | `http` か `https` の URL | ソースのアーカイブを `https://lindera.dev` から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（`https://clrd.ninjal.ac.jp`）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（`https://bitbucket.org`）からダウンロードする |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | 辞書クレートの build script | ファイル | 辞書クレートに同梱の頻度表（あれば） |
-| [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](#lindera_build_dependency_model_ipadic_file) | `embed-model-ipadic` を付けた `lindera-dependency` の build script | モデルファイル | 公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる |
+| [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](#lindera_build_dependency_model_ipadic_file) | `embed-model-ipadic` を付けた `lindera-dependency` の build script。`..._UNIDIC_FILE`・`..._UNIDIC_CWJ_FILE`・`..._UNIDIC_CSJ_FILE` は、UniDic のモデルの feature を付けたとき | モデルファイル | 公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる |
 | [`DOCS_RS`](#docs_rs) | 辞書クレートの build script | docs.rs が設定する | 本物の辞書をビルドする |
 | [`LINDERA_CONFIG_FILE`](#lindera_config_file) | `TokenizerBuilder::new()`（`lindera tokenize` とバインディングも） | ファイル | 空の設定 |
 | [`LINDERA_DICTIONARIES_DIR`](#lindera_dictionaries_dir) | CLI | ディレクトリ | OS のローカルデータディレクトリの `lindera/dictionaries` |
@@ -162,6 +162,14 @@ warning: lindera-ko-dic@7.0.0: LINDERA_CTX_FREQ_FILE is deprecated and will be r
 ### LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE
 
 `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE` は、`embed-model-ipadic`（`lindera`、そのコマンド、各バインディングでは `embed-dependency-ipadic`）を付けたビルドが埋め込むモデルファイルを指します。`lindera-dependency` の IPADIC のモデルです。
+
+UniDic のモデルには、それぞれの環境変数があります。そのモデルの feature を付けたビルドが、同じように読みます。
+
+| 環境変数 | `lindera-dependency` の feature | モデル |
+| --- | --- | --- |
+| `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE` | `embed-model-unidic` | `unidic` |
+| `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE` | `embed-model-unidic-cwj` | `unidic-cwj` |
+| `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE` | `embed-model-unidic-csj` | `unidic-csj` |
 
 ```shell
 scripts/dependency/build_model.sh

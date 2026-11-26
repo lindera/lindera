@@ -2,11 +2,11 @@
 
 The `lindera-dependency` command takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the [lattice format](./architecture.md#the-lattice-format), which is what `cabocha -f1` writes.
 
-It needs a [model file](./model_file.md) with a chunker and a parser: the [model for IPADIC](./model_file.md#the-model-for-ipadic), which a release of Lindera publishes from 7.1.0 on, or one you [train](./parsing.md#training-a-model).
+It needs a [model file](./model_file.md) with a chunker and a parser: the [model for IPADIC](./model_file.md#the-model-for-ipadic) or one of the [models for UniDic](./model_file.md#the-models-for-unidic), which a release of Lindera publishes from 7.1.0 on, or one you [train](./parsing.md#training-a-model).
 
 ## Building
 
-The command is behind the `cli` feature, which brings `clap` and `lindera-segmenter` and no training code. `embed-ipadic` embeds IPADIC in it, and `embed-model-ipadic` the [model for IPADIC](./model_file.md#embedding-it), which `--model embedded://ipadic` then names:
+The command is behind the `cli` feature, which brings `clap` and `lindera-segmenter` and no training code. `embed-ipadic` embeds IPADIC in it, and `embed-model-ipadic` the [model for IPADIC](./model_file.md#embedding-it), which `--model embedded://ipadic` then names (`embed-model-unidic-cwj` and `--model embedded://unidic-cwj` for UniDic CWJ, and the same for `unidic` and `unidic-csj`, with the dictionary given as a directory):
 
 ```shell
 cargo build --release -p lindera-dependency --features cli,embed-ipadic

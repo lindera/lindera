@@ -62,4 +62,4 @@ let token = Token::new(
 - `Token::details` は、これまでどおり辞書の欄を持ちます。係り受け解析の結果は、そこには書きません。
 - トークンは、ポインター 1 つ分だけ大きくなります。
 - `lindera` コマンドとバインディングは、既定のビルドに `dependency` feature を持ちます。トークンフィルター `japanese_dependency` がパッケージに入り、`lindera-dependency` クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。`default-features = false` で、入っていないビルドになります。ライブラリの `lindera` と `lindera-analysis` は、feature を指定したときだけ持ちます。
-- モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera download dependency-ipadic` で取得します。
+- モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera download dependency-ipadic` で取得します。UniDic のモデルは、`dependency-unidic`・`dependency-unidic-cwj`・`dependency-unidic-csj` で取得します。

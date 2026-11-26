@@ -85,6 +85,18 @@ embed-dependency-ipadic = [
     "dependency",
     "lindera-analysis/embed-dependency-ipadic",
 ] # Embed the model of the token filter `japanese_dependency` for IPADIC
+embed-dependency-unidic = [
+    "dependency",
+    "lindera-analysis/embed-dependency-unidic",
+] # Embed the model of the token filter `japanese_dependency` for UniDic
+embed-dependency-unidic-cwj = [
+    "dependency",
+    "lindera-analysis/embed-dependency-unidic-cwj",
+] # Embed the model of the token filter `japanese_dependency` for UniDic CWJ
+embed-dependency-unidic-csj = [
+    "dependency",
+    "lindera-analysis/embed-dependency-unidic-csj",
+] # Embed the model of the token filter `japanese_dependency` for UniDic CSJ
 # Experimental: profile per-context-id connection-matrix access frequency over a
 # corpus (see the `ctxfreq-dump` example). Off by default.
 ctxfreq = ["lindera-segmenter/ctxfreq"]

@@ -4,7 +4,7 @@
 
 モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。
 
-[IPADIC のモデル](#ipadic-のモデル)は、7.1.0 から、Lindera のリリースが公開します。[`train-chunker`](./chunking.md#モデルを学習する) は区切りを入れたモデルファイルを、[`train-parser`](./parsing.md#モデルを学習する) は解析器だけか、両方を入れたモデルファイルを書き出します。
+[IPADIC のモデル](#ipadic-のモデル)と [UniDic のモデル](#unidic-のモデル)は、7.1.0 から、Lindera のリリースが公開します。[`train-chunker`](./chunking.md#モデルを学習する) は区切りを入れたモデルファイルを、[`train-parser`](./parsing.md#モデルを学習する) は解析器だけか、両方を入れたモデルファイルを書き出します。
 
 ## モデルを読む
 
@@ -102,7 +102,7 @@ assert_eq!(model.dictionary(), "ipadic");
 
 ## IPADIC のモデル
 
-このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが [`build_model.sh`](#作り直す) でモデルを作り、その版のページに、辞書と並べて置きます。`v<version>` の `lindera-dependency-ipadic-<version>.zip` です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。
+このプロジェクトは、IPADIC のモデルを学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが [`build_model.sh`](#作り直す) でモデルを作り、その版のページに、辞書と並べて置きます。`v<version>` の `lindera-dependency-ipadic-<version>.zip` です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。
 
 [`lindera download dependency-ipadic`](../lindera-cli/commands.md#係り受け解析のモデルのダウンロード) が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。
 
@@ -205,9 +205,23 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 
 ## UniDic のモデル
 
-[`build_model.sh --dictionary <name>`](#作り直す) は、`unidic`・`unidic-cwj`・`unidic-csj` のモデルを同じやり方で作ります。3 つのファイルを持つディレクトリ `lindera-dependency-<name>` と、そのアーカイブです。学習データは、その辞書で変換した UD Japanese-GSD の train で、設定は、その辞書についての [`train-chunker`](./chunking.md#unidic-の場合) と `train-parser` の設定です。NOTICE には、その辞書の NOTICE が入ります。辞書は埋め込みません。スクリプトは、`--dict` で辞書のディレクトリを受け取るか、ワークスペースの版のリリースの辞書を `lindera download` で入れます。
+Lindera のリリースは、7.1.0 から、3 つの UniDic の辞書のモデルも公開します。`unidic`（unidic-mecab 2.1.2）・`unidic-cwj`・`unidic-csj` です。上で IPADIC について述べたことは、`ipadic` を辞書の名前に置き換えると、そのまま当てはまります。
 
-Lindera のリリースは、これらのモデルをまだ公開していません。埋め込む feature もありません（[#1441](https://github.com/lindera/lindera/issues/1441)）。[精度](./parsing.md#unidic-の場合)は、7.0.0 のリリースの辞書で測ったものです。
+| | |
+| --- | --- |
+| アーカイブ | `lindera-dependency-unidic-<version>.zip`、`lindera-dependency-unidic-cwj-<version>.zip`、`lindera-dependency-unidic-csj-<version>.zip`。どれも、同じ 3 つのファイルを持つディレクトリが 1 つ入っている |
+| ダウンロード | `lindera download dependency-unidic`、`dependency-unidic-cwj`、`dependency-unidic-csj` |
+| 埋め込み | `lindera-dependency` の `embed-model-unidic`、`embed-model-unidic-cwj`、`embed-model-unidic-csj`。`embed-dependency-unidic` などとして転送される。モデルは `embedded://unidic`、`embedded://unidic-cwj`、`embedded://unidic-csj` で指す |
+| リポジトリからのビルドで使うファイル | [`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file)、`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE`、`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE` |
+| 作り直す | [`build_model.sh --dictionary <name>`](#作り直す)。辞書のディレクトリは `--dict` で渡す |
+| 学習データ | その辞書で[変換した](./training_data.md) UD Japanese-GSD の train。7,024 文 |
+| 設定 | UniDic 用の [`train-chunker`](./chunking.md#unidic-の場合) の設定と、`train-parser` の既定 |
+| 大きさ | `unidic` は 6,257,148 バイト、`unidic-cwj` は 6,258,600 バイト、`unidic-csj` は 6,267,183 バイト |
+| ライセンス | MIT。NOTICE に、辞書の NOTICE が入る。UniDic は、GPL v2.0・LGPL v2.1・BSD ライセンスのいずれかを利用者が選べる |
+
+モデルは 1 つの辞書のためのものです。3 つの UniDic の辞書は、分かち書きと品詞が同じではありません。`unidic-cwj` のモデルは、`unidic` の形態素では[断られます](#辞書の照合)。UniDic CSJ は話し言葉向けの辞書で、学習データは書き言葉です。
+
+モデルの学習のために UniDic を埋め込むことはありません。`build_model.sh` は、`--dict` で辞書のディレクトリを受け取るか、ワークスペースの版のリリースの辞書を `lindera download` で入れます。リリースは、組み立てたばかりの辞書で各モデルを学習し、学習に使っていないファイルで測り、数が[文書](./parsing.md#unidic-の場合)の値と違えば止まります。IPADIC の場合と同じです。
 
 4 つのモデルを、それぞれの辞書で変換した UD Japanese-GSD の test で、AMD Ryzen AI Max+ 395 の 1 コアで測りました。速さは 1 秒あたりの文の数です。それぞれ 1 回の計測の値で、計測ごとに数 % 変わります。
 
