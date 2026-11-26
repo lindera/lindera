@@ -185,6 +185,7 @@
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存。<code>lindera::dictionary::trainer</code>）</td><td>下記参照</td></tr>
 <tr><td><code>dependency</code></td><td>トークンフィルター <code>japanese_dependency</code>。文節の係り受け解析で、<code>lindera-dependency</code> を使う（<code>analysis</code> を含む）</td><td>下記参照</td></tr>
 <tr><td><code>embed-dependency-ipadic</code></td><td>そのフィルターの IPADIC のモデルをビルドに埋め込む。<code>model: "embedded://ipadic"</code> で使う（<code>dependency</code> を含む）。ビルドがモデルをどこから取るかは <a href="../lindera-dependency/model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を参照</td><td>無効</td></tr>
+<tr><td><code>embed-dependency-unidic</code>、<code>embed-dependency-unidic-cwj</code>、<code>embed-dependency-unidic-csj</code></td><td>そのフィルターの UniDic の辞書のモデルをビルドに埋め込む。<code>model: "embedded://unidic"</code> などで使う（どれも <code>dependency</code> を含む）。<a href="../lindera-dependency/model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を参照</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <ul>

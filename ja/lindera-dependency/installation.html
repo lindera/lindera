@@ -196,7 +196,7 @@ lindera-dependency = "7.1"
 <pre><code class="language-shell">cargo install lindera-dependency --features cli
 </code></pre>
 <h2 id="モデル"><a class="header" href="#モデル">モデル</a></h2>
-<p>解析には、トークナイザーの辞書に合った<a href="./model_file.html">モデルファイル</a>が必要です。Lindera は、リリースのたびに、IPADIC 用のモデルを 1 つ公開します（<a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>）。モデルは、辞書と同じく、パッケージにもクレートにも入っていません。手に入れる方法は 3 つあります。</p>
+<p>解析には、トークナイザーの辞書に合った<a href="./model_file.html">モデルファイル</a>が必要です。Lindera は、リリースのたびに、モデルを 4 つ公開します。IPADIC 用が 1 つ（<a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>）と、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> 用が 1 つずつです（<a href="./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>）。モデルは、辞書と同じく、パッケージにもクレートにも入っていません。手に入れる方法は 3 つあります。ここでは IPADIC の場合を示します。UniDic の辞書では、<code>ipadic</code> のところが辞書の名前になります。</p>
 <ul>
 <li><code>lindera download dependency-ipadic</code> は、コマンドのバージョンのモデルをインストールし、モデルファイルのパスを表示します（<a href="../lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89"><code>download</code></a>）。</li>
 <li><a href="https://github.com/lindera/lindera/releases">リリース</a>のページにある <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> に、モデルファイル <code>dependency.model</code> と、その <code>NOTICE.txt</code> が入っています。</li>

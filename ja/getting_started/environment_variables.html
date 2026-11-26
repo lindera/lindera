@@ -184,7 +184,7 @@
 <tr><td><a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>公開済みの辞書を GitHub のリリースからダウンロードする</td></tr>
 <tr><td><a href="#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>辞書クレートの build script</td><td><code>http</code> か <code>https</code> の URL</td><td>ソースのアーカイブを <code>https://lindera.dev</code> から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（<code>https://clrd.ninjal.ac.jp</code>）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（<code>https://bitbucket.org</code>）からダウンロードする</td></tr>
 <tr><td><a href="#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>辞書クレートの build script</td><td>ファイル</td><td>辞書クレートに同梱の頻度表（あれば）</td></tr>
-<tr><td><a href="#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td><code>embed-model-ipadic</code> を付けた <code>lindera-dependency</code> の build script</td><td>モデルファイル</td><td>公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる</td></tr>
+<tr><td><a href="#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td><code>embed-model-ipadic</code> を付けた <code>lindera-dependency</code> の build script。<code>..._UNIDIC_FILE</code>・<code>..._UNIDIC_CWJ_FILE</code>・<code>..._UNIDIC_CSJ_FILE</code> は、UniDic のモデルの feature を付けたとき</td><td>モデルファイル</td><td>公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる</td></tr>
 <tr><td><a href="#docs_rs"><code>DOCS_RS</code></a></td><td>辞書クレートの build script</td><td>docs.rs が設定する</td><td>本物の辞書をビルドする</td></tr>
 <tr><td><a href="#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>（<code>lindera tokenize</code> とバインディングも）</td><td>ファイル</td><td>空の設定</td></tr>
 <tr><td><a href="#lindera_dictionaries_dir"><code>LINDERA_DICTIONARIES_DIR</code></a></td><td>CLI</td><td>ディレクトリ</td><td>OS のローカルデータディレクトリの <code>lindera/dictionaries</code></td></tr>
@@ -294,6 +294,13 @@ cargo build --features=embed-unidic
 <p>両方を設定すると <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> が使われ、<code>LINDERA_CTX_FREQ_FILE</code> は無視されると警告します。Cargo がこれらの警告を表示するのは、このリポジトリの checkout のように、パスで指定した辞書クレートをビルドするときです。crates.io から取得した辞書クレートでは、ビルドが失敗したときか <code>cargo build -vv</code> のときだけ表示します。</p>
 <h3 id="lindera_build_dependency_model_ipadic_file"><a class="header" href="#lindera_build_dependency_model_ipadic_file">LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</a></h3>
 <p><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code> は、<code>embed-model-ipadic</code>（<code>lindera</code>、そのコマンド、各バインディングでは <code>embed-dependency-ipadic</code>）を付けたビルドが埋め込むモデルファイルを指します。<code>lindera-dependency</code> の IPADIC のモデルです。</p>
+<p>UniDic のモデルには、それぞれの環境変数があります。そのモデルの feature を付けたビルドが、同じように読みます。</p>
+<div class="table-wrapper"><table><thead><tr><th>環境変数</th><th><code>lindera-dependency</code> の feature</th><th>モデル</th></tr></thead><tbody>
+<tr><td><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE</code></td><td><code>embed-model-unidic</code></td><td><code>unidic</code></td></tr>
+<tr><td><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE</code></td><td><code>embed-model-unidic-cwj</code></td><td><code>unidic-cwj</code></td></tr>
+<tr><td><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE</code></td><td><code>embed-model-unidic-csj</code></td><td><code>unidic-csj</code></td></tr>
+</tbody></table>
+</div>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
 cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic

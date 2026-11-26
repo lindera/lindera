@@ -284,7 +284,7 @@
 </code></pre>
 <h3 id="japanese_dependency"><a class="header" href="#japanese_dependency">japanese_dependency</a></h3>
 <p>テキストの係り受けを解析します。トークンを文節にまとめ、各文節の係り先の文節を求めて、結果をすべてのトークンに書き込みます。トークンを足したり、消したり、書き換えたりはしないので、MeCab 形式と分かち書きの出力は変わりません。JSON の出力では、各トークンに <code>dependency</code> というキーが加わります。</p>
-<p>このフィルタは、<code>dependency</code> feature を付けたビルドにだけ入ります。<code>lindera</code> コマンドとバインディングは、7.1.0 から既定で持ち、ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は既定では持ちません。付けていないビルドは、この <code>kind</code> を、feature の名前を示すエラーで断ります。トークナイザーの辞書に合った <code>lindera-dependency</code> のモデルファイルが必要です。Lindera は IPADIC 用のモデルを公開していて、<code>lindera download dependency-ipadic</code> でインストールできます。トークンに何が書かれるか、テキストがどう文に分けられるか、モデルの入手と作り方は、<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を参照してください。</p>
+<p>このフィルタは、<code>dependency</code> feature を付けたビルドにだけ入ります。<code>lindera</code> コマンドとバインディングは、7.1.0 から既定で持ち、ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は既定では持ちません。付けていないビルドは、この <code>kind</code> を、feature の名前を示すエラーで断ります。トークナイザーの辞書に合った <code>lindera-dependency</code> のモデルファイルが必要です。Lindera は IPADIC 用のモデルを公開していて、<code>lindera download dependency-ipadic</code> でインストールできます。<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> 用のモデルもあり、<code>lindera download dependency-unidic</code> などでインストールできます。トークンに何が書かれるか、テキストがどう文に分けられるか、モデルの入手と作り方は、<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を参照してください。</p>
 <p>このフィルタは、トークンを消す・つなぐ・書き換えるトークンフィルタより前に置きます。モデルは、辞書が返したままのトークンを読むためです。前のフィルタが消したりつないだりしたトークンは、エラーで断ります。</p>
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>

@@ -179,7 +179,7 @@
                         <h1 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h1>
 <p>モデルファイルは、1 つの辞書を解析するのに要るものを 1 つにまとめたファイルです。辞書の名前、その<a href="./head_and_function_word.html">スキーマ</a>、学習した部分が入ります。部分は、<a href="./chunking.html">文節の区切り</a>と<a href="./parsing.html">解析器</a>です。</p>
 <p>モデルは 1 つの辞書に属します。辞書の素性の列と、辞書による分かち書きに依存するので、ファイルは、どの辞書のためのものかを自分で持ち、1 つのファイルが 1 つの辞書に対応します。</p>
-<p><a href="#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>は、7.1.0 から、Lindera のリリースが公開します。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
+<p><a href="#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>と <a href="#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>は、7.1.0 から、Lindera のリリースが公開します。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> は区切りを入れたモデルファイルを、<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> は解析器だけか、両方を入れたモデルファイルを書き出します。</p>
 <h2 id="モデルを読む"><a class="header" href="#モデルを読む">モデルを読む</a></h2>
 <p><code>Model</code> は、ファイルをその場で読みます。バイト列を持つ型について総称で、表をどこにも写しません。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -258,7 +258,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <p>同じ部分からは、同じバイト列ができます。ファイルのスキーマと違うスキーマで学習した部分は断ります。</p>
 <p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="ipadic-のモデル"><a class="header" href="#ipadic-のモデル">IPADIC のモデル</a></h2>
-<p>このプロジェクトは、IPADIC のモデルを 1 つ学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが <a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> でモデルを作り、その版のページに、辞書と並べて置きます。<code>v&lt;version&gt;</code> の <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。</p>
+<p>このプロジェクトは、IPADIC のモデルを学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが <a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> でモデルを作り、その版のページに、辞書と並べて置きます。<code>v&lt;version&gt;</code> の <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。</p>
 <p><a href="../lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89"><code>lindera download dependency-ipadic</code></a> が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。</p>
 <p>アーカイブには、ディレクトリ <code>lindera-dependency-ipadic</code> が 1 つ入っていて、中にファイルが 3 つあります。</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>中身</th></tr></thead><tbody>
@@ -333,8 +333,21 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 </tbody></table>
 </div>
 <h2 id="unidic-のモデル"><a class="header" href="#unidic-のモデル">UniDic のモデル</a></h2>
-<p><a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh --dictionary &lt;name&gt;</code></a> は、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> のモデルを同じやり方で作ります。3 つのファイルを持つディレクトリ <code>lindera-dependency-&lt;name&gt;</code> と、そのアーカイブです。学習データは、その辞書で変換した UD Japanese-GSD の train で、設定は、その辞書についての <a href="./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88"><code>train-chunker</code></a> と <code>train-parser</code> の設定です。NOTICE には、その辞書の NOTICE が入ります。辞書は埋め込みません。スクリプトは、<code>--dict</code> で辞書のディレクトリを受け取るか、ワークスペースの版のリリースの辞書を <code>lindera download</code> で入れます。</p>
-<p>Lindera のリリースは、これらのモデルをまだ公開していません。埋め込む feature もありません（<a href="https://github.com/lindera/lindera/issues/1441">#1441</a>）。<a href="./parsing.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">精度</a>は、7.0.0 のリリースの辞書で測ったものです。</p>
+<p>Lindera のリリースは、7.1.0 から、3 つの UniDic の辞書のモデルも公開します。<code>unidic</code>（unidic-mecab 2.1.2）・<code>unidic-cwj</code>・<code>unidic-csj</code> です。上で IPADIC について述べたことは、<code>ipadic</code> を辞書の名前に置き換えると、そのまま当てはまります。</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>アーカイブ</td><td><code>lindera-dependency-unidic-&lt;version&gt;.zip</code>、<code>lindera-dependency-unidic-cwj-&lt;version&gt;.zip</code>、<code>lindera-dependency-unidic-csj-&lt;version&gt;.zip</code>。どれも、同じ 3 つのファイルを持つディレクトリが 1 つ入っている</td></tr>
+<tr><td>ダウンロード</td><td><code>lindera download dependency-unidic</code>、<code>dependency-unidic-cwj</code>、<code>dependency-unidic-csj</code></td></tr>
+<tr><td>埋め込み</td><td><code>lindera-dependency</code> の <code>embed-model-unidic</code>、<code>embed-model-unidic-cwj</code>、<code>embed-model-unidic-csj</code>。<code>embed-dependency-unidic</code> などとして転送される。モデルは <code>embedded://unidic</code>、<code>embedded://unidic-cwj</code>、<code>embedded://unidic-csj</code> で指す</td></tr>
+<tr><td>リポジトリからのビルドで使うファイル</td><td><a href="../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE</code></a>、<code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE</code>、<code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE</code></td></tr>
+<tr><td>作り直す</td><td><a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh --dictionary &lt;name&gt;</code></a>。辞書のディレクトリは <code>--dict</code> で渡す</td></tr>
+<tr><td>学習データ</td><td>その辞書で<a href="./training_data.html">変換した</a> UD Japanese-GSD の train。7,024 文</td></tr>
+<tr><td>設定</td><td>UniDic 用の <a href="./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88"><code>train-chunker</code></a> の設定と、<code>train-parser</code> の既定</td></tr>
+<tr><td>大きさ</td><td><code>unidic</code> は 6,257,148 バイト、<code>unidic-cwj</code> は 6,258,600 バイト、<code>unidic-csj</code> は 6,267,183 バイト</td></tr>
+<tr><td>ライセンス</td><td>MIT。NOTICE に、辞書の NOTICE が入る。UniDic は、GPL v2.0・LGPL v2.1・BSD ライセンスのいずれかを利用者が選べる</td></tr>
+</tbody></table>
+</div>
+<p>モデルは 1 つの辞書のためのものです。3 つの UniDic の辞書は、分かち書きと品詞が同じではありません。<code>unidic-cwj</code> のモデルは、<code>unidic</code> の形態素では<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E7%85%A7%E5%90%88">断られます</a>。UniDic CSJ は話し言葉向けの辞書で、学習データは書き言葉です。</p>
+<p>モデルの学習のために UniDic を埋め込むことはありません。<code>build_model.sh</code> は、<code>--dict</code> で辞書のディレクトリを受け取るか、ワークスペースの版のリリースの辞書を <code>lindera download</code> で入れます。リリースは、組み立てたばかりの辞書で各モデルを学習し、学習に使っていないファイルで測り、数が<a href="./parsing.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">文書</a>の値と違えば止まります。IPADIC の場合と同じです。</p>
 <p>4 つのモデルを、それぞれの辞書で変換した UD Japanese-GSD の test で、AMD Ryzen AI Max+ 395 の 1 コアで測りました。速さは 1 秒あたりの文の数です。それぞれ 1 回の計測の値で、計測ごとに数 % 変わります。</p>
 <div class="table-wrapper"><table><thead><tr><th>辞書</th><th>ファイルの大きさ（バイト）</th><th>うち区切り</th><th>区切り</th><th>正解の文節の解析</th><th>区切りと解析</th><th>テキストから（形態素解析を含む）</th><th>辞書とモデルの読み込み</th><th>トークンフィルター（1 トークンあたりのマイクロ秒）</th></tr></thead><tbody>
 <tr><td>IPADIC</td><td>6,258,548</td><td>261,851</td><td>20,500</td><td>17,500</td><td>8,900</td><td>7,000</td><td>5 ms</td><td>5.3</td></tr>

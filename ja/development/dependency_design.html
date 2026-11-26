@@ -235,6 +235,7 @@
 <tr><td>CaboCha のオプションのうち、コマンドは、ラティス形式の出力（<code>-f1</code>）と 3 つの入力の層（<code>-I</code>）を <code>--input-layer</code> として持つ。木・XML・CoNLL の出力、出力の層、固有表現は持たない。</td><td>ラティス形式はほかの道具が読む形式で、書き出しの実装がある。入力の層は、<code>parse</code> と <code>parse --chunk</code> がしていたことを 1 つのオプションにまとめたもの。形態素だけ、文節だけを書くコマンドは別にある。</td><td>#1439</td></tr>
 <tr><td>コマンドは、1 文ずつ読んで、解析して、書く。解析できない最初の文で止まり、そこまでに書いた出力は残る。</td><td>パイプの中で使え、メモリが入力の長さで増えない。</td><td>#1439</td></tr>
 <tr><td>IPADIC のモデルは MIT ライセンスで配布し、UD Japanese-GSD への謝辞と IPADIC の表示を添える。</td><td>モデルが持つのは素性の名前と重みで、注釈は含まない。このプロジェクトは、これをコーパスの改変物ではないとみなす。この問いを判断した裁判例はない。立場の根拠は<a href="../lindera-dependency/model_file.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルファイルのページ</a>に書く。コードとモデルが同じライセンスなので、モデルを埋め込んだプログラムは、辞書を埋め込んだプログラムと同じように配布できる。</td><td>#1440</td></tr>
+<tr><td>UniDic のモデルは、IPADIC のモデルと同じように公開し、埋め込み、ダウンロードできるようにする。ライセンスも同じで、それぞれの辞書の表示を添える。リリースは、組み立てたばかりの辞書をディレクトリから読んで学習する。</td><td>すべてのモデルを 1 つの仕組みで扱う。辞書ごとに、feature・環境変数・固定・アーカイブが 1 つずつある。学習のために UniDic CWJ や UniDic CSJ を埋め込むと、コンパイルに 8〜11 GiB のメモリが要る。ディレクトリから読めばそれが要らず、辞書も同じリリースのものになる。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>公開するモデルは、UD Japanese-GSD の train のファイルだけで学習する。</td><td>dev・test・PUD の数字が、公開するファイルそのものの数字になり、誰でも測り直せる。</td><td>#1440</td></tr>
 <tr><td>公開するモデルは Lindera の版を持ち、組み立て済みの辞書と同じ形で公開する。リリースが 1 つのスクリプトでモデルを作り、そのアーカイブを版のページに置き、クレートを公開する直前に <code>prebuilt.json</code> を書く。リポジトリからのビルドは、渡されたファイルを埋め込む。</td><td>リリースが持つものすべてが 1 つの版になり、どのモデルがどのリリースに合うかを誰も知らなくてよい。モデルは、辞書のようにビルドスクリプトの中では作れない（学習できない）ので、固定の無いビルドはファイルを受け取る。2026-11-25 に、独自の版・独自のタグのリリースに代えて決めた。</td><td>#1440</td></tr>
 <tr><td>クレートを初めて含むリリースは 7.1.0 とし、<code>Token</code> の破壊的変更は移行ガイドとリリースノートに明記する。</td><td>メンテナーの決定。壊れるのは、<code>Token</code> を構造体式で作るコードと、全部の欄を分解するコードで、トークナイザーのトークンを読むコードは壊れない。</td><td>#1440</td></tr>
@@ -340,7 +341,6 @@
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
 <tr><td>IPADIC のモデル</td><td>完了。リリースのたびに、モデルを作り、測り、公開する。クレートも一緒に公開する。両方が入る最初のリリースは 7.1.0。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
-<tr><td>UniDic のモデル</td><td>2 つ目のスキーマ。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>CaboCha のモデルの変換器</td><td>表層の正規化の表、CRF++ のテキスト形式のモデルの読み込み、解析器のモデルの support vector の展開。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
 <tr><td>CaboCha・J.DepP の基準の測り直し</td><td>ビルドと学習のスクリプト。</td><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td></tr>
 </tbody></table>
@@ -499,7 +499,7 @@
 <tr><td><a href="https://github.com/lindera/lindera/issues/1438">#1438</a></td><td>トークンフィルター</td><td>完了</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のモデル</td><td>未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のスキーマとモデル</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td><td>CaboCha のモデルの変換器</td><td>未着手</td></tr>
 </tbody></table>
 </div>

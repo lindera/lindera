@@ -221,7 +221,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 </ul>
 <p>Messages go to stderr: a subdirectory with neither <code>metadata.json</code> nor <code>model.json</code>, such as the <code>6.2.0/</code> above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run <code>lindera download</code>. Entries whose name starts with <code>.</code> are skipped silently.</p>
 <h3 id="models-of-the-dependency-parser"><a class="header" href="#models-of-the-dependency-parser">Models of the dependency parser</a></h3>
-<p>The models of the <a href="../lindera-dependency/token_filter.html">dependency parser</a> follow in a table of their own, when there is one: the model embedded in the binary (the <code>embed-dependency-ipadic</code> feature flag) and those that <code>lindera download dependency-ipadic</code> installed, which are the subdirectories with a <code>model.json</code>.</p>
+<p>The models of the <a href="../lindera-dependency/token_filter.html">dependency parser</a> follow in a table of their own, when there is one: the models embedded in the binary (the <code>embed-dependency-ipadic</code> feature flag, and <code>embed-dependency-unidic</code>, <code>embed-dependency-unidic-cwj</code> and <code>embed-dependency-unidic-csj</code>) and those that <code>lindera download dependency-ipadic</code> and the like installed, which are the subdirectories with a <code>model.json</code>.</p>
 <pre><code class="language-text">NAME    VERSION  STATUS  DICT
 ipadic  7.0.0    ok      embedded://ipadic
 
@@ -914,7 +914,7 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <p>Download the pre-built dictionary archive matching the CLI version from the <a href="https://github.com/lindera/lindera/releases">GitHub releases page</a> and install it in the dictionaries directory. The same command gets the model of the dependency parser, which a release publishes next to the dictionaries: see <a href="#downloading-the-model-of-the-dependency-parser">Downloading the model of the dependency parser</a>.</p>
 <h3 id="download-parameters"><a class="header" href="#download-parameters">Download parameters</a></h3>
 <ul>
-<li>Name (required): a dictionary, one of <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code>; or <code>dependency-ipadic</code>, the model of the dependency parser for IPADIC</li>
+<li>Name (required): a dictionary, one of <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code>; or a model of the dependency parser, one of <code>dependency-ipadic</code>, <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code>, <code>dependency-unidic-csj</code>: the one for the dictionary of that name</li>
 <li><code>--force</code>: Re-download and replace the dictionary or the model even when the CLI's version built it</li>
 </ul>
 <h3 id="storage-location"><a class="header" href="#storage-location">Storage location</a></h3>
@@ -938,7 +938,7 @@ Downloaded dictionary 'ipadic'
 <li>The largest dictionary (<code>ipadic-neologd</code>) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.</li>
 </ul>
 <h3 id="downloading-the-model-of-the-dependency-parser"><a class="header" href="#downloading-the-model-of-the-dependency-parser">Downloading the model of the dependency parser</a></h3>
-<p><code>lindera download dependency-ipadic</code> gets the <a href="../lindera-dependency/model_file.html#the-model-for-ipadic">model for IPADIC</a> of the token filter <code>japanese_dependency</code>, <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> on the page of the release of the CLI's version, from 7.1.0 on. It installs it in <code>&lt;dictionaries directory&gt;/dependency-ipadic/</code>, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as <code>model</code>:</p>
+<p><code>lindera download dependency-ipadic</code> gets the <a href="../lindera-dependency/model_file.html#the-model-for-ipadic">model for IPADIC</a> of the token filter <code>japanese_dependency</code>, <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> on the page of the release of the CLI's version, from 7.1.0 on. It installs it in <code>&lt;dictionaries directory&gt;/dependency-ipadic/</code>, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as <code>model</code>. <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code> and <code>dependency-unidic-csj</code> get the <a href="../lindera-dependency/model_file.html#the-models-for-unidic">models for UniDic</a> the same way:</p>
 <pre><code class="language-shell">% MODEL=$(lindera download dependency-ipadic)
 % DICT_DIR=$(lindera download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \

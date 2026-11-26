@@ -511,7 +511,7 @@ json.dumps([token.to_dict() for token in tokens])
 </ul>
 <h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
 <p>トークンの文節と、その文節の係り先です。トークンフィルター <code>japanese_dependency</code> を使うと、各トークンの <code>dependency</code> に入ります。フィルター、モデル、テキストの文への分け方は、<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を見てください。</p>
-<p>7.1.0 から、配布しているパッケージにフィルターが入っています。<code>dependency</code> feature が既定のビルドに入ったためです。モデルは入っていません。フィルターにはモデルファイルのパスを渡します。Lindera が公開している IPADIC のモデルは、各<a href="https://github.com/lindera/lindera/releases">リリース</a>のページの <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> にある <code>dependency.model</code> で、<code>lindera download dependency-ipadic</code> でもインストールできます（<a href="../lindera-dependency/installation.html#%E3%83%A2%E3%83%87%E3%83%AB">インストール</a>）。</p>
+<p>7.1.0 から、配布しているパッケージにフィルターが入っています。<code>dependency</code> feature が既定のビルドに入ったためです。モデルは入っていません。フィルターにはモデルファイルのパスを渡します。Lindera が公開している IPADIC のモデルは、各<a href="https://github.com/lindera/lindera/releases">リリース</a>のページの <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> にある <code>dependency.model</code> で、<code>lindera download dependency-ipadic</code> でもインストールできます（<a href="../lindera-dependency/installation.html#%E3%83%A2%E3%83%87%E3%83%AB">インストール</a>）。<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> のモデルもあり、<code>ipadic</code> のところが辞書の名前になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>sentence</code></td><td><code>int</code></td><td>テキストの中での文の番号。0 から</td></tr>
 <tr><td><code>bunsetsu</code></td><td><code>int</code></td><td>文の中での、トークンの文節の番号。0 から</td></tr>

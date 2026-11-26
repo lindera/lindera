@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="係り受けの解析"><a class="header" href="#係り受けの解析">係り受けの解析</a></h1>
 <p>係り受けの解析は、文の文節ごとに、その文節が係る先の文節を求めます。<code>parser</code> モジュールは、CaboCha・J.DepP と同じ方法で求めます。スタックを使って文節を左から右へたどり（shift-reduce）、分類器が 1 回に 1 つの問いに答えます。</p>
-<p>Lindera は <a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を公開しています。自分のモデルを作るときは、<a href="./training_data.html">学習データ</a>から<a href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習</a>します。数秒で終わります。</p>
+<p>Lindera は <a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>と <a href="./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を公開しています。自分のモデルを作るときは、<a href="./training_data.html">学習データ</a>から<a href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習</a>します。数秒で終わります。</p>
 <h2 id="モデルで解析する"><a class="header" href="#モデルで解析する">モデルで解析する</a></h2>
 <p><a href="./model_file.html">モデルファイル</a>は、1 つの辞書の文節の区切りと解析器を持ちます。両方があれば、文を形態素から係り受けまで解析できます。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

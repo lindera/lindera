@@ -241,7 +241,7 @@ print!("{}", String::from_utf8(output)?);
 EOS
 </code></pre>
 <h2 id="training-a-model"><a class="header" href="#training-a-model">Training a model</a></h2>
-<p>The <a href="./model_file.html#the-model-for-ipadic">model for IPADIC</a> that Lindera releases has a chunker. To train one of your own from <a href="./training_data.html">training data</a>:</p>
+<p>The <a href="./model_file.html#the-model-for-ipadic">model for IPADIC</a> that Lindera releases has a chunker, and so have the <a href="./model_file.html#the-models-for-unidic">models for UniDic</a>. To train one of your own from <a href="./training_data.html">training data</a>:</p>
 <pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>

@@ -230,7 +230,7 @@
 <li><code>Token::details</code> は、これまでどおり辞書の欄を持ちます。係り受け解析の結果は、そこには書きません。</li>
 <li>トークンは、ポインター 1 つ分だけ大きくなります。</li>
 <li><code>lindera</code> コマンドとバインディングは、既定のビルドに <code>dependency</code> feature を持ちます。トークンフィルター <code>japanese_dependency</code> がパッケージに入り、<code>lindera-dependency</code> クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。<code>default-features = false</code> で、入っていないビルドになります。ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は、feature を指定したときだけ持ちます。</li>
-<li>モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、<code>lindera download dependency-ipadic</code> で取得します。</li>
+<li>モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、<code>lindera download dependency-ipadic</code> で取得します。UniDic のモデルは、<code>dependency-unidic</code>・<code>dependency-unidic-cwj</code>・<code>dependency-unidic-csj</code> で取得します。</li>
 </ul>
 
                     </main>

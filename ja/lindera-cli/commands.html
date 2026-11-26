@@ -221,7 +221,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 </ul>
 <p>メッセージは標準エラー出力に出ます。上の例の <code>6.2.0/</code>（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように <code>metadata.json</code> も <code>model.json</code> もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、<code>lindera download</code> の案内を出します。名前が <code>.</code> で始まる項目は、メッセージなしで飛ばします。</p>
 <h3 id="係り受け解析のモデル"><a class="header" href="#係り受け解析のモデル">係り受け解析のモデル</a></h3>
-<p><a href="../lindera-dependency/token_filter.html">係り受け解析</a>のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ <code>embed-dependency-ipadic</code>）と、<code>lindera download dependency-ipadic</code> がインストールしたモデル（<code>model.json</code> のあるサブディレクトリ）です。</p>
+<p><a href="../lindera-dependency/token_filter.html">係り受け解析</a>のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ <code>embed-dependency-ipadic</code> と、<code>embed-dependency-unidic</code>・<code>embed-dependency-unidic-cwj</code>・<code>embed-dependency-unidic-csj</code>）と、<code>lindera download dependency-ipadic</code> などがインストールしたモデル（<code>model.json</code> のあるサブディレクトリ）です。</p>
 <pre><code class="language-text">NAME    VERSION  STATUS  DICT
 ipadic  7.0.0    ok      embedded://ipadic
 
@@ -914,7 +914,7 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、辞書ディレクトリにインストールします。同じコマンドで、リリースが辞書と並べて公開する、係り受け解析のモデルも取得できます。<a href="#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89">係り受け解析のモデルのダウンロード</a>を見てください。</p>
 <h3 id="download-パラメータ"><a class="header" href="#download-パラメータ">download パラメータ</a></h3>
 <ul>
-<li>名前（必須）: 辞書なら <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか。<code>dependency-ipadic</code> は、IPADIC 用の係り受け解析のモデル</li>
+<li>名前（必須）: 辞書なら <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか。係り受け解析のモデルなら <code>dependency-ipadic</code>, <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code>, <code>dependency-unidic-csj</code> のいずれか。その名前の辞書用のモデル</li>
 <li><code>--force</code>: CLI のバージョンがビルドした辞書やモデルでも、再ダウンロードして置き換える</li>
 </ul>
 <h3 id="保存場所"><a class="header" href="#保存場所">保存場所</a></h3>
@@ -938,7 +938,7 @@ Downloaded dictionary 'ipadic'
 <li>最大の辞書（<code>ipadic-neologd</code>）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。</li>
 </ul>
 <h3 id="係り受け解析のモデルのダウンロード"><a class="header" href="#係り受け解析のモデルのダウンロード">係り受け解析のモデルのダウンロード</a></h3>
-<p><code>lindera download dependency-ipadic</code> は、トークンフィルター <code>japanese_dependency</code> の <a href="../lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を取得します。CLI のバージョンのリリースのページにある <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> で、7.1.0 以降のリリースにあります。辞書と並べて <code>&lt;辞書ディレクトリ&gt;/dependency-ipadic/</code> にインストールし、その中のモデルファイルのパスを表示します。フィルターの <code>model</code> に渡す値です。</p>
+<p><code>lindera download dependency-ipadic</code> は、トークンフィルター <code>japanese_dependency</code> の <a href="../lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を取得します。CLI のバージョンのリリースのページにある <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> で、7.1.0 以降のリリースにあります。辞書と並べて <code>&lt;辞書ディレクトリ&gt;/dependency-ipadic/</code> にインストールし、その中のモデルファイルのパスを表示します。フィルターの <code>model</code> に渡す値です。<code>dependency-unidic</code>・<code>dependency-unidic-cwj</code>・<code>dependency-unidic-csj</code> は、同じやり方で <a href="../lindera-dependency/model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を取得します。</p>
 <pre><code class="language-shell">% MODEL=$(lindera download dependency-ipadic)
 % DICT_DIR=$(lindera download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \

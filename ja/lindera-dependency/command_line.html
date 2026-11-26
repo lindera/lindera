@@ -178,9 +178,9 @@
                     <main>
                         <h1 id="コマンドライン"><a class="header" href="#コマンドライン">コマンドライン</a></h1>
 <p><code>lindera-dependency</code> コマンドは、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを<a href="./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で書き出します。<code>cabocha -f1</code> が書くのと同じ形式です。</p>
-<p>区切りと解析器の入った<a href="./model_file.html">モデルファイル</a>が必要です。7.1.0 から Lindera のリリースが公開する <a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>か、自分で<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習した</a>モデルを使います。</p>
+<p>区切りと解析器の入った<a href="./model_file.html">モデルファイル</a>が必要です。7.1.0 から Lindera のリリースが公開する <a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>か <a href="./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>、または自分で<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習した</a>モデルを使います。</p>
 <h2 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h2>
-<p>コマンドは <code>cli</code> feature の裏にあります。この feature は <code>clap</code> と <code>lindera-segmenter</code> を入れ、学習のコードは入れません。<code>embed-ipadic</code> を付けると、IPADIC を埋め込みます。<code>embed-model-ipadic</code> を付けると、<a href="./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込み、<code>--model embedded://ipadic</code> で指せます。</p>
+<p>コマンドは <code>cli</code> feature の裏にあります。この feature は <code>clap</code> と <code>lindera-segmenter</code> を入れ、学習のコードは入れません。<code>embed-ipadic</code> を付けると、IPADIC を埋め込みます。<code>embed-model-ipadic</code> を付けると、<a href="./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込み、<code>--model embedded://ipadic</code> で指せます。UniDic CWJ なら、<code>embed-model-unidic-cwj</code> と <code>--model embedded://unidic-cwj</code> です。<code>unidic</code> と <code>unidic-csj</code> も同じで、辞書はディレクトリで渡します。</p>
 <pre><code class="language-shell">cargo build --release -p lindera-dependency --features cli,embed-ipadic
 </code></pre>
 <p>バイナリは <code>target/release/lindera-dependency</code> です。<code>cli</code> のビルドのサブコマンドは、<code>parse</code> と <a href="./chunking.html"><code>chunk</code></a> の 2 つです。<code>train</code> feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>

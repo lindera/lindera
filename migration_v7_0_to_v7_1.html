@@ -230,7 +230,7 @@
 <li><code>Token::details</code> holds the fields of the dictionary, as before: the result of a dependency analysis is not written there.</li>
 <li>A token grows by the size of one pointer.</li>
 <li>The <code>lindera</code> command and the bindings have the <code>dependency</code> feature in their default builds: the token filter <code>japanese_dependency</code> is in the packages, and they depend on the <code>lindera-dependency</code> crate, which has no dependency of its own. The command grows by 134 kB. <code>default-features = false</code> gives the build without it. The libraries <code>lindera</code> and <code>lindera-analysis</code> have the feature only when it is named.</li>
-<li>No model is in a package or embedded by default; <code>lindera download dependency-ipadic</code> gets the one for IPADIC.</li>
+<li>No model is in a package or embedded by default; <code>lindera download dependency-ipadic</code> gets the one for IPADIC, and <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code> and <code>dependency-unidic-csj</code> the ones for UniDic.</li>
 </ul>
 
                     </main>

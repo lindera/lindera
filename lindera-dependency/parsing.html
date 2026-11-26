@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="parsing"><a class="header" href="#parsing">Parsing</a></h1>
 <p>Parsing finds, for each bunsetsu of a sentence, the bunsetsu it depends on. The <code>parser</code> module does it the way CaboCha and J.DepP do: it goes through the bunsetsu from left to right with a stack (shift-reduce), and a classifier answers one question at a time.</p>
-<p>Lindera releases the <a href="./model_file.html#the-model-for-ipadic">model for IPADIC</a>. To make one of your own, <a href="#training-a-model">train it</a> from <a href="./training_data.html">training data</a>: it takes a few seconds.</p>
+<p>Lindera releases the <a href="./model_file.html#the-model-for-ipadic">model for IPADIC</a> and the <a href="./model_file.html#the-models-for-unidic">models for UniDic</a>. To make one of your own, <a href="#training-a-model">train it</a> from <a href="./training_data.html">training data</a>: it takes a few seconds.</p>
 <h2 id="parsing-with-a-model"><a class="header" href="#parsing-with-a-model">Parsing with a model</a></h2>
 <p>A <a href="./model_file.html">model file</a> holds the chunker and the parser of a dictionary. With both, a sentence goes from morphemes to dependencies:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

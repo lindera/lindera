@@ -196,7 +196,7 @@ lindera-dependency = "7.1"
 <pre><code class="language-shell">cargo install lindera-dependency --features cli
 </code></pre>
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
-<p>The analysis needs a <a href="./model_file.html">model file</a> for the dictionary of the tokenizer. Lindera publishes one, for IPADIC, with each release (<a href="./model_file.html#the-model-for-ipadic">The model for IPADIC</a>); it is not part of a package or of a crate, as the dictionaries are not. There are three ways to get it:</p>
+<p>The analysis needs a <a href="./model_file.html">model file</a> for the dictionary of the tokenizer. Lindera publishes four with each release: one for IPADIC (<a href="./model_file.html#the-model-for-ipadic">The model for IPADIC</a>) and one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<a href="./model_file.html#the-models-for-unidic">The models for UniDic</a>). A model is not part of a package or of a crate, as the dictionaries are not. There are three ways to get one, shown here for IPADIC; for a UniDic dictionary, its name takes the place of <code>ipadic</code>:</p>
 <ul>
 <li><code>lindera download dependency-ipadic</code> installs the model of the version of the command, and prints the path of the model file (<a href="../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>download</code></a>).</li>
 <li><code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of a <a href="https://github.com/lindera/lindera/releases">release</a>, holds the model file <code>dependency.model</code> and its <code>NOTICE.txt</code>.</li>

@@ -184,7 +184,7 @@
 <tr><td><a href="#lindera_build_dictionary_published_base_url"><code>LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The published dictionaries are downloaded from GitHub releases</td></tr>
 <tr><td><a href="#lindera_build_dictionary_source_base_url"><code>LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL</code></a></td><td>The build scripts of the dictionary crates</td><td>An <code>http</code> or <code>https</code> URL</td><td>The source archives are downloaded from <code>https://lindera.dev</code>, UniDic's, UniDic CWJ's and UniDic CSJ's from NINJAL (<code>https://clrd.ninjal.ac.jp</code>), and ko-dic's from mecab-ko-dic's Bitbucket Downloads (<code>https://bitbucket.org</code>)</td></tr>
 <tr><td><a href="#lindera_build_context_id_freq_file"><code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code></a></td><td>The build scripts of the dictionary crates</td><td>A file</td><td>The histogram bundled with the dictionary crate, if any</td></tr>
-<tr><td><a href="#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td>The build script of <code>lindera-dependency</code>, with <code>embed-model-ipadic</code></td><td>A model file</td><td>A published crate embeds the model it pins; a build from the repository stops</td></tr>
+<tr><td><a href="#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a></td><td>The build script of <code>lindera-dependency</code>, with <code>embed-model-ipadic</code>; <code>..._UNIDIC_FILE</code>, <code>..._UNIDIC_CWJ_FILE</code> and <code>..._UNIDIC_CSJ_FILE</code> with the features of the models for UniDic</td><td>A model file</td><td>A published crate embeds the model it pins; a build from the repository stops</td></tr>
 <tr><td><a href="#docs_rs"><code>DOCS_RS</code></a></td><td>The build scripts of the dictionary crates</td><td>Set by docs.rs</td><td>The real dictionaries are built</td></tr>
 <tr><td><a href="#lindera_config_file"><code>LINDERA_CONFIG_FILE</code></a></td><td><code>TokenizerBuilder::new()</code>, and so <code>lindera tokenize</code> and the bindings</td><td>A file</td><td>An empty configuration</td></tr>
 <tr><td><a href="#lindera_dictionaries_dir"><code>LINDERA_DICTIONARIES_DIR</code></a></td><td>The CLI</td><td>A directory</td><td><code>lindera/dictionaries</code> in the OS's local data directory</td></tr>
@@ -294,6 +294,13 @@ cargo build --features=embed-unidic
 <p>When both are set, <code>LINDERA_BUILD_CONTEXT_ID_FREQ_FILE</code> is used, and the warning says that <code>LINDERA_CTX_FREQ_FILE</code> is ignored. Cargo shows these warnings for a dictionary crate built from a path, such as a checkout of this repository; for one from crates.io, it shows them only when the build fails or runs with <code>cargo build -vv</code>.</p>
 <h3 id="lindera_build_dependency_model_ipadic_file"><a class="header" href="#lindera_build_dependency_model_ipadic_file">LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</a></h3>
 <p><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code> names the model file that a build with <code>embed-model-ipadic</code> (<code>embed-dependency-ipadic</code> in <code>lindera</code>, its command and the bindings) embeds: the model of <code>lindera-dependency</code> for IPADIC.</p>
+<p>Each model for UniDic has a variable of its own, read the same way by the build with its feature:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Feature of <code>lindera-dependency</code></th><th>Model</th></tr></thead><tbody>
+<tr><td><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE</code></td><td><code>embed-model-unidic</code></td><td><code>unidic</code></td></tr>
+<tr><td><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE</code></td><td><code>embed-model-unidic-cwj</code></td><td><code>unidic-cwj</code></td></tr>
+<tr><td><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE</code></td><td><code>embed-model-unidic-csj</code></td><td><code>unidic-csj</code></td></tr>
+</tbody></table>
+</div>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 export LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE=$PWD/scripts/dependency/data/model/lindera-dependency-ipadic/dependency.model
 cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ipadic
