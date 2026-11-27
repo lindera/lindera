@@ -567,8 +567,23 @@ impl Schema {
     ///
     /// The part of speech; an empty string without a first level.
     pub fn part_of_speech_of<M: Morpheme>(&self, morpheme: &M) -> String {
+        self.levels_of(morpheme, self.part_of_speech.clone())
+    }
+
+    /// Some levels of the part of speech of a morpheme as one string.
+    ///
+    /// # Arguments
+    ///
+    /// * `morpheme` - The morpheme.
+    /// * `levels` - The columns of the levels to join.
+    ///
+    /// # Returns
+    ///
+    /// The levels joined by `-`, up to the first one that is `*` or
+    /// missing; an empty string without a first level.
+    pub(crate) fn levels_of<M: Morpheme>(&self, morpheme: &M, levels: Range<usize>) -> String {
         let mut value = String::new();
-        for index in self.part_of_speech.clone() {
+        for index in levels {
             match morpheme.feature(index) {
                 Some(level) if level != EMPTY => {
                     if !value.is_empty() {

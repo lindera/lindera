@@ -196,14 +196,13 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **Measured** (`cabocha_models.sh`): on the morphemes of Lindera for the 9,066 sentences of UD Japanese-GSD and PUD, the same bunsetsu, heads, head words and function words as CaboCha 0.69 in every sentence, and the same scores to six decimals. 3,727,492 of 10,141,653 pairs are kept, 51.8 MB, 3.6 s to convert. From text, 91% to 98% of the sentences have the morphemes MeCab gives; the others differ at katakana words that are not in the dictionary.
 - **Slower than CaboCha**: 3.03 s against 0.92 s for 7,024 sentences. CaboCha has a dense table for the pairs of frequent features; a model file looks every pair up in the sorted pairs of a feature.
 - **The model for JUMAN** needed one more thing of `Schema`: `HeadRule`, the form of the rule of the head word. CaboCha finds the function word of JUMAN as the last morpheme that is not a 特殊, and the head word apart from it, without the move at the end; `LastWords` says that, and the schemas of this crate keep the other form. An enumeration was taken over a negation in the patterns with a flag for the move: one addition for one use. The model file went to version 3 for its byte. Measured: on the morphemes of MeCab and mecab-jumandic for 9,100 sentences, everything the same as CaboCha, and the scores to six decimals; 3,687,535 of 10,578,633 pairs kept, 52.0 MB, 4.0 s. From text, the morphemes of Lindera's JUMAN dictionary are those of MeCab in 99.61% to 100% of the sentences of a file.
-- **Not done**: the model for UniDic, which needs two numbers of levels of the part of speech.
+- **The model for UniDic** needed the last thing: CaboCha reads four levels of the part of speech in its chunker and two in its parser, and takes the column after the next as the conjugation form, which in UniDic is the fourth level of the part of speech. The limit of the levels went into `FeatureSet` (`pos-levels=2`), not into `Schema`: it is part of what the features of the parser are, the schema says what the columns of a dictionary are for the chunker and the parser alike, and a feature set is text in the model file, so the format did not change. Deriving the limit from the place of the conjugation form was not taken: it would rest on an accident of CaboCha's code. A converted model is for `unidic`, or for `unidic-cwj` or `unidic-csj` when asked. Measured: with each of the three dictionaries, on the morphemes of Lindera for 9,066 sentences, everything the same as CaboCha and the scores to six decimals; 3,360,320 of 8,881,051 pairs kept, 47.7 MB, 3.0 s. From text it is not measured: there is no UniDic dictionary for MeCab among the tools.
 
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
 | IPADIC model | Done: the model is built, measured and published by each release, and the crate is published with it. The first release with both is 7.1.0. | [#1440](https://github.com/lindera/lindera/issues/1440) |
-| The model of CaboCha for UniDic | The models for IPA and for JUMAN are converted. UniDic needs to be checked against the morphemes of Lindera's UniDic first. | [#1442](https://github.com/lindera/lindera/issues/1442) |
 | The chunking of J.DepP | Where it gains over a conditional random field, and whether the chunker can gain the same. | [#1464](https://github.com/lindera/lindera/issues/1464) |
 
 ### Open questions
@@ -394,7 +393,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Done |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic schema and models | Done |
-| [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | The models for IPA and for JUMAN done; UniDic open |
+| [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | Done: the models for IPA, for JUMAN and for UniDic |
 | [#1466](https://github.com/lindera/lindera/issues/1466) | A JUMAN dictionary built from mecab-jumandic | Done |
 | [#1464](https://github.com/lindera/lindera/issues/1464) | Where the chunker of J.DepP gains, and whether the chunker can gain the same | Open |
 

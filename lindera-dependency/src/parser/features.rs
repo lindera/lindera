@@ -120,11 +120,23 @@ impl Group {
 /// features of training and of parsing are made from the same value, and
 /// two sets are compared without a change of code. It is written as the
 /// names of its groups with commas, as in `distance,source,target,gap`.
+///
+/// A set can also limit the levels of the part of speech its features
+/// take ([`FeatureSet::with_part_of_speech_levels`]), written after the
+/// groups as in `distance,source,pos-levels=2`. Without a limit the
+/// features take every level of the schema.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeatureSet {
     /// The groups, in the order of [`Group::ALL`], each at most once.
     groups: Vec<Group>,
+    /// The number of levels of the part of speech the features take, when
+    /// it is not all of the schema.
+    part_of_speech_levels: Option<usize>,
 }
+
+/// What a limit of the levels of the part of speech is written with in the
+/// text of a feature set.
+const LEVELS_KEY: &str = "pos-levels=";
 
 impl FeatureSet {
     /// Makes a feature set of groups.
@@ -154,7 +166,78 @@ impl FeatureSet {
                 .map(|(group, _)| *group)
                 .filter(|group| groups.contains(group))
                 .collect(),
+            part_of_speech_levels: None,
         })
+    }
+
+    /// Limits the levels of the part of speech the features take.
+    ///
+    /// The features of a morpheme name the levels of its part of speech
+    /// (`HP0:名詞`, `HP1:普通名詞`), and the feature of a bunsetsu that
+    /// ends in a word without a conjugation form is its part of speech,
+    /// the levels joined (`A:名詞-普通名詞`). With a limit, both stop at
+    /// that many levels, though the schema has more: the chunker and the
+    /// patterns of the schema still read all of them. CaboCha reads two
+    /// levels of UniDic in its parser and four in its chunker.
+    ///
+    /// # Arguments
+    ///
+    /// * `levels` - The number of levels, 1 or more.
+    ///
+    /// # Returns
+    ///
+    /// The set with the limit, or [`Error::Parser`] for 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lindera_dependency::parser::FeatureSet;
+    ///
+    /// let set = FeatureSet::cabocha().with_part_of_speech_levels(2)?;
+    /// assert_eq!(set.part_of_speech_levels(), Some(2));
+    /// assert_eq!(
+    ///     set.to_string(),
+    ///     "distance,source,target,left,right,children,gap,pos-levels=2"
+    /// );
+    /// assert_eq!(FeatureSet::parse(&set.to_string())?, set);
+    /// # Ok::<(), lindera_dependency::Error>(())
+    /// ```
+    pub fn with_part_of_speech_levels(mut self, levels: usize) -> Result<Self> {
+        if levels == 0 {
+            return Err(Error::Parser(
+                "the features need a level of the part of speech: pos-levels is 1 or more"
+                    .to_string(),
+            ));
+        }
+        self.part_of_speech_levels = Some(levels);
+        Ok(self)
+    }
+
+    /// The limit of the levels of the part of speech.
+    ///
+    /// # Returns
+    ///
+    /// The number of levels the features take, or `None` for every level
+    /// of the schema.
+    pub fn part_of_speech_levels(&self) -> Option<usize> {
+        self.part_of_speech_levels
+    }
+
+    /// The columns of the part of speech the features read, of a schema.
+    ///
+    /// # Arguments
+    ///
+    /// * `schema` - The schema.
+    ///
+    /// # Returns
+    ///
+    /// The columns of the schema, cut at the limit of the set.
+    fn levels(&self, schema: &Schema) -> Range<usize> {
+        let all = schema.part_of_speech.clone();
+        match self.part_of_speech_levels {
+            Some(levels) => all.start..all.end.min(all.start.saturating_add(levels)),
+            None => all,
+        }
     }
 
     /// The feature set of CaboCha: every group but [`Group::AfterHead`].
@@ -169,6 +252,7 @@ impl FeatureSet {
                 .map(|(group, _)| *group)
                 .filter(|group| *group != Group::AfterHead)
                 .collect(),
+            part_of_speech_levels: None,
         }
     }
 
@@ -177,22 +261,40 @@ impl FeatureSet {
     /// # Arguments
     ///
     /// * `text` - The names of the groups, separated by commas; spaces
-    ///   around a name are ignored.
+    ///   around a name are ignored. `pos-levels=<number>` among them is
+    ///   the limit of [`FeatureSet::with_part_of_speech_levels`].
     ///
     /// # Returns
     ///
     /// The set, or [`Error::Parser`] for a name that is not a group, no
-    /// group, or a group given twice.
+    /// group, a group given twice, or a limit that is not a number of 1 or
+    /// more, or is given twice.
     pub fn parse(text: &str) -> Result<Self> {
-        let groups = text
-            .split(',')
-            .map(|name| {
-                let name = name.trim();
-                Group::from_name(name)
-                    .ok_or_else(|| Error::Parser(format!("{name:?} is not a group of features")))
-            })
-            .collect::<Result<Vec<Group>>>()?;
-        Self::new(&groups)
+        let mut groups = Vec::new();
+        let mut levels = None;
+        for name in text.split(',') {
+            let name = name.trim();
+            if let Some(value) = name.strip_prefix(LEVELS_KEY) {
+                if levels.is_some() {
+                    return Err(Error::Parser(format!("{LEVELS_KEY} is given twice")));
+                }
+                levels = Some(value.parse::<usize>().map_err(|_| {
+                    Error::Parser(format!(
+                        "{name:?} is not a number of levels of the part of speech"
+                    ))
+                })?);
+                continue;
+            }
+            groups
+                .push(Group::from_name(name).ok_or_else(|| {
+                    Error::Parser(format!("{name:?} is not a group of features"))
+                })?);
+        }
+        let set = Self::new(&groups)?;
+        match levels {
+            Some(levels) => set.with_part_of_speech_levels(levels),
+            None => Ok(set),
+        }
     }
 
     /// The groups of the set.
@@ -225,19 +327,24 @@ impl Default for FeatureSet {
     fn default() -> Self {
         Self {
             groups: Group::ALL.iter().map(|(group, _)| *group).collect(),
+            part_of_speech_levels: None,
         }
     }
 }
 
 impl fmt::Display for FeatureSet {
-    /// Writes the names of the groups with commas: the text
-    /// [`FeatureSet::parse`] reads.
+    /// Writes the names of the groups with commas, and the limit of the
+    /// levels of the part of speech after them when the set has one: the
+    /// text [`FeatureSet::parse`] reads.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (index, group) in self.groups.iter().enumerate() {
             if index > 0 {
                 write!(f, ",")?;
             }
             write!(f, "{}", group.name())?;
+        }
+        if let Some(levels) = self.part_of_speech_levels {
+            write!(f, ",{LEVELS_KEY}{levels}")?;
         }
         Ok(())
     }
@@ -316,8 +423,13 @@ impl<T: Clone + Ord> Prepared<T> {
             .iter()
             .enumerate()
             .map(|(index, range)| {
-                let strings =
-                    Strings::new(schema, &morphemes[range.clone()], index == 0, index == last);
+                let strings = Strings::new(
+                    schema,
+                    set.levels(schema),
+                    &morphemes[range.clone()],
+                    index == 0,
+                    index == last,
+                );
                 let mut role = |group: Group, prefix: &str, names: &[String]| -> Vec<T> {
                     if !set.has(group) {
                         return Vec::new();
@@ -462,7 +574,13 @@ impl Strings {
     /// # Returns
     ///
     /// The strings.
-    fn new<M: Morpheme>(schema: &Schema, morphemes: &[M], first: bool, last: bool) -> Self {
+    fn new<M: Morpheme>(
+        schema: &Schema,
+        levels: Range<usize>,
+        morphemes: &[M],
+        first: bool,
+        last: bool,
+    ) -> Self {
         let mut statics = Vec::new();
         let mut gap = Vec::new();
         let mut opens = false;
@@ -494,12 +612,12 @@ impl Strings {
         let end = morphemes.len().saturating_sub(1);
         for (role, index) in [('H', head), ('F', function), ('L', 0), ('R', end)] {
             if let Some(morpheme) = morphemes.get(index) {
-                push_morpheme(schema, role, morpheme, &mut statics);
+                push_morpheme(schema, levels.clone(), role, morpheme, &mut statics);
             }
         }
         let mut after = Vec::new();
         if let Some(morpheme) = morphemes.get(head + 1) {
-            push_morpheme(schema, 'N', morpheme, &mut after);
+            push_morpheme(schema, levels.clone(), 'N', morpheme, &mut after);
         }
         if first {
             statics.push("BOS:1".to_string());
@@ -533,7 +651,7 @@ impl Strings {
                 .or_else(|| {
                     morphemes
                         .get(function)
-                        .map(|morpheme| schema.part_of_speech_of(morpheme))
+                        .map(|morpheme| schema.levels_of(morpheme, levels.clone()))
                 })
                 .unwrap_or_default()
         };
@@ -576,6 +694,7 @@ fn conjugation_form<'a, M: Morpheme>(schema: &Schema, morpheme: &'a M) -> Option
 /// # Arguments
 ///
 /// * `schema` - The schema of the dictionary of the morpheme.
+/// * `levels` - The columns of the part of speech the features read.
 /// * `role` - The letter of the morpheme in the bunsetsu: `H` for the head,
 ///   `F` for the function word, `L` for the first, `R` for the last, `N`
 ///   for the one after the head.
@@ -583,12 +702,13 @@ fn conjugation_form<'a, M: Morpheme>(schema: &Schema, morpheme: &'a M) -> Option
 /// * `features` - The features to append to.
 fn push_morpheme<M: Morpheme>(
     schema: &Schema,
+    levels: Range<usize>,
     role: char,
     morpheme: &M,
     features: &mut Vec<String>,
 ) {
     features.push(format!("{role}S:{}", schema.surface_of(morpheme)));
-    for (level, index) in schema.part_of_speech.clone().enumerate() {
+    for (level, index) in levels.enumerate() {
         match morpheme.feature(index) {
             Some(value) if value != EMPTY => features.push(format!("{role}P{level}:{value}")),
             _ => break,
@@ -852,7 +972,7 @@ mod tests {
     fn the_levels_of_the_part_of_speech_stop_at_the_first_empty_one() {
         // A level after an empty one is not read, as in CaboCha.
         let morphemes = [LatticeMorpheme::new("語", "名詞,*,一般,*,*,*,語,ゴ,ゴ")];
-        let strings = Strings::new(&Schema::ipadic(), &morphemes, false, false);
+        let strings = Strings::new(&Schema::ipadic(), 0..4, &morphemes, false, false);
         let levels: Vec<&str> = strings
             .statics
             .iter()
@@ -860,6 +980,118 @@ mod tests {
             .filter(|feature| feature.starts_with("HP"))
             .collect();
         assert_eq!(levels, ["HP0:名詞"]);
+    }
+
+    #[test]
+    fn a_limit_holds_the_features_to_that_many_levels_of_the_part_of_speech() {
+        // A schema of four levels, as the one of UniDic.
+        let schema = Schema {
+            part_of_speech: 0..4,
+            conjugation_form: Some(5),
+            ..Schema::default()
+        };
+        let all = FeatureSet::cabocha();
+        let two = FeatureSet::cabocha().with_part_of_speech_levels(2).unwrap();
+        assert_eq!(all.levels(&schema), 0..4);
+        assert_eq!(two.levels(&schema), 0..2);
+        // A limit past the levels of the schema is all of them.
+        let nine = FeatureSet::cabocha().with_part_of_speech_levels(9).unwrap();
+        assert_eq!(nine.levels(&schema), 0..4);
+        // A schema that starts later is cut from its start.
+        let later = Schema {
+            part_of_speech: 3..7,
+            ..Schema::default()
+        };
+        assert_eq!(two.levels(&later), 3..5);
+
+        // 太郎: four levels, and no conjugation form.
+        let morphemes = [LatticeMorpheme::new(
+            "太郎",
+            "名詞,固有名詞,人名,名,*,*,タロウ,タロウ",
+        )];
+        let levels = |set: &FeatureSet| -> (Vec<String>, String) {
+            let strings = Strings::new(&schema, set.levels(&schema), &morphemes, false, false);
+            let names = strings
+                .statics
+                .iter()
+                .filter(|feature| feature.starts_with("HP"))
+                .cloned()
+                .collect();
+            (names, strings.child)
+        };
+        // The features of the levels, and the feature of the bunsetsu as a
+        // child: its part of speech, as it has no conjugation form.
+        assert_eq!(
+            levels(&all),
+            (
+                vec![
+                    "HP0:名詞".to_string(),
+                    "HP1:固有名詞".to_string(),
+                    "HP2:人名".to_string(),
+                    "HP3:名".to_string()
+                ],
+                "名詞-固有名詞-人名-名".to_string()
+            )
+        );
+        assert_eq!(
+            levels(&two),
+            (
+                vec!["HP0:名詞".to_string(), "HP1:固有名詞".to_string()],
+                "名詞-固有名詞".to_string()
+            )
+        );
+        // The limit reaches the features of a decision: 太郎 -> 太郎.
+        let pair = [morphemes[0].clone(), morphemes[0].clone()];
+        let decisions = |set: &FeatureSet| -> Vec<String> {
+            let prepared = Prepared::new(&schema, set, &pair, &[0..1, 1..2], |feature| {
+                Some(feature.to_string())
+            });
+            decision(&prepared, 0, 1, &no_children(2))
+        };
+        assert!(decisions(&all).iter().any(|one| one == "SHP3:名"));
+        assert!(!decisions(&two).iter().any(|one| one == "SHP2:人名"));
+        assert!(decisions(&two).iter().any(|one| one == "SHP1:固有名詞"));
+    }
+
+    #[test]
+    fn the_limit_of_the_levels_is_part_of_the_text_of_a_set() {
+        let set = FeatureSet::parse("gap, pos-levels=2 ,source").unwrap();
+        assert_eq!(set.groups(), [Group::Source, Group::Gap]);
+        assert_eq!(set.part_of_speech_levels(), Some(2));
+        // It is written after the groups, and read back.
+        assert_eq!(set.to_string(), "source,gap,pos-levels=2");
+        assert_eq!(FeatureSet::parse(&set.to_string()).unwrap(), set);
+        // A set without a limit is written as before, and is another set.
+        let plain = FeatureSet::parse("source,gap").unwrap();
+        assert_eq!(plain.part_of_speech_levels(), None);
+        assert_eq!(plain.to_string(), "source,gap");
+        assert_ne!(plain, set);
+        assert_eq!(FeatureSet::cabocha().part_of_speech_levels(), None);
+        assert_eq!(FeatureSet::default().part_of_speech_levels(), None);
+
+        let message = |text: &str| FeatureSet::parse(text).unwrap_err().to_string();
+        assert_eq!(
+            message("source,pos-levels=0"),
+            "the features need a level of the part of speech: pos-levels is 1 or more"
+        );
+        assert_eq!(
+            message("source,pos-levels=two"),
+            "\"pos-levels=two\" is not a number of levels of the part of speech"
+        );
+        assert_eq!(
+            message("source,pos-levels="),
+            "\"pos-levels=\" is not a number of levels of the part of speech"
+        );
+        assert_eq!(
+            message("pos-levels=2,source,pos-levels=3"),
+            "pos-levels= is given twice"
+        );
+        // The limit alone is not a set.
+        assert_eq!(message("pos-levels=2"), "a feature set needs a group");
+        assert!(matches!(
+            FeatureSet::cabocha().with_part_of_speech_levels(0),
+            Err(Error::Parser(_))
+        ));
     }
 
     #[test]

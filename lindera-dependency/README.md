@@ -980,7 +980,15 @@ head word is another form, which the schema holds as `HeadRule::LastWords`:
 the function word is the last morpheme that is not a 特殊, and the head
 word is found apart from it.
 
-The models for UniDic are refused. The table of the
+The model for UniDic (`chunk.unidic.txt`, `dep.unidic.txt`) is converted
+too, into a model for `unidic`, or with `--dictionary` for `unidic-cwj` or
+`unidic-csj`; with each of the three, on the morphemes of Lindera, it
+analyzes the 9,066 sentences as CaboCha does. CaboCha reads four levels of
+the part of speech of UniDic in its chunker and two in its parser, so the
+feature set of the converted parser is held to two (`pos-levels=2`). Its
+file is 47.7 MB.
+
+The table of the
 normalization is CaboCha's `src/normalizer.rule`, under its BSD license
 (`NOTICE.txt`). The
 [documentation](../docs/src/lindera-dependency/cabocha_models.md) has the

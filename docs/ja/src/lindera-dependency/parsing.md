@@ -192,6 +192,8 @@ distance,source,target,left,right,children,gap,after
 
 `FeatureSet::cabocha()` は、ここから `after` を除いたものです。モデルファイルは、解析器の素性の集合を持ちます。
 
+素性の集合は、素性が読む品詞の段数も限れます。群の後ろに `pos-levels=2` と書きます（`FeatureSet::with_part_of_speech_levels`）。形態素の素性（`HP0:名詞`、`HP1:普通名詞`）と、活用形の無い語で終わる文節の素性（`A:名詞-普通名詞`）が、その段数で止まります。スキーマの品詞がそれより多くても止まり、文節の区切りは全部の段を読みます。指定しなければ、素性はスキーマの全部の段を読みます。このクレートのモデルはそうしています。[CaboCha の UniDic のモデル](./cabocha_models.md)を変換したモデルは、解析器が 2 段、区切りが 4 段です。
+
 分類器は、1 つの集合の素性で学習し、同じ集合で解析します。
 
 ### CaboCha との違い

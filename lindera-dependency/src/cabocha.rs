@@ -25,13 +25,13 @@
 //!
 //! # Which models
 //!
-//! The models for the part-of-speech sets of IPA and of JUMAN, in UTF-8:
-//! `chunk.ipa.txt` with `dep.ipa.txt`, for the morphemes of IPADIC, and
-//! `chunk.juman.txt` with `dep.juman.txt`, for those of the JUMAN
-//! dictionary (`jumandic`). The set is read in the header of the parser
-//! model; the chunker model does not say which it is for, so the two files
-//! have to be given as a pair. The models for UniDic are refused: their
-//! columns are other ones.
+//! The three models CaboCha distributes, in UTF-8: `chunk.ipa.txt` with
+//! `dep.ipa.txt`, for the morphemes of IPADIC; `chunk.juman.txt` with
+//! `dep.juman.txt`, for those of the JUMAN dictionary (`jumandic`); and
+//! `chunk.unidic.txt` with `dep.unidic.txt`, for those of UniDic (`unidic`,
+//! or `unidic-cwj` or `unidic-csj` with [`Converted::to_bytes_for`]). The
+//! set is read in the header of the parser model; the chunker model does
+//! not say which it is for, so the two files have to be given as a pair.
 //!
 //! # Examples
 //!
@@ -71,6 +71,8 @@ pub enum PartOfSpeechSet {
     Ipa,
     /// The set of the JUMAN dictionary: `JUMAN`.
     Juman,
+    /// The set of UniDic: `UNIDIC`.
+    Unidic,
 }
 
 impl PartOfSpeechSet {
@@ -78,19 +80,16 @@ impl PartOfSpeechSet {
     ///
     /// # Arguments
     ///
-    /// * `name` - The value of `posset`: `IPA` or `JUMAN`.
+    /// * `name` - The value of `posset`: `IPA`, `JUMAN` or `UNIDIC`.
     ///
     /// # Returns
     ///
-    /// The set, or [`Error::Cabocha`] for `UNIDIC`, which is not
-    /// supported, and for any other name.
+    /// The set, or [`Error::Cabocha`] for any other name.
     pub fn from_name(name: &str) -> Result<Self> {
         match name {
             "IPA" => Ok(PartOfSpeechSet::Ipa),
             "JUMAN" => Ok(PartOfSpeechSet::Juman),
-            "UNIDIC" => Err(Error::Cabocha(format!(
-                "the model is for the part-of-speech set {name}, which is not supported: only the models for IPA and for JUMAN are converted"
-            ))),
+            "UNIDIC" => Ok(PartOfSpeechSet::Unidic),
             other => Err(Error::Cabocha(format!(
                 "the model is for the part-of-speech set {other:?}, which is not one of CaboCha"
             ))),
@@ -98,16 +97,46 @@ impl PartOfSpeechSet {
     }
 
     /// The name of the dictionary of Lindera with this set: the name a
-    /// converted model is for.
+    /// converted model is for, unless another one of
+    /// [`PartOfSpeechSet::dictionaries`] is asked for.
     ///
     /// # Returns
     ///
-    /// `ipadic` for [`PartOfSpeechSet::Ipa`], and `jumandic` for
-    /// [`PartOfSpeechSet::Juman`].
+    /// `ipadic` for [`PartOfSpeechSet::Ipa`], `jumandic` for
+    /// [`PartOfSpeechSet::Juman`], and `unidic` for
+    /// [`PartOfSpeechSet::Unidic`].
     pub fn dictionary(self) -> &'static str {
+        self.dictionaries()[0]
+    }
+
+    /// The names of the dictionaries of Lindera with this set.
+    ///
+    /// # Returns
+    ///
+    /// One name for IPA and for JUMAN; for UniDic `unidic`, `unidic-cwj`
+    /// and `unidic-csj`, which have the columns a model reads at the same
+    /// places.
+    pub fn dictionaries(self) -> &'static [&'static str] {
         match self {
-            PartOfSpeechSet::Ipa => "ipadic",
-            PartOfSpeechSet::Juman => "jumandic",
+            PartOfSpeechSet::Ipa => &["ipadic"],
+            PartOfSpeechSet::Juman => &["jumandic"],
+            PartOfSpeechSet::Unidic => &["unidic", "unidic-cwj", "unidic-csj"],
+        }
+    }
+
+    /// The feature set of the parser of CaboCha for this set.
+    ///
+    /// # Returns
+    ///
+    /// [`FeatureSet::cabocha`]; for UniDic with two levels of the part of
+    /// speech, though the chunker and the patterns of the schema read
+    /// four.
+    pub fn feature_set(self) -> FeatureSet {
+        match self {
+            PartOfSpeechSet::Ipa | PartOfSpeechSet::Juman => FeatureSet::cabocha(),
+            PartOfSpeechSet::Unidic => FeatureSet::cabocha()
+                .with_part_of_speech_levels(2)
+                .expect("two levels are a limit"),
         }
     }
 }
@@ -189,13 +218,37 @@ impl Converted {
     ///
     /// The bytes, or the error of a model that cannot be written.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        Ok(ModelBuilder::new(
-            self.part_of_speech_set.dictionary(),
-            self.chunker.schema().clone(),
-        )?
-        .chunker(&self.chunker)?
-        .parser(&self.parser, Quantization::F32)?
-        .to_bytes())
+        self.to_bytes_for(self.part_of_speech_set.dictionary())
+    }
+
+    /// The model as the bytes of a model file for a dictionary of the
+    /// part-of-speech set: `unidic-cwj` or `unidic-csj` in place of
+    /// `unidic`, for the model for UniDic.
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary` - The name of the dictionary, one of
+    ///   [`PartOfSpeechSet::dictionaries`].
+    ///
+    /// # Returns
+    ///
+    /// The bytes; [`Error::Cabocha`] for a dictionary that has not the
+    /// part-of-speech set of the model, or the error of a model that
+    /// cannot be written.
+    pub fn to_bytes_for(&self, dictionary: &str) -> Result<Vec<u8>> {
+        let dictionaries = self.part_of_speech_set.dictionaries();
+        if !dictionaries.contains(&dictionary) {
+            return Err(Error::Cabocha(format!(
+                "the model is not one for the dictionary {dictionary}: its part-of-speech set is that of {}",
+                dictionaries.join(", ")
+            )));
+        }
+        Ok(
+            ModelBuilder::new(dictionary, self.chunker.schema().clone())?
+                .chunker(&self.chunker)?
+                .parser(&self.parser, Quantization::F32)?
+                .to_bytes(),
+        )
     }
 }
 
@@ -231,6 +284,16 @@ pub fn normalization() -> Normalization {
 /// last that is not a 特殊, a 助詞 or a 接尾辞
 /// ([`HeadRule::LastWords`]); the punctuation, the brackets and the
 /// normalization are those of IPA.
+///
+/// For UniDic: four levels of the part of speech, which the chunker and
+/// the patterns read; the parser reads two of them
+/// ([`PartOfSpeechSet::feature_set`]). The function words are 助詞,
+/// 助動詞, 接尾辞,形容詞的, 接尾辞,形状詞的 and 接尾辞,動詞的, and the
+/// head is the last morpheme that is neither one of them nor a 空白, a
+/// 補助記号 or a 記号. The column of the conjugation form is the fourth,
+/// which is the fourth level of the part of speech: CaboCha reads the
+/// column after the two levels and the next, whatever it holds, and its
+/// model was trained with that.
 ///
 /// # Arguments
 ///
@@ -298,6 +361,37 @@ pub fn schema(part_of_speech_set: PartOfSpeechSet) -> Schema {
             normalization: normalization(),
             head_rule: HeadRule::LastWords,
         },
+        PartOfSpeechSet::Unidic => Schema {
+            part_of_speech: 0..4,
+            conjugation_type: Some(4),
+            conjugation_form: Some(3),
+            base_form: Some(7),
+            function_words: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["助動詞"]),
+                Pattern::new(&["接尾辞", "形容詞的"]),
+                Pattern::new(&["接尾辞", "形状詞的"]),
+                Pattern::new(&["接尾辞", "動詞的"]),
+            ],
+            not_heads: Vec::new(),
+            particles: vec![Pattern::new(&["助詞"])],
+            lexicalized: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["副詞"]),
+                Pattern::new(&["連体詞"]),
+                Pattern::new(&["接続詞"]),
+            ],
+            symbols: Symbols {
+                others: Marks::new(&[&["空白"], &["補助記号"], &["記号"]], ""),
+                commas: Marks::new(&[], "、"),
+                periods: Marks::new(&[], "。"),
+                open_brackets: Marks::new(&[], "(（‘“《「『［〈｛"),
+                close_brackets: Marks::new(&[], ")）’”》」』］〉｝"),
+                surface: SurfaceRule::OneCharacter,
+            },
+            normalization: normalization(),
+            head_rule: HeadRule::FunctionWordsApart,
+        },
     }
 }
 
@@ -332,7 +426,8 @@ fn check_header(model: &svm::SvmModel, key: &str, accepted: &[&str]) -> Result<(
 /// # Returns
 ///
 /// The converted model, or [`Error::Cabocha`] for files that are not the
-/// two text models of CaboCha, for a model that is not for IPA or JUMAN in UTF-8
+/// two text models of CaboCha, for a model that is not for IPA, JUMAN or
+/// UniDic in UTF-8
 /// with a kernel of degree 2, or for options that are not ones: a `sigma`
 /// that is not a finite number of 0 or more.
 pub fn convert(chunker: &str, parser: &str, options: &Options) -> Result<Converted> {
@@ -430,7 +525,7 @@ pub fn convert(chunker: &str, parser: &str, options: &Options) -> Result<Convert
     // bias of a model is not in the unit of its weights.
     let parser = ParserModel::new(
         schema,
-        FeatureSet::cabocha(),
+        part_of_speech_set.feature_set(),
         f64::from(expansion.bias) * unit,
         features,
         PairWeights::Exact(pairs),
@@ -681,6 +776,93 @@ mod tests {
     }
 
     #[test]
+    fn a_model_for_unidic_is_converted_with_two_levels_for_the_parser() {
+        // The chunker reads four levels of the part of speech: it starts a
+        // bunsetsu at a common noun after a name, and at a verb after a
+        // case particle.
+        let chunker = "version: 100\ncost-factor: 1\nmaxid: 8\nxsize: 2\n\nB\nI\n\nU00:%x[0,0]\nU01:%x[-1,1]/%x[0,1]\nB\n\n0 B\n4 U01:名詞-固有名詞-人名-名/名詞-普通名詞-一般\n6 U01:助詞-格助詞/動詞-一般\n\n-1\n1\n-1\n1\n5\n-5\n5\n-5\n";
+        // The parser reads two, and the fourth column as the conjugation
+        // form: a bunsetsu whose function word has 名 there depends on the
+        // next one.
+        let parser = "degree: 2\nbias: 0.000000\ncharset: UTF8\nposset: UNIDIC\n\n0 SFF:名\n1 DIST:1\n\n1 0\n-0.25 1\n";
+        let converted = convert(chunker, parser, &svm::tests::unpruned()).unwrap();
+        assert_eq!(converted.part_of_speech_set, PartOfSpeechSet::Unidic);
+        let unidic = schema(PartOfSpeechSet::Unidic);
+        assert_eq!(unidic.part_of_speech, 0..4);
+        assert_eq!(unidic.conjugation_form, Some(3));
+        assert_eq!(unidic.head_rule, HeadRule::FunctionWordsApart);
+        assert_eq!(converted.parser.schema(), &unidic);
+        let two = FeatureSet::cabocha().with_part_of_speech_levels(2).unwrap();
+        assert_eq!(converted.parser.feature_set(), &two);
+        assert_eq!(PartOfSpeechSet::Unidic.feature_set(), two);
+        // The other sets read every level of their schema.
+        for set in [PartOfSpeechSet::Ipa, PartOfSpeechSet::Juman] {
+            assert_eq!(set.feature_set(), FeatureSet::cabocha());
+        }
+
+        // The limit is in the file.
+        let model = Model::new(converted.to_bytes().unwrap()).unwrap();
+        assert_eq!(model.dictionary(), "unidic");
+        assert_eq!(model.schema(), &unidic);
+        assert_eq!(model.parser().unwrap().feature_set(), &two);
+        // 太郎 / 本 を / 読む 。 with the first columns of UniDic.
+        let sentence = vec![
+            LatticeMorpheme::new("太郎", "名詞,固有名詞,人名,名,*,*,タロウ,タロウ"),
+            LatticeMorpheme::new("本", "名詞,普通名詞,一般,*,*,*,ホン,本"),
+            LatticeMorpheme::new("を", "助詞,格助詞,*,*,*,*,ヲ,を"),
+            LatticeMorpheme::new("読む", "動詞,一般,*,*,五段-マ行,終止形-一般,ヨム,読む"),
+            LatticeMorpheme::new("。", "補助記号,句点,*,*,*,*,,。"),
+        ];
+        let bunsetsu = model.analyze(&sentence).unwrap();
+        let ranges: Vec<_> = bunsetsu.iter().map(|one| one.morphemes.clone()).collect();
+        assert_eq!(ranges, [0..1, 1..3, 3..5]);
+        // The period is a 補助記号, and neither the head nor the function
+        // word of 読む 。.
+        let positions: Vec<_> = bunsetsu.iter().map(|one| one.positions).collect();
+        assert_eq!(positions, [Some((0, 0)), Some((0, 1)), Some((0, 0))]);
+        // 太郎 has 名 in its fourth column, and depends on 本 を.
+        let heads: Vec<Option<usize>> = bunsetsu.iter().map(|one| one.head).collect();
+        assert_eq!(heads, [Some(1), Some(2), None]);
+        let score = bunsetsu[0].score.unwrap();
+        assert!((score - 3.0).abs() < 1e-6, "{score}");
+    }
+
+    #[test]
+    fn a_converted_model_is_for_a_dictionary_of_its_set() {
+        let chunker = crfpp::tests::MODEL;
+        let parser = svm::tests::MODEL;
+        let options = svm::tests::unpruned();
+        assert_eq!(PartOfSpeechSet::Ipa.dictionaries(), ["ipadic"]);
+        assert_eq!(PartOfSpeechSet::Juman.dictionaries(), ["jumandic"]);
+        assert_eq!(
+            PartOfSpeechSet::Unidic.dictionaries(),
+            ["unidic", "unidic-cwj", "unidic-csj"]
+        );
+        // The model for UniDic is one for each of the three dictionaries.
+        let unidic = convert(
+            chunker,
+            &parser.replace("posset: IPA", "posset: UNIDIC"),
+            &options,
+        )
+        .unwrap();
+        for dictionary in ["unidic", "unidic-cwj", "unidic-csj"] {
+            let model = Model::new(unidic.to_bytes_for(dictionary).unwrap()).unwrap();
+            assert_eq!(model.dictionary(), dictionary);
+        }
+        assert_eq!(
+            unidic.to_bytes_for("ipadic").unwrap_err().to_string(),
+            "the model is not one for the dictionary ipadic: its part-of-speech set is that of unidic, unidic-cwj, unidic-csj"
+        );
+        // The model for IPA is one for IPADIC alone.
+        let ipa = convert(chunker, parser, &options).unwrap();
+        assert_eq!(ipa.to_bytes_for("ipadic").unwrap(), ipa.to_bytes().unwrap());
+        assert_eq!(
+            ipa.to_bytes_for("unidic").unwrap_err().to_string(),
+            "the model is not one for the dictionary unidic: its part-of-speech set is that of ipadic"
+        );
+    }
+
+    #[test]
     fn refuses_what_is_not_a_model_it_converts() {
         let chunker = crfpp::tests::MODEL;
         let parser = svm::tests::MODEL;
@@ -689,10 +871,6 @@ mod tests {
         };
         let options = Options::default();
         for (parser, expected) in [
-            (
-                parser.replace("posset: IPA", "posset: UNIDIC"),
-                "the part-of-speech set UNIDIC, which is not supported",
-            ),
             (
                 parser.replace("posset: IPA", "posset: PENN"),
                 "the part-of-speech set \"PENN\", which is not one of CaboCha",
@@ -744,5 +922,6 @@ mod tests {
         );
         assert_eq!(PartOfSpeechSet::Ipa.dictionary(), "ipadic");
         assert_eq!(PartOfSpeechSet::Juman.dictionary(), "jumandic");
+        assert_eq!(PartOfSpeechSet::Unidic.dictionary(), "unidic");
     }
 }
