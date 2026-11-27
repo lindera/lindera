@@ -45,6 +45,7 @@ These features embed pre-built dictionaries directly into the binary, eliminatin
 | `embed-unidic-cwj` | UniDic CWJ | Japanese |
 | `embed-unidic-csj` | UniDic CSJ | Japanese |
 | `embed-sudachidict` | SudachiDict | Japanese |
+| `embed-jumandic` | JUMAN dictionary | Japanese |
 | `embed-ko-dic` | ko-dic | Korean |
 | `embed-cc-cedict` | CC-CEDICT | Chinese |
 | `embed-jieba` | Jieba | Chinese |

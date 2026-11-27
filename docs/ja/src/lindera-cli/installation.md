@@ -99,6 +99,12 @@ CLI 使用時に展開した辞書パスを指定します（アーカイブに�
 % cargo build --release --features=embed-sudachidict
 ```
 
+#### JUMAN 辞書（日本語辞書）
+
+```shell
+% cargo build --release --features=embed-jumandic
+```
+
 #### ko-dic（韓国語辞書）
 
 ```shell

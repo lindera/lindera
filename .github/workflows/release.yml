@@ -155,6 +155,16 @@ jobs:
       cache: true
       free-disk-space: true
 
+  test-lindera-jumandic:
+    name: Test lindera-jumandic
+    needs: [format]
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-jumandic
+      features: "--features embed-jumandic"
+      cache: true
+      free-disk-space: true
+
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
     needs: [format]
@@ -209,7 +219,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-segmenter
-      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-jumandic,embed-ko-dic,embed-cc-cedict,embed-jieba"
       cache: true
       free-disk-space: true
 
@@ -256,7 +266,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera
-      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-jumandic,embed-ko-dic,embed-cc-cedict,embed-jieba"
       cache: true
       free-disk-space: true
 
@@ -433,6 +443,8 @@ jobs:
             feature: "embed-unidic-csj"
           - name: "lindera-sudachidict"
             feature: "embed-sudachidict"
+          - name: "lindera-jumandic"
+            feature: "embed-jumandic"
           - name: "lindera-ko-dic"
             feature: "embed-ko-dic"
           - name: "lindera-cc-cedict"
@@ -460,12 +472,14 @@ jobs:
           df -h /
 
       # UniDic's, UniDic CWJ's and UniDic CSJ's sources are NINJAL's packages
-      # (134 MiB, and about 2.8 GiB each) from NINJAL's server, and ko-dic's
-      # is mecab-ko-dic's release (47 MiB) from the upstream Bitbucket
-      # Downloads. Lindera runs neither, so the archives are kept between runs
-      # rather than downloaded each time (#216, #1358, #1384, #1386).
+      # (134 MiB, and about 2.8 GiB each) from NINJAL's server, ko-dic's is
+      # mecab-ko-dic's release (47 MiB) from the upstream Bitbucket Downloads,
+      # and the JUMAN dictionary's is the archive GitHub serves for a commit
+      # of the repository of MeCab (45 MiB). Lindera runs none of them, so the
+      # archives are kept between runs rather than downloaded each time
+      # (#216, #1358, #1384, #1386, #1466).
       - name: Restore the source archive
-        if: matrix.dictionary.name == 'lindera-unidic' || matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj' || matrix.dictionary.name == 'lindera-ko-dic'
+        if: matrix.dictionary.name == 'lindera-unidic' || matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj' || matrix.dictionary.name == 'lindera-ko-dic' || matrix.dictionary.name == 'lindera-jumandic'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.dictionary.name }}
@@ -485,7 +499,7 @@ jobs:
           LINDERA_BUILD_DICTIONARY_CACHE_DIR=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
 
       - name: Save the source archive
-        if: matrix.dictionary.name == 'lindera-unidic' || matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj' || matrix.dictionary.name == 'lindera-ko-dic'
+        if: matrix.dictionary.name == 'lindera-unidic' || matrix.dictionary.name == 'lindera-unidic-cwj' || matrix.dictionary.name == 'lindera-unidic-csj' || matrix.dictionary.name == 'lindera-ko-dic' || matrix.dictionary.name == 'lindera-jumandic'
         uses: ./.github/actions/source-archive-cache
         with:
           crate: ${{ matrix.dictionary.name }}
@@ -1262,6 +1276,7 @@ jobs:
         test-lindera-unidic-csj,
         test-lindera-unidic-csj-tokenization,
         test-lindera-sudachidict,
+        test-lindera-jumandic,
         test-lindera-ko-dic,
         test-lindera-cc-cedict,
         test-lindera-jieba,
@@ -1429,7 +1444,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
-          crates="lindera-ipadic lindera-ipadic-neologd lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-ko-dic lindera-cc-cedict lindera-jieba"
+          crates="lindera-ipadic lindera-ipadic-neologd lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-jumandic lindera-ko-dic lindera-cc-cedict lindera-jieba"
           mkdir -p dictionary-archives
           for crate in $crates; do
             gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$crate-$VERSION.zip" --dir dictionary-archives
@@ -1468,7 +1483,7 @@ jobs:
           # Binding crates (lindera-python, lindera-nodejs, lindera-ruby,
           # lindera-wasm, lindera-php) are not published to crates.io; they are
           # distributed through their own registries (PyPI, npm, RubyGems).
-          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-segmenter lindera-dependency lindera-analysis lindera lindera-binding lindera-cli; do
+          for crate in lindera-crf lindera-dictionary lindera-trainer lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera-unidic-cwj lindera-unidic-csj lindera-sudachidict lindera-jumandic lindera-segmenter lindera-dependency lindera-analysis lindera lindera-binding lindera-cli; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then

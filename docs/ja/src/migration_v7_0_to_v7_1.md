@@ -1,6 +1,6 @@
 # v7.0 から v7.1 への移行
 
-このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 2 つあります。マイナーの版に入れたのは、メンテナーの決定です（[#1440](https://github.com/lindera/lindera/issues/1440)、[#1446](https://github.com/lindera/lindera/issues/1446)）。トークナイザーが返したトークンを読むコードは、影響を受けません。
+このガイドは、v7.1.0 の破壊的変更をまとめたものです。Rust の API に 3 つあります。マイナーの版に入れたのは、メンテナーの決定です（[#1440](https://github.com/lindera/lindera/issues/1440)、[#1446](https://github.com/lindera/lindera/issues/1446)、[#1466](https://github.com/lindera/lindera/issues/1466)）。トークナイザーが返したトークンを読むコードは、影響を受けません。
 
 ## 概要
 
@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | **`Token` が係り受け解析の結果を持つようになり、`#[non_exhaustive]` になった** | `Token` を構造体式で作る、または全部の欄を分解する Rust のコード | `Token::new` でトークンを作り、違う欄は後から設定する |
 | **`Dictionary::save_to_path` を削除した** | これを呼んでいた Rust のコード（実行すると panic していた） | 辞書のディレクトリをコピーする |
+| **`Metadata` に欄 `skip_invalid_encoding` が増えた** | `Metadata` を、全部の欄を書いた構造体式で作る Rust のコード | `skip_invalid_encoding: false` を足すか、式の最後に `..Default::default()` を書く |
 
 トークナイザーが返したトークンを読むコードは、影響を受けません。`surface`、`byte_start`、`details()`、`as_value()` などの欄とメソッドは、これまでどおりです。
 
@@ -67,6 +68,16 @@ error[E0599]: no method named `save_to_path` found for struct `lindera_dictionar
 
 代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには [`lindera build`](./lindera-cli/commands.md) を、公開されている辞書を入れるには [`lindera download`](./lindera-cli/commands.md) を使います。
 
+## `Metadata` に欄が増えた
+
+`lindera_dictionary::dictionary::metadata::Metadata` に、欄 `skip_invalid_encoding: bool` が増えました（[#1466](https://github.com/lindera/lindera/issues/1466)）。JUMAN 辞書に必要な設定です。これがあると、ビルダーは、語彙の CSV ファイルの行が辞書の文字コードのテキストとして読めないときに、その行を飛ばして警告します（[`build` コマンド](./lindera-cli/commands.md#文字コードとして読めない行)を参照）。`Metadata` は `#[non_exhaustive]` ではないので、全部の欄を書いた構造体式は、コンパイルできなくなります。
+
+```text
+error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_dictionary::dictionary::metadata::Metadata`
+```
+
+`skip_invalid_encoding: false` を足してください。これまでのビルドと同じ動きです。または、式の最後に `..Default::default()` を書いてください。こう書くと、今後に欄が増えても影響を受けません。`metadata.json` を読むコード、`Metadata::default()` から始めるコード、`Metadata::new` を呼ぶコードは、影響を受けません。この欄の無い `metadata.json` は `false` として読まれ、`false` のときは、書き出すファイルにこの欄は入りません。
+
 ## 変わらないこと
 
 - `Token::as_value` と `lindera tokenize -o json` が書く JSON は、係り受けを持たないトークンでは、キーが増えません。
@@ -74,3 +85,4 @@ error[E0599]: no method named `save_to_path` found for struct `lindera_dictionar
 - トークンは、ポインター 1 つ分だけ大きくなります。
 - `lindera` コマンドとバインディングは、既定のビルドに `dependency` feature を持ちます。トークンフィルター `japanese_dependency` がパッケージに入り、`lindera-dependency` クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。`default-features = false` で、入っていないビルドになります。ライブラリの `lindera` と `lindera-analysis` は、feature を指定したときだけ持ちます。
 - モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera download dependency-ipadic` で取得します。UniDic のモデルは、`dependency-unidic`・`dependency-unidic-cwj`・`dependency-unidic-csj` で取得します。
+- 10 個目の辞書として、[JUMAN 辞書](./lindera-jumandic.md)（辞書名 `jumandic`、クレート `lindera-jumandic`、feature `embed-jumandic`）が増えました。mecab-jumandic 7.0-20130310 から作ります（[#1466](https://github.com/lindera/lindera/issues/1466)）。既定のビルドは、これを埋め込みません。`lindera download jumandic` で取得できます。係り受け解析のモデルは、この辞書にはありません。

@@ -7,7 +7,7 @@ Lindera は次の環境変数を読みます。どれも設定しなくても動
 | [`LINDERA_BUILD_DICTIONARY_CACHE_DIR`](#lindera_build_dictionary_cache_dir) | 辞書クレートの build script | ディレクトリ | ビルドごとに、その出力ディレクトリで辞書をダウンロードしてビルドする |
 | [`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) | 辞書クレートの build script | `1` か `true` | 辞書クレートは固定した公開済みの辞書をダウンロードし、それを使えないときだけソースからビルドする |
 | [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) | 辞書クレートの build script | `http` か `https` の URL | 公開済みの辞書を GitHub のリリースからダウンロードする |
-| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | 辞書クレートの build script | `http` か `https` の URL | ソースのアーカイブを `https://lindera.dev` から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（`https://clrd.ninjal.ac.jp`）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（`https://bitbucket.org`）からダウンロードする |
+| [`LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL`](#lindera_build_dictionary_source_base_url) | 辞書クレートの build script | `http` か `https` の URL | ソースのアーカイブを `https://lindera.dev` から、UniDic、UniDic CWJ、UniDic CSJ のものは国立国語研究所（`https://clrd.ninjal.ac.jp`）から、ko-dic のものは mecab-ko-dic の Bitbucket の Downloads（`https://bitbucket.org`）から、JUMAN 辞書のものは GitHub の MeCab のリポジトリ（`https://github.com`）からダウンロードする |
 | [`LINDERA_BUILD_CONTEXT_ID_FREQ_FILE`](#lindera_build_context_id_freq_file) | 辞書クレートの build script | ファイル | 辞書クレートに同梱の頻度表（あれば） |
 | [`LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`](#lindera_build_dependency_model_ipadic_file) | `embed-model-ipadic` を付けた `lindera-dependency` の build script。`..._UNIDIC_FILE`・`..._UNIDIC_CWJ_FILE`・`..._UNIDIC_CSJ_FILE` は、UniDic のモデルの feature を付けたとき | モデルファイル | 公開済みのクレートは、固定しているモデルを埋め込む。リポジトリからのビルドは止まる |
 | [`DOCS_RS`](#docs_rs) | 辞書クレートの build script | docs.rs が設定する | 本物の辞書をビルドする |
@@ -82,7 +82,7 @@ LINDERA_BUILD_DICTIONARY_CACHE_DIR = "/path/to/cache"
 
 ### LINDERA_BUILD_DICTIONARY_FROM_SOURCE
 
-Lindera のリリースは、公式の 9 つの辞書をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に `lindera-<名前>-<バージョン>.zip` として置きます。crates.io に公開した辞書クレートは、`metadata.json` の隣の `prebuilt.json` で、そのリリースのアーカイブを URL と SHA-256 で固定しています。このファイルはリリースが書きます。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは `metadata.json` の `lindera_version` だけです。これは、そのリリースのバージョンを表します。公開の手順は[辞書のリリース](../development/dictionary_release.md)にあります。
+Lindera のリリースは、公式の 10 個の辞書をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に `lindera-<名前>-<バージョン>.zip` として置きます。crates.io に公開した辞書クレートは、`metadata.json` の隣の `prebuilt.json` で、そのリリースのアーカイブを URL と SHA-256 で固定しています。このファイルはリリースが書きます。build script は、ソースのアーカイブを取って辞書をビルドする代わりに、そのアーカイブをダウンロードし、確かめて埋め込みます。アーカイブの中身はソースからビルドしたものと同じで、違うのは `metadata.json` の `lindera_version` だけです。これは、そのリリースのバージョンを表します。公開の手順は[辞書のリリース](../development/dictionary_release.md)にあります。
 
 ダウンロードの失敗、SHA-256 の違うアーカイブ、ファイルが欠けているかクレートの `metadata.json` に合わないアーカイブは、何が起きたかを示すエラーでビルドを止めます。確かめられなかったものは埋め込まず、ソースからのビルドにも切り替えません。
 
@@ -112,7 +112,7 @@ LINDERA_BUILD_DICTIONARY_FROM_SOURCE=1 cargo build --features=embed-ipadic
 | 変数 | 置き換えるもの | ビルドがダウンロードするもの |
 | --- | --- | --- |
 | `LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL` | `https://github.com/lindera/lindera/releases/download`（クレートの `prebuilt.json` の `base_url`） | `<base>/<path>`（`path` は `prebuilt.json` のもの） |
-| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`（クレートの `build.rs` がソースのアーカイブを取るホスト。UniDic は国立国語研究所の `https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2`、UniDic CWJ と UniDic CSJ は国立国語研究所の `https://clrd.ninjal.ac.jp/unidic_archive/2512`、ko-dic は mecab-ko-dic の Bitbucket の Downloads の `https://bitbucket.org/eunjeon/mecab-ko-dic/downloads`） | `<base>/<file_name>`（`file_name` はアーカイブのファイル名） |
+| `LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL` | `https://lindera.dev`（クレートの `build.rs` がソースのアーカイブを取るホスト。UniDic は国立国語研究所の `https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2`、UniDic CWJ と UniDic CSJ は国立国語研究所の `https://clrd.ninjal.ac.jp/unidic_archive/2512`、ko-dic は mecab-ko-dic の Bitbucket の Downloads の `https://bitbucket.org/eunjeon/mecab-ko-dic/downloads`、JUMAN 辞書は MeCab のリポジトリの commit のアーカイブの `https://github.com/taku910/mecab/archive`） | `<base>/<file_name>`（`file_name` はアーカイブのファイル名） |
 
 IPADIC の場合、変数を `https://mirror.example/lindera-releases` と `https://mirror.example/lindera-dev` にすると、ビルドは次のどちらかをダウンロードします。
 
@@ -121,7 +121,7 @@ https://mirror.example/lindera-releases/v7.0.0/lindera-ipadic-7.0.0.zip
 https://mirror.example/lindera-dev/mecab-ipadic-2.7.0-20250920.tar.gz
 ```
 
-つまり、ミラーには元のホストと同じパスでファイルを置きます。Artifactory なら、`https://github.com/lindera/lindera/releases/download` をプロキシする remote repository が公開済みの辞書を、`https://lindera.dev` をプロキシするものがソースのアーカイブを配ります。UniDic、UniDic CWJ、UniDic CSJ、ko-dic のソースのアーカイブは lindera.dev から取らないので、それらをソースからビルドするミラーでは、国立国語研究所の `unidic-mecab-2.1.2_src.zip`、`unidic-cwj-202512_full.zip`、`unidic-csj-202512_full.zip` と、Bitbucket の `mecab-ko-dic-2.1.1-20180720.tar.gz` を、同じベースにそれぞれのファイル名で置きます。lindera.dev にも、v6 がビルドに使う `mecab-ko-dic-2.1.1-20180720.tar.gz` があります。同じリリースを詰め直したものですが、SHA-256 の照合に通らないので、ミラーには代わりに Bitbucket のものを置きます。ビルドは、既定では公開済みの辞書をダウンロードし、ソースからビルドするときだけソースのアーカイブをダウンロードします（[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) を参照）。ソースからのビルドは `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` がなくても起こるので、元のホストに届いてはいけないビルドでは、両方の変数を設定します。
+つまり、ミラーには元のホストと同じパスでファイルを置きます。Artifactory なら、`https://github.com/lindera/lindera/releases/download` をプロキシする remote repository が公開済みの辞書を、`https://lindera.dev` をプロキシするものがソースのアーカイブを配ります。UniDic、UniDic CWJ、UniDic CSJ、ko-dic、JUMAN 辞書のソースのアーカイブは lindera.dev から取らないので、それらをソースからビルドするミラーでは、国立国語研究所の `unidic-mecab-2.1.2_src.zip`、`unidic-cwj-202512_full.zip`、`unidic-csj-202512_full.zip` と、Bitbucket の `mecab-ko-dic-2.1.1-20180720.tar.gz`、GitHub の MeCab のリポジトリのアーカイブ（`mecab-61b90ba6e669dc2d7d533d4a80d206f3b31d52b1.tar.gz` という名前で置きます。GitHub は `61b90ba6e669dc2d7d533d4a80d206f3b31d52b1.tar.gz` として配ります）を、同じベースにそれぞれのファイル名で置きます。lindera.dev にも、v6 がビルドに使う `mecab-ko-dic-2.1.1-20180720.tar.gz` があります。同じリリースを詰め直したものですが、SHA-256 の照合に通らないので、ミラーには代わりに Bitbucket のものを置きます。ビルドは、既定では公開済みの辞書をダウンロードし、ソースからビルドするときだけソースのアーカイブをダウンロードします（[`LINDERA_BUILD_DICTIONARY_FROM_SOURCE`](#lindera_build_dictionary_from_source) を参照）。ソースからのビルドは `LINDERA_BUILD_DICTIONARY_FROM_SOURCE` がなくても起こるので、元のホストに届いてはいけないビルドでは、両方の変数を設定します。
 
 ```shell
 export LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL=https://mirror.example/lindera-releases
@@ -138,7 +138,7 @@ cargo build --features=embed-ipadic
 
 ### LINDERA_BUILD_DICTIONARY_SOURCE_BASE_URL
 
-辞書のソースのアーカイブのミラーです。ビルドは `https://lindera.dev/<file_name>`（UniDic、UniDic CWJ、UniDic CSJ では国立国語研究所の URL、ko-dic では Bitbucket の URL）の代わりに `<base>/<file_name>` をダウンロードします。2 つの変数の説明は [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) にあります。
+辞書のソースのアーカイブのミラーです。ビルドは `https://lindera.dev/<file_name>`（UniDic、UniDic CWJ、UniDic CSJ では国立国語研究所の URL、ko-dic では Bitbucket の URL、JUMAN 辞書では GitHub の URL）の代わりに `<base>/<file_name>` をダウンロードします。2 つの変数の説明は [`LINDERA_BUILD_DICTIONARY_PUBLISHED_BASE_URL`](#lindera_build_dictionary_published_base_url) にあります。
 
 ### LINDERA_BUILD_CONTEXT_ID_FREQ_FILE
 

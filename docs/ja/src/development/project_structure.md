@@ -21,6 +21,7 @@ lindera/
 ├── lindera-unidic-cwj/     # UniDic CWJ 辞書（日本語）
 ├── lindera-unidic-csj/     # UniDic CSJ 辞書（日本語）
 ├── lindera-sudachidict/    # SudachiDict 辞書（日本語）
+├── lindera-jumandic/       # JUMAN 辞書（日本語）
 ├── lindera-ko-dic/         # ko-dic 辞書（韓国語）
 ├── lindera-cc-cedict/      # CC-CEDICT 辞書（中国語）
 ├── lindera-jieba/          # Jieba 辞書（中国語）
@@ -93,6 +94,7 @@ lindera/
 | `lindera-unidic-cwj` | 日本語 | UniDic CWJ |
 | `lindera-unidic-csj` | 日本語 | UniDic CSJ |
 | `lindera-sudachidict` | 日本語 | SudachiDict |
+| `lindera-jumandic` | 日本語 | mecab-jumandic |
 | `lindera-ko-dic` | 韓国語 | ko-dic |
 | `lindera-cc-cedict` | 中国語 | CC-CEDICT |
 | `lindera-jieba` | 中国語 | Jieba |

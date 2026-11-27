@@ -72,7 +72,7 @@ RUBOCOP_PATHS = Gemfile Rakefile lindera.gemspec extconf.rb test/ examples/ lib/
 # Crates whose verbs are plain cargo invocations.
 CARGO_CRATES := lindera-crf lindera-dictionary lindera-trainer lindera-ipadic \
 	lindera-ipadic-neologd lindera-unidic lindera-unidic-cwj lindera-unidic-csj \
-	lindera-sudachidict lindera-ko-dic lindera-cc-cedict lindera-jieba \
+	lindera-sudachidict lindera-jumandic lindera-ko-dic lindera-cc-cedict lindera-jieba \
 	lindera-segmenter lindera-analysis lindera lindera-dependency \
 	lindera-binding lindera-cli
 
@@ -94,6 +94,7 @@ FEATURES_lindera-unidic         := --features embed-unidic
 FEATURES_lindera-unidic-cwj     := --features embed-unidic-cwj
 FEATURES_lindera-unidic-csj     := --features embed-unidic-csj
 FEATURES_lindera-sudachidict    := --features embed-sudachidict
+FEATURES_lindera-jumandic       := --features embed-jumandic
 FEATURES_lindera-ko-dic         := --features embed-ko-dic
 FEATURES_lindera-cc-cedict      := --features embed-cc-cedict
 FEATURES_lindera-jieba          := --features embed-jieba
@@ -482,7 +483,7 @@ build: ## Build all crates (release)
 
 bench: ## Run all benchmarks
 	@echo "Running all Lindera benchmarks..."
-	@$(foreach dict,ipadic ipadic_neologd unidic unidic_cwj unidic_csj sudachidict ko_dic cc_cedict, \
+	@$(foreach dict,ipadic ipadic_neologd unidic unidic_cwj unidic_csj sudachidict jumandic ko_dic cc_cedict, \
 		echo "Running $(dict) benchmark..."; \
 		(cd lindera && cargo bench --bench=bench_$(dict) --features=embed-$(subst _,-,$(dict))) || true; \
 		echo "";)
@@ -550,6 +551,7 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-unidic-cwj,$(call crate_version,lindera-unidic-cwj))
 	$(call PUBLISH_CRATE,lindera-unidic-csj,$(call crate_version,lindera-unidic-csj))
 	$(call PUBLISH_CRATE,lindera-sudachidict,$(call crate_version,lindera-sudachidict))
+	$(call PUBLISH_CRATE,lindera-jumandic,$(call crate_version,lindera-jumandic))
 	$(call PUBLISH_CRATE,lindera-segmenter,$(call crate_version,lindera-segmenter))
 	$(call PUBLISH_CRATE,lindera-dependency,$(call crate_version,lindera-dependency))
 	$(call PUBLISH_CRATE,lindera-analysis,$(call crate_version,lindera-analysis))

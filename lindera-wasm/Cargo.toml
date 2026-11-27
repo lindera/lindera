@@ -23,6 +23,9 @@ embed-unidic = ["lindera/embed-unidic"] # Embed UniDic dictionary (Japanese)
 embed-sudachidict = [
     "lindera/embed-sudachidict",
 ] # Embed SudachiDict dictionary (Japanese)
+embed-jumandic = [
+    "lindera/embed-jumandic",
+] # Embed JUMAN dictionary (Japanese)
 embed-ko-dic = ["lindera/embed-ko-dic"] # Embed ko-dic dictionary (Korean)
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",

@@ -14,13 +14,14 @@ use lindera_crf::console::{Stream, write_line};
 /// `DictionaryKind`, whose variants are feature-gated and absent from a
 /// default CLI build) and matches the pre-built dictionary archives published
 /// on the GitHub releases page.
-pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 9] = [
+pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 10] = [
     "ipadic",
     "ipadic-neologd",
     "unidic",
     "unidic-cwj",
     "unidic-csj",
     "sudachidict",
+    "jumandic",
     "ko-dic",
     "cc-cedict",
     "jieba",
@@ -38,13 +39,14 @@ pub(crate) const DOWNLOADABLE_MODELS: [&str; 4] = [
 ];
 
 /// Every name `lindera download` accepts: the dictionaries, then the models.
-pub(crate) const DOWNLOADABLE_NAMES: [&str; 13] = [
+pub(crate) const DOWNLOADABLE_NAMES: [&str; 14] = [
     "ipadic",
     "ipadic-neologd",
     "unidic",
     "unidic-cwj",
     "unidic-csj",
     "sudachidict",
+    "jumandic",
     "ko-dic",
     "cc-cedict",
     "jieba",

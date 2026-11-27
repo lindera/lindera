@@ -134,6 +134,11 @@
     - [Build](./lindera-sudachidict/build.md)
     - [Examples](./lindera-sudachidict/examples.md)
 
+- [Lindera JUMAN dictionary](./lindera-jumandic.md)
+    - [Dictionary Format](./lindera-jumandic/dictionary_format.md)
+    - [Build](./lindera-jumandic/build.md)
+    - [Examples](./lindera-jumandic/examples.md)
+
 - [Lindera ko-dic](./lindera-ko-dic.md)
     - [Dictionary Format](./lindera-ko-dic/dictionary_format.md)
     - [Build](./lindera-ko-dic/build.md)

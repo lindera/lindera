@@ -1,8 +1,8 @@
 # 辞書のリリース
 
-Lindera のリリースは、公式の 9 つの辞書（IPADIC、IPADIC NEologd、UniDic、UniDic CWJ、UniDic CSJ、SudachiDict、ko-dic、CC-CEDICT、Jieba）をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に置きます（[#1362](https://github.com/lindera/lindera/issues/1362)）。`lindera download` はこのアーカイブをインストールし、crates.io の辞書クレートの `embed-*` のビルドは、辞書をソースからビルドする代わりにこのアーカイブを埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。このページでは、公開するもの、ビルドが辞書を得る方法、リリースの手順を説明します。
+Lindera のリリースは、公式の 10 個の辞書（IPADIC、IPADIC NEologd、UniDic、UniDic CWJ、UniDic CSJ、SudachiDict、JUMAN 辞書、ko-dic、CC-CEDICT、Jieba）をソースからビルドし、そのバージョンのリリースのページに、バイナリと一緒に置きます（[#1362](https://github.com/lindera/lindera/issues/1362)）。`lindera download` はこのアーカイブをインストールし、crates.io の辞書クレートの `embed-*` のビルドは、辞書をソースからビルドする代わりにこのアーカイブを埋め込みます（[#1336](https://github.com/lindera/lindera/issues/1336)）。このページでは、公開するもの、ビルドが辞書を得る方法、リリースの手順を説明します。
 
-公開して埋め込むのは、この 9 つの辞書だけです。利用者がビルドする辞書は埋め込みません。`lindera build` でビルドし、実行時にそのディレクトリから読み込みます。
+公開して埋め込むのは、この 10 個の辞書だけです。利用者がビルドする辞書は埋め込みません。`lindera build` でビルドし、実行時にそのディレクトリから読み込みます。
 
 ## 公開するもの
 
@@ -30,7 +30,7 @@ crates.io に公開した辞書クレートには、`metadata.json` の隣に `p
 
 ## ソースのアーカイブ
 
-5 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic、UniDic CWJ、UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-mecab-2.1.2_src.zip`（134 MiB）、`unidic-cwj-202512_full.zip`（2.77 GiB）、`unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)、[#1384](https://github.com/lindera/lindera/issues/1384)）。ko-dic のソースは、mecab-ko-dic の公式のリリース `mecab-ko-dic-2.1.1-20180720.tar.gz`（47 MiB）そのもので、上流のリポジトリの Bitbucket の Downloads から取得します（[#1386](https://github.com/lindera/lindera/issues/1386)）。Lindera が運用していないサーバーから実行のたびにこれらのアーカイブを取得しないように、`release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
+5 つの辞書のソースのアーカイブは lindera.dev に置いています。UniDic、UniDic CWJ、UniDic CSJ のソースは、国立国語研究所のパッケージ `unidic-mecab-2.1.2_src.zip`（134 MiB）、`unidic-cwj-202512_full.zip`（2.77 GiB）、`unidic-csj-202512_full.zip`（2.81 GiB）そのもので、国立国語研究所の公式の URL から取得します（[#216](https://github.com/lindera/lindera/issues/216)、[#1358](https://github.com/lindera/lindera/issues/1358)、[#1384](https://github.com/lindera/lindera/issues/1384)）。ko-dic のソースは、mecab-ko-dic の公式のリリース `mecab-ko-dic-2.1.1-20180720.tar.gz`（47 MiB）そのもので、上流のリポジトリの Bitbucket の Downloads から取得します（[#1386](https://github.com/lindera/lindera/issues/1386)）。JUMAN 辞書のソースは、MeCab のリポジトリにある mecab-jumandic 7.0-20130310 です。GitHub が taku910/mecab の commit について配るアーカイブ `mecab-61b90ba6e669dc2d7d533d4a80d206f3b31d52b1.tar.gz`（45 MiB）を取得し、その中の `mecab-jumandic/` だけを読みます（[#1466](https://github.com/lindera/lindera/issues/1466)）。Lindera が運用していないサーバーから実行のたびにこれらのアーカイブを取得しないように、`release.yml` の `build-dictionary` のジョブは、それぞれのアーカイブを `actions/cache`（`.github/actions/source-archive-cache`）で実行をまたいで保存します。キーはファイル名と SHA-256 で、ダウンロードするのは、ソースのアーカイブが新しくなったときと、キャッシュが消されたときだけです。
 
 ## lindera-dependency のモデル
 

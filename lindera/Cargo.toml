@@ -40,6 +40,10 @@ embed-sudachidict = [
     "lindera-segmenter/embed-sudachidict",
     "lindera-analysis?/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary
+embed-jumandic = [
+    "lindera-segmenter/embed-jumandic",
+    "lindera-analysis?/embed-jumandic",
+] # Embed JUMAN dictionary in the binary
 embed-ko-dic = [
     "lindera-segmenter/embed-ko-dic",
     "lindera-analysis?/embed-ko-dic",
@@ -163,3 +167,8 @@ required-features = ["embed-jieba"]
 name = "bench_sudachidict"
 harness = false
 required-features = ["embed-sudachidict"]
+
+[[bench]]
+name = "bench_jumandic"
+harness = false
+required-features = ["embed-jumandic"]

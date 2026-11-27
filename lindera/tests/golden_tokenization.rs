@@ -15,7 +15,7 @@
 //! ```
 
 //! Snapshots currently exist for IPADIC, UniDic, UniDic CWJ, UniDic CSJ,
-//! SudachiDict, ko-dic and Jieba. Tests for the remaining embedded dictionaries (IPADIC NEologd,
+//! SudachiDict, the JUMAN dictionary, ko-dic and Jieba. Tests for the remaining embedded dictionaries (IPADIC NEologd,
 //! CC-CEDICT) can be added with the same `golden_tests!` macro once snapshots
 //! have been generated in an environment where those dictionaries can be
 //! downloaded and embedded.
@@ -26,6 +26,7 @@
     feature = "embed-unidic-cwj",
     feature = "embed-unidic-csj",
     feature = "embed-sudachidict",
+    feature = "embed-jumandic",
     feature = "embed-ko-dic",
     feature = "embed-jieba",
 ))]
@@ -146,6 +147,12 @@ golden_tests!(
     "embed-sudachidict",
     sudachidict,
     "embedded://sudachidict",
+    JAPANESE_TEXTS
+);
+golden_tests!(
+    "embed-jumandic",
+    jumandic,
+    "embedded://jumandic",
     JAPANESE_TEXTS
 );
 golden_tests!("embed-ko-dic", ko_dic, "embedded://ko-dic", KOREAN_TEXTS);

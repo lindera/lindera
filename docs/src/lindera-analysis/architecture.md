@@ -116,6 +116,7 @@ How a batch runs:
 | `embed-unidic-cwj` | Embed the UniDic CWJ dictionary in the binary (forwards to `lindera/embed-unidic-cwj`) | No |
 | `embed-unidic-csj` | Embed the UniDic CSJ dictionary in the binary (forwards to `lindera/embed-unidic-csj`) | No |
 | `embed-sudachidict` | Embed the SudachiDict dictionary in the binary (forwards to `lindera/embed-sudachidict`) | No |
+| `embed-jumandic` | Embed the JUMAN dictionary in the binary (forwards to `lindera/embed-jumandic`) | No |
 | `embed-ko-dic` | Embed the ko-dic dictionary in the binary (forwards to `lindera/embed-ko-dic`) | No |
 | `embed-cc-cedict` | Embed the CC-CEDICT dictionary in the binary (forwards to `lindera/embed-cc-cedict`) | No |
 | `embed-jieba` | Embed the Jieba dictionary in the binary (forwards to `lindera/embed-jieba`) | No |

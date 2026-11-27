@@ -107,7 +107,7 @@ dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries
 - `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、ラン（MeCab と同じく、どの文字も直前の文字と `char.def` の文字種を共有する連続）が上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。`0` または省略: 無制限。例は [Segmenter](../lindera/segmenter.md) のドキュメントを参照
 - `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。無効にすると、v6 より前と同じくこれらの候補を作らない。ただし、グルーピングした未知語の内側から始まる未知語など、その後の変更による出力の違いは残る。[Segmenter](../lindera/segmenter.md#未知語のグルーピング) のドキュメントを参照
 - `--break-characters <CHARS>`: 区切り文字（`CHARS` の各文字。デフォルト: `・`）。どのモードでも未知語は区切り文字と他の文字の境目をまたがず、decompose モードではシステム辞書の語もまたぎません。ユーザー辞書の語と、区切り文字だけからなる語は残ります。[Segmenter](../lindera/segmenter.md#区切り文字) のドキュメントを参照
-- `--disable-break-characters`: 区切り文字を使わず、MeCab と同じ分割にします。`char.def` で `・` をカタカナのカテゴリに入れている辞書（IPADIC と UniDic は入れている。SudachiDict は入れていない）では、カタカナの未知語は `・` をまたぎ（`レノン・ジョン` は 1 語のまま）、その前が辞書語ならそこで区切ります（`ジョン・レノン` は区切る）。`--break-characters` とは同時に指定できません
+- `--disable-break-characters`: 区切り文字を使わず、MeCab と同じ分割にします。`char.def` で `・` をカタカナのカテゴリに入れている辞書（IPADIC と UniDic は入れている。SudachiDict は入れていない。JUMAN 辞書は数字のカテゴリに入れていて、`66・0` のような数がそれをまたぐ）では、カタカナの未知語は `・` をまたぎ（`レノン・ジョン` は 1 語のまま）、その前が辞書語ならそこで区切ります（`ジョン・レノン` は区切る）。`--break-characters` とは同時に指定できません
 - `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、`--disable-skip-whitespace` と併せて無効にすると、空白まわりの韓国語の解析について v6.0 以降に入った 2 つの変更（このペナルティと空白の読み飛ばし）がどちらもオフになる。ただし、`."` のような記号の連続が分かれるなど、それ以外の出力の変化は残る。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照
 - `--space-penalty-rules`: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`。`--disable-space-penalty` とは同時に指定できない
 - `--mmap`: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。`embedded://` 辞書、および `mmap` feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。
@@ -753,6 +753,12 @@ Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for 
 
 `unk.def` は、どちらの形式でも書かれたとおりに読みます。Sudachi も同じです。
 
+### 文字コードとして読めない行
+
+`encoding` が UTF-8 の辞書では、語彙の CSV ファイルの行が UTF-8 として読めないと、ビルドは失敗します。`encoding` の誤りには、これで気づけます。`metadata.json` に `"skip_invalid_encoding": true` があると、ビルダーはそういう行を飛ばし、ファイルと行番号を添えて警告します（[#1466](https://github.com/lindera/lindera/issues/1466)）。既定は `false` です。公式の辞書でこれを指定しているのは、JUMAN 辞書だけです。ソースの 6 行が、文字の途中で切れています（[ビルド](../lindera-jumandic/build.md#飛ばされる-6-行)を参照）。
+
+UTF-8 以外の文字コードでは、その文字コードの文字にならないバイト列は、置き換えの文字 U+FFFD になり、ビルドは続きます。この設定があると、そういうバイト列のある行も、同じように飛ばします。
+
 ### 例
 
 #### IPADIC（日本語辞書）のビルド
@@ -925,7 +931,7 @@ CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リ�
 
 ### download パラメータ
 
-- 名前（必須）: 辞書なら `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか。係り受け解析のモデルなら `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj` のいずれか。その名前の辞書用のモデル
+- 名前（必須）: 辞書なら `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか。係り受け解析のモデルなら `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj` のいずれか。その名前の辞書用のモデル
 - `--force`: CLI のバージョンがビルドした辞書やモデルでも、再ダウンロードして置き換える
 
 ### 保存場所

@@ -1613,6 +1613,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lindera-jumandic"
+version = "7.0.0"
+dependencies = [
+ "lindera-dictionary",
+]
+
+[[package]]
 name = "lindera-ko-dic"
 version = "7.0.0"
 dependencies = [
@@ -1681,6 +1688,7 @@ dependencies = [
  "lindera-ipadic",
  "lindera-ipadic-neologd",
  "lindera-jieba",
+ "lindera-jumandic",
  "lindera-ko-dic",
  "lindera-sudachidict",
  "lindera-trainer",

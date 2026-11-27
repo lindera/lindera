@@ -99,6 +99,12 @@ The binary carries the 1.2 GB dictionary, and the build takes 8 to 11 GiB of mem
 % cargo build --release --features=embed-sudachidict
 ```
 
+#### JUMAN dictionary (Japanese dictionary)
+
+```shell
+% cargo build --release --features=embed-jumandic
+```
+
 #### ko-dic (Korean dictionary)
 
 ```shell

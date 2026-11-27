@@ -27,6 +27,9 @@ embed-unidic-csj = [
 embed-sudachidict = [
     "lindera/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary
+embed-jumandic = [
+    "lindera/embed-jumandic",
+] # Embed JUMAN dictionary in the binary
 embed-ko-dic = ["lindera/embed-ko-dic"] # Embed ko-dic dictionary in the binary
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",

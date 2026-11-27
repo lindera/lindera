@@ -1,6 +1,6 @@
 # Migrating from v7.0 to v7.1
 
-This guide lists the breaking changes of v7.1.0. There are two, in the Rust API, and they are in a minor version by a decision of the maintainer ([#1440](https://github.com/lindera/lindera/issues/1440), [#1446](https://github.com/lindera/lindera/issues/1446)): code that reads the tokens a tokenizer returns is not affected.
+This guide lists the breaking changes of v7.1.0. There are three, in the Rust API, and they are in a minor version by a decision of the maintainer ([#1440](https://github.com/lindera/lindera/issues/1440), [#1446](https://github.com/lindera/lindera/issues/1446), [#1466](https://github.com/lindera/lindera/issues/1466)): code that reads the tokens a tokenizer returns is not affected.
 
 ## Overview
 
@@ -8,6 +8,7 @@ This guide lists the breaking changes of v7.1.0. There are two, in the Rust API,
 | --- | --- | --- |
 | **`Token` holds the result of a dependency analysis, and is `#[non_exhaustive]`** | Rust code that builds a `Token` with a struct expression, or that destructures all of its fields | Build the token with `Token::new`, and set the fields that differ afterwards |
 | **`Dictionary::save_to_path` is removed** | Rust code that calls it, which panicked when it ran | Copy the directory of the dictionary |
+| **`Metadata` has a new field, `skip_invalid_encoding`** | Rust code that builds a `Metadata` with a struct expression that names every field | Add `skip_invalid_encoding: false`, or end the expression with `..Default::default()` |
 
 Code that reads the tokens a tokenizer returns is not affected: `surface`, `byte_start`, `details()`, `as_value()` and the other fields and methods are what they were.
 
@@ -67,6 +68,16 @@ error[E0599]: no method named `save_to_path` found for struct `lindera_dictionar
 
 Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; [`lindera build`](./lindera-cli/commands.md) makes one from its sources, and [`lindera download`](./lindera-cli/commands.md) installs a published one.
 
+## `Metadata` has a new field
+
+`lindera_dictionary::dictionary::metadata::Metadata` has the field `skip_invalid_encoding: bool` ([#1466](https://github.com/lindera/lindera/issues/1466)), which the JUMAN dictionary needs: with it, the builder skips a row of a lexicon CSV file that is not text in the encoding of the dictionary, and warns of it (see [the `build` command](./lindera-cli/commands.md#rows-that-are-not-in-the-encoding)). `Metadata` is not `#[non_exhaustive]`, so a struct expression that names every field no longer compiles:
+
+```text
+error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_dictionary::dictionary::metadata::Metadata`
+```
+
+Add `skip_invalid_encoding: false`, which is what every build did before, or end the expression with `..Default::default()`, which later fields then do not break. Code that reads a `metadata.json`, that starts from `Metadata::default()` or that calls `Metadata::new` is not affected: a `metadata.json` without the field reads as `false`, and one that has `false` is written without it.
+
 ## What does not change
 
 - The JSON that `Token::as_value` and `lindera tokenize -o json` write has no new key for a token without a dependency.
@@ -74,3 +85,4 @@ Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is
 - A token grows by the size of one pointer.
 - The `lindera` command and the bindings have the `dependency` feature in their default builds: the token filter `japanese_dependency` is in the packages, and they depend on the `lindera-dependency` crate, which has no dependency of its own. The command grows by 134 kB. `default-features = false` gives the build without it. The libraries `lindera` and `lindera-analysis` have the feature only when it is named.
 - No model is in a package or embedded by default; `lindera download dependency-ipadic` gets the one for IPADIC, and `dependency-unidic`, `dependency-unidic-cwj` and `dependency-unidic-csj` the ones for UniDic.
+- There is a tenth dictionary, the [JUMAN dictionary](./lindera-jumandic.md) (`jumandic`, the crate `lindera-jumandic`, the feature `embed-jumandic`), built from mecab-jumandic 7.0-20130310 ([#1466](https://github.com/lindera/lindera/issues/1466)). No default build embeds it, and `lindera download jumandic` gets it. The dependency parser has no model for it.

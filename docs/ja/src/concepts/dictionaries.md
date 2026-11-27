@@ -10,6 +10,7 @@ Linderaは、日本語・韓国語・中国語の形態素解析のための様�
 | [UniDic CWJ](../lindera-unidic-cwj.md) | 日本語 | `lindera-unidic-cwj` | 国立国語研究所の UniDic ver.2025.12。アクセントと仮名形を持つ。1.2 GB |
 | [UniDic CSJ](../lindera-unidic-csj.md) | 日本語 | `lindera-unidic-csj` | 国立国語研究所の現代話し言葉UniDic ver.2025.12。UniDic CWJ と同じ見出し語に、会話で学習したコストを付けたもの。1.2 GB |
 | [SudachiDict](../lindera-sudachidict.md) | 日本語 | `lindera-sudachidict` | 活発にメンテナンスされている語彙（上流で年数回更新） |
+| [JUMAN 辞書](../lindera-jumandic.md) | 日本語 | `lindera-jumandic` | mecab-jumandic。品詞は JUMAN のもので、意味情報のフィールドを持つ |
 | [ko-dic](../lindera-ko-dic.md) | 韓国語 | `lindera-ko-dic` | 韓国語の形態素解析 |
 | [CC-CEDICT](../lindera-cc-cedict.md) | 中国語 | `lindera-cc-cedict` | 中英辞書 |
 | [Jieba](../lindera-jieba.md) | 中国語 | `lindera-jieba` | Jiebaベースの中国語辞書 |

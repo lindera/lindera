@@ -57,6 +57,7 @@ jobs:
       lindera-unidic-cwj: ${{ steps.filter.outputs.lindera-unidic-cwj }}
       lindera-unidic-csj: ${{ steps.filter.outputs.lindera-unidic-csj }}
       lindera-sudachidict: ${{ steps.filter.outputs.lindera-sudachidict }}
+      lindera-jumandic: ${{ steps.filter.outputs.lindera-jumandic }}
       lindera-ko-dic: ${{ steps.filter.outputs.lindera-ko-dic }}
       lindera-cc-cedict: ${{ steps.filter.outputs.lindera-cc-cedict }}
       lindera-jieba: ${{ steps.filter.outputs.lindera-jieba }}
@@ -144,6 +145,11 @@ jobs:
               - 'lindera-dictionary/**'
               - *shared-workspace
               - *shared-crate-workflow
+            lindera-jumandic:
+              - 'lindera-jumandic/**'
+              - 'lindera-dictionary/**'
+              - *shared-workspace
+              - *shared-crate-workflow
             lindera-ko-dic:
               - 'lindera-ko-dic/**'
               - 'lindera-dictionary/**'
@@ -170,6 +176,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -192,6 +199,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -243,6 +251,8 @@ jobs:
               - 'resources/user_dict/**'
               # A metadata test reads SudachiDict's metadata.
               - 'lindera-sudachidict/metadata.json'
+              # Another reads the metadata of the JUMAN dictionary.
+              - 'lindera-jumandic/metadata.json'
               # The batch tests tokenize the lines of this text.
               - 'resources/bocchan.txt'
               - *shared-workspace
@@ -261,6 +271,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -293,6 +304,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -323,6 +335,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -355,6 +368,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -393,6 +407,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -420,6 +435,7 @@ jobs:
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -468,6 +484,7 @@ jobs:
               - 'lindera-unidic-cwj/**'
               - 'lindera-unidic-csj/**'
               - 'lindera-sudachidict/**'
+              - 'lindera-jumandic/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -756,6 +773,20 @@ jobs:
       free-disk-space: true
       lint: true
 
+  test-lindera-jumandic:
+    name: Test lindera-jumandic
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-jumandic == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-jumandic
+      features: "--features embed-jumandic"
+      dictionaries: "jumandic"
+      free-disk-space: true
+      lint: true
+
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
     needs: [test-lindera-dictionary, detect-changes]
@@ -804,6 +835,7 @@ jobs:
       - test-lindera-ipadic-neologd
       - test-lindera-unidic
       - test-lindera-sudachidict
+      - test-lindera-jumandic
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
       - test-lindera-jieba
@@ -853,6 +885,7 @@ jobs:
       - test-lindera-ipadic-neologd
       - test-lindera-unidic
       - test-lindera-sudachidict
+      - test-lindera-jumandic
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
       - test-lindera-jieba
@@ -863,8 +896,8 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-segmenter
-      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
-      dictionaries: "ipadic ipadic-neologd unidic sudachidict ko-dic cc-cedict jieba"
+      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-jumandic,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      dictionaries: "ipadic ipadic-neologd unidic sudachidict jumandic ko-dic cc-cedict jieba"
       free-disk-space: true
       lint: true
 
@@ -928,8 +961,8 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera
-      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba"
-      dictionaries: "ipadic ipadic-neologd unidic sudachidict ko-dic cc-cedict jieba"
+      features: "--features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-jumandic,embed-ko-dic,embed-cc-cedict,embed-jieba"
+      dictionaries: "ipadic ipadic-neologd unidic sudachidict jumandic ko-dic cc-cedict jieba"
       free-disk-space: true
       lint: true
 
