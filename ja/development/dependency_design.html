@@ -202,7 +202,7 @@
 <tr><td>Lindera の 3 つの UniDic の辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）のそれぞれにモデルを作る。スキーマは 1 つ。</td><td>3 つの辞書は、分かち書きと品詞が同じではない。GSD train の文のうち、2 つの辞書で全部の形態素とその品詞が一致する文は 63〜73% である。モデルは、辞書の名前で照合する。スキーマが読む列は、3 つとも同じ位置にある。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>UniDic の区切りは、独自の設定を持つ。原形を 4 つ目の列にし、L1 の係数を 0.25 にする。解析器の設定は IPADIC と同じ。</td><td>train の交差検証が選ぶ。UniDic の原形（語彙素）は、IPADIC の原形が効かなかったところで効く。学習に使っていないファイルは 2 つの設定を見分けず、UD Japanese-PUD は新しい設定で少し低い。IPADIC と同じく、交差検証に従って選ぶ。解析器は、交差検証を流し直し、IPADIC と同じ設定が選ばれた。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
 <tr><td>UniDic には精度の目標を置かない。数字は IPADIC の数字と並べて報告する。</td><td>目標は IPADIC で測った基準から来ている。また、2 つの辞書の数字は、同じ文節の上で数えたものではない。</td><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td></tr>
-<tr><td>文節の区切りは、<code>B</code> と <code>I</code> の 2 ラベルの条件付き確率場で、<code>lindera-crf</code> で学習する。</td><td>CaboCha と同じ方法で、このクレートは CaboCha の形式とモデルに合わせている。2 つの基準のうち、区切りが良いほうではない。境界ごとにカーネルの分類器で独立に決める J.DepP のほうが、両方を測ると区切りが良い（基準を参照）。その差がどこから来るかは <a href="https://github.com/lindera/lindera/issues/1464">#1464</a> で調べる。</td><td>#1417、#1421、<a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td></tr>
+<tr><td>文節の区切りは、<code>B</code> と <code>I</code> の 2 ラベルの条件付き確率場で、<code>lindera-crf</code> で学習する。</td><td>CaboCha と同じ方法で、このクレートは CaboCha の形式とモデルに合わせている。境界ごとにカーネルの分類器で独立に決める J.DepP のほうが、両方を測ると数字は高いが、その差は偶然の範囲である。既定は変えない（<a href="https://github.com/lindera/lindera/issues/1464">#1464</a>。<a href="#jdepp-%E3%81%AE%E5%8C%BA%E5%88%87%E3%82%8A">J.DepP の区切り</a>を参照）。</td><td>#1417、#1421、<a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td></tr>
 <tr><td>区切りの推論は、重みの表に対する自前の Viterbi で行い、<code>lindera-crf</code> を使わない。</td><td><code>lindera-crf</code> の <code>search_best_path</code> は、辺のラベルをすべてモデルに登録しておく必要があり（<code>&amp;mut self</code>）、見たことのない文に向かない。既定のビルドを依存なしに保つためでもある。</td><td>#1417、#1421</td></tr>
 <tr><td>解析は shift-reduce で、素性と素性の対に対する線形の二値分類器を使う。</td><td>参照した実装が両方ともこの方法で、文の長さに対して線形の時間で済む。</td><td>#1417</td></tr>
 <tr><td>辞書について分かっていることは、スキーマという 1 つの値に、データとして置く。列の役割、機能語のパターン、記号。</td><td>区切り・解析器・出力が共有する。2 つ目の辞書は 2 つ目の値で、2 つ目のコードの経路ではない。</td><td>#1421、#1422</td></tr>
@@ -226,7 +226,7 @@
 <tr><td>学習データには主辞と機能語の位置を書かない。読む側がスキーマから計算する。</td><td>規則を変えても、古い位置がファイルに残らない。</td><td>#1422</td></tr>
 <tr><td>設定の比較は train の交差検証で行う。dev は僅差の設定の選択に使う。test と PUD は、報告する結果にだけ使う。</td><td>dev と test は小さい。90% 前後の精度の 95% 区間は、約 ±1 ポイントになる。</td><td>#1420</td></tr>
 <tr><td>精度の目標は、下の「目標」のとおりとする。</td><td>同じデータで測った基準の数字である。</td><td>#1417</td></tr>
-<tr><td>基準を測り直したあとも、目標の決め方は変えない。区切りと一貫の解析は CaboCha の数字、係り受けの精度は J.DepP から 1 ポイント引いた値とする。</td><td>測った J.DepP は、記録に残っていた数字より良く、ここの区切りと一貫の解析を上回る。目標は、このクレートが目指したもの（CaboCha と同等の区切りと、J.DepP に近い解析器）を表す。良いほうの基準が思っていたより良いと分かったときに、目標をそこまで上げるのは別の目的で、<a href="https://github.com/lindera/lindera/issues/1464">#1464</a> で扱う。</td><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td></tr>
+<tr><td>基準を測り直したあとも、目標の決め方は変えない。区切りと一貫の解析は CaboCha の数字、係り受けの精度は J.DepP から 1 ポイント引いた値とする。</td><td>測った J.DepP は、記録に残っていた数字より良く、ここの区切りと一貫の解析を上回る。目標は、このクレートが目指したもの（CaboCha と同等の区切りと、J.DepP に近い解析器）を表す。良いほうの基準が思っていたより良いと分かったときに、目標をそこまで上げるのは別の目的である。区切りについては、<a href="https://github.com/lindera/lindera/issues/1464">#1464</a> で、目標を上げる先になる差（偶然を超える差）は見つからなかった。</td><td><a href="https://github.com/lindera/lindera/issues/1433">#1433</a></td></tr>
 <tr><td>トークンフィルターは、結果を <code>Token</code> のフィールドに書く。<code>Token::dependency</code> で読める。文の番号、文節の番号、係り先、文節の中での役割、スコア。<code>Token::details</code> と MeCab 形式の出力は変えない。詳細の末尾の 4 つの文字列の列という決定を、これに改める。</td><td>詳細は、どの出力にも後ろのフィルターにも、辞書の素性のまま渡る。結果は <code>Token::as_value</code> に出る（スキーマより後ろの列は出なかった）。<code>Token</code> を構造体の式で作るコードは壊れる。<code>Token</code> はここから <code>#[non_exhaustive]</code> なので、次のフィールドでは壊れない。</td><td>#1438</td></tr>
 <tr><td>フィルターは <code>lindera-analysis</code> の <code>dependency</code> feature の裏に置く。<code>kind</code> は <code>japanese_dependency</code>。</td><td>設定ファイルも、コマンドも、バインディングも、<code>TokenFilterLoader::load_from_value</code> という固定の <code>match</code> でフィルターを作る。分岐を 1 つ足せば全部に効く。フィルターの登録の仕組みを足すと、名前の付け方が 2 通りになる。</td><td>#1438</td></tr>
 <tr><td>フィルターは、括弧の外の <code>。</code>、<code>！</code>、<code>？</code> でテキストを文に分け、文節の番号を文ごとに 0 から振る。結果は文の番号を持つ。</td><td>モデルは文を単位に学習している。ラティス形式も、文節の番号を文の中で振る。</td><td>#1438</td></tr>
@@ -359,7 +359,6 @@
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
 <tr><td>IPADIC のモデル</td><td>完了。リリースのたびに、モデルを作り、測り、公開する。クレートも一緒に公開する。両方が入る最初のリリースは 7.1.0。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
-<tr><td>J.DepP の区切り</td><td>条件付き確率場に対してどこで勝っているか、ここの区切りが同じだけ良くなるか。</td><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td></tr>
 </tbody></table>
 </div>
 <h3 id="未決の問い"><a class="header" href="#未決の問い">未決の問い</a></h3>
@@ -376,7 +375,7 @@
 <tr><td>一貫の係り受けの精度</td><td>85.0 以上</td><td>84.3 以上</td></tr>
 </tbody></table>
 </div>
-<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準は、#1433 で、リポジトリのスクリプトから測り直しました。それまで記録に残っていた数字では、係り受けの目標は 89.0 と 87.8 でした。測った J.DepP は、区切り（97.17 と 97.02）と一貫の解析（85.99 と 84.65）で <code>lindera-dependency</code> を上回ります。目標はそこまでを求めていません。上の決定と #1464 を見てください。UniDic には目標を置きません（#1441）。UniDic の数字は、これらと並べて報告します。</p>
+<p>係り受けの目標は J.DepP から 1 ポイント引いた値で、ほかの 2 つは CaboCha の数字です。UD Japanese-PUD での同じ数字も報告します。IPADIC で、3 つとも達成済みです。区切りは 96.85 と 96.92（#1421）、正解の文節での係り受けは 90.11 と 88.53、end to end は 85.39 と 84.47 です（#1437）。基準は、#1433 で、リポジトリのスクリプトから測り直しました。それまで記録に残っていた数字では、係り受けの目標は 89.0 と 87.8 でした。測った J.DepP は、区切り（97.17 と 97.02）と一貫の解析（85.99 と 84.65）で <code>lindera-dependency</code> を上回ります。目標はそこまでを求めていません。上の決定を見てください。区切りの差は、偶然の範囲です（#1464）。UniDic には目標を置きません（#1441）。UniDic の数字は、これらと並べて報告します。</p>
 <p>精度のほかの目標: 推論が <code>wasm32-unknown-unknown</code> 向けにビルドできる。解析器がトークンフィルターとしてもコマンドとしても動く。モデルの大きさと処理速度を測って文書にする。モデルは、学習データの出どころとライセンスを明記して公開する。</p>
 <h2 id="数字"><a class="header" href="#数字">数字</a></h2>
 <p>決定の根拠になった数字と、その出どころです。データは UD Japanese-GSD c662dc9 と UD Japanese-PUD cf69c5c で、このリポジトリの IPADIC で解析しています。</p>
@@ -412,7 +411,39 @@
 <li><strong>J.DepP</strong>: J.DepP 自身の <code>make model</code> の手順とオプションで、既定の分類器（2 次の多項式カーネル）を使い、調整はしていません。記録に残っていた数字より良く、区切りの F で 1.2〜1.7 ポイント、形態素からの解析で 2.2 ポイント上です。J.DepP 自身が報告する数は、<code>evaluate</code> と一致します。失われた計測の設定は分かりません。<code>configure</code> のオプションの線形の分類器は、区切りが 96.36 / 95.24、レベル 1 が 86.98 / 86.44 で、オプションなしの J.DepP は 94.34 / 94.53 と 83.93 / 83.44 です。どちらも記録の数字ではありません。</li>
 <li><strong>J.DepP は、行を先頭の 1 文字で見分けます</strong>。表層が <code>*</code> で始まる形態素は文節の行として読まれて止まり、<code>#</code> で始まる形態素はコメントとして捨てられます。コーパスにはそういう形態素があるので、J.DepP には全角の文字に置き換えて渡し、出力の形態素は入力から取ります（<code>jdepp_format.py</code>）。</li>
 </ul>
-<p><strong>J.DepP は、区切りで CaboCha と <code>lindera-dependency</code> を上回り、そのぶん一貫の解析でも上回ります</strong>。正解の文節を与えたときは、3 つの解析器の差は 0.4 ポイント以内です。このクレートは CaboCha と同じ方法で区切り、このメモはそれが 2 つのうち良いほうだと書いていました。測ると、そうではありません。#1464 を見てください。</p>
+<p><strong>J.DepP は、区切りで CaboCha と <code>lindera-dependency</code> を上回り、そのぶん一貫の解析でも上回ります</strong>。正解の文節を与えたときは、3 つの解析器の差は 0.4 ポイント以内です。このクレートは CaboCha と同じ方法で区切り、このメモはそれが 2 つのうち良いほうだと書いていました。測ると、そうではありません。J.DepP のほうが良いとも、偶然を超えては言えません。</p>
+<h3 id="jdepp-の区切り"><a class="header" href="#jdepp-の区切り">J.DepP の区切り</a></h3>
+<p><a href="https://github.com/lindera/lindera/issues/1464">#1464</a> で、J.DepP の区切りがここの区切りを上回る箇所（F で dev 0.3 ポイント、test 0.1 ポイント）と、ここの区切りが同じだけ良くなるかを調べました。見つかった差は偶然の範囲で、既定は変えません。</p>
+<p><strong>境界ごとの比較</strong>（<code>chunker_differences.py</code>）。境界は、形態素の前の、文節が始まりうる位置です。交差検証は、既定を選んだときのもの（学習データの 10 分割）で、J.DepP も同じ分割で学習・判定しました（<code>jdepp_chunker_cv.sh</code>）。</p>
+<div class="table-wrapper"><table><thead><tr><th>テキスト</th><th>境界</th><th>J.DepP の誤り</th><th>ここの誤り</th><th>2 つが違う境界</th><th>J.DepP だけ正しい</th><th>ここだけ正しい</th><th>McNemar の正確検定</th></tr></thead><tbody>
+<tr><td>GSD dev</td><td>11,428</td><td>86</td><td>93</td><td>37</td><td>22</td><td>15</td><td>p = 0.32</td></tr>
+<tr><td>GSD test</td><td>12,049</td><td>91</td><td>96</td><td>51</td><td>28</td><td>23</td><td>p = 0.58</td></tr>
+<tr><td>PUD</td><td>26,734</td><td>143</td><td>144</td><td>67</td><td>34</td><td>33</td><td>p = 1.00</td></tr>
+<tr><td>GSD train の交差検証</td><td>155,432</td><td>1,203</td><td>1,220</td><td>537</td><td>277</td><td>260</td><td>p = 0.49</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>dev の 0.3 ポイントは、境界 11,428 のうち 7 か所です。</li>
+<li>交差検証では、F は J.DepP が 96.98、ここの区切りが 96.93 です。7,024 文のうち、J.DepP だけが正しく区切った文は 203、ここの区切りだけが正しく区切った文は 188 です（p = 0.48）。</li>
+<li>2 つの判定が違う境界に、種類の偏りはありません。dev の 37 か所は、前後の品詞の組で 29 種に分かれ、1 つの組に多くても 2 か所です。</li>
+</ul>
+<p><strong>J.DepP が使うもの</strong>（<code>src/pdep.cc</code> の <code>_event_gen_from_tuple (i)</code>）。境界ごとに、ラベルの遷移を見ずに、2 値の分類器で独立に決めます。素性は 13 個で、次数 2 のカーネルがそのすべての対を使います。境界の前と後ろの形態素の、表層・品詞の 1 段目と 2 段目・活用形。2 つ前の形態素の、表層・品詞の 2 段目・活用形。後ろに続く 2 つの形態素の表層。ここのテンプレートに無いものは 3 つです。境界をまたぐ、種類の違う列の組み合わせ（前の表層と後ろの品詞）。粗い品詞（ここは 4 段をつないだものだけで、それより粗いものがありません）。2 つ前の形態素の活用形。</p>
+<p><strong>候補</strong>。どれも、既定のテンプレートに、無いものの行を足したもので、列は今のままです（<code>chunker_experiments.sh jdepp</code>）。対は、交差検証で片方だけが正しく区切った文です。モデルは学習データの全部で学習したもので、時間はその 7,024 文の <code>chunk</code> です。</p>
+<div class="table-wrapper"><table><thead><tr><th>テンプレート（L1）</th><th>交差検証の F</th><th>既定だけ正しい / それだけ正しい</th><th>p</th><th>dev / test / PUD の F</th><th>モデル</th><th>時間</th></tr></thead><tbody>
+<tr><td>既定（0.5）</td><td>96.93</td><td></td><td></td><td>96.85 / 96.92 / 98.04</td><td>261,857 バイト</td><td>0.51 秒</td></tr>
+<tr><td>境界をまたぐ表層と品詞（0.5）</td><td>96.92</td><td>46 / 46</td><td>1.00</td><td>96.91 / 97.07 / 97.99</td><td>297,400 バイト</td><td>0.55 秒</td></tr>
+<tr><td>前の活用形と、後ろの品詞・表層（0.5）</td><td>96.96</td><td>34 / 43</td><td>0.36</td><td>96.83 / 96.93 / 98.00</td><td>279,476 バイト</td><td>0.54 秒</td></tr>
+<tr><td>その両方と、2 つ前の活用形（0.5）</td><td>96.95</td><td>54 / 61</td><td>0.58</td><td>96.91 / 97.07 / 97.99</td><td>314,221 バイト</td><td>0.59 秒</td></tr>
+<tr><td>その両方と、2 つ前の活用形（1.0）</td><td>96.83</td><td>107 / 74</td><td>0.017</td><td></td><td></td><td></td></tr>
+</tbody></table>
+</div>
+<p><strong>決定: 既定は変えません。</strong></p>
+<ul>
+<li>J.DepP の区切りは、3 つのファイルのどれでも、交差検証の 7,024 文でも、偶然を超えてはここの区切りより良くありません。届くべき差がありません。</li>
+<li>偶然を超えて既定より良い候補はなく、どれも 7%〜20% 大きく、6%〜15% 遅くなります。2 つの候補の test の 97.07 は、4,509 文節のうち 7 文節の差で、その 2 つは PUD では既定より低くなります。</li>
+<li>粗い品詞を別の列にする案（コードの変更が要ります）は、J.DepP が有意に良く、テンプレートでは届かないときに試すことにしていました。その必要はありませんでした。</li>
+<li>調べていないこと: 一貫の解析。形態素からでは、J.DepP が dev で 0.6 ポイント、test で 0.2 ポイント上です。これは、それぞれの解析器が自分の文節を解析した結果です。正解の文節を与えると、dev では 2 つの解析器の精度は同じです。</li>
+</ul>
 <p>PUD の基準は、#1417 では 5,385 で、ここでは 5,386 です。PUD の 1 文（<code>w01040101</code>）に、外に係る語が 2 つある文節があり、変換は最後の語を採ります。</p>
 <h3 id="文節の区切り"><a class="header" href="#文節の区切り">文節の区切り</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>数字</th><th>値</th><th>出どころ</th></tr></thead><tbody>
@@ -528,7 +559,7 @@
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のスキーマとモデル</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td><td>CaboCha のモデルの変換器</td><td>済み。IPA・JUMAN・UniDic のモデル</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td><td>mecab-jumandic から作る JUMAN の辞書</td><td>済み</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td><td>J.DepP の区切りがどこで勝っているか、ここの区切りが同じだけ良くなるか</td><td>未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td><td>J.DepP の区切りがどこで勝っているか、ここの区切りが同じだけ良くなるか</td><td>済み。差は偶然の範囲で、既定は変えない</td></tr>
 </tbody></table>
 </div>
 <h2 id="参考"><a class="header" href="#参考">参考</a></h2>
