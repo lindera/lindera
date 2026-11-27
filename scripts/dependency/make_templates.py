@@ -15,6 +15,17 @@ light.template    CaboCha's, and 5 lines for a third column: alone for the
                   with the part of speech for the morpheme and the one
                   before. The default template of lindera-dependency.
 both.template     extra.template, and 4 lines for a fourth column.
+
+The candidates of #1464, each light.template with the combinations J.DepP's
+chunker has and the template lacks: two kinds of column across the place
+where a bunsetsu may start, before the morpheme the label is for.
+
+cross-pos.template   The surface before with the part of speech of the
+                     morpheme, and the part of speech before with its
+                     surface.
+cross-form.template  The conjugation form before with the part of speech
+                     and with the surface of the morpheme.
+cross.template       Both, and the conjugation form two morphemes before.
 """
 
 import os
@@ -69,11 +80,25 @@ U63:%x[1,3]
 U70:%x[0,1]/%x[0,3]
 """
 
+CROSS_POS = """U80:%x[-1,0]/%x[0,1]
+U81:%x[-1,1]/%x[0,0]
+"""
+
+CROSS_FORM = """U82:%x[-1,2]/%x[0,1]
+U83:%x[-1,2]/%x[0,0]
+"""
+
+TWO_BEFORE = """U30:%x[-2,2]
+"""
+
 TEMPLATES = [
     ("cabocha", CABOCHA),
     ("extra", CABOCHA + EXTRA),
     ("light", CABOCHA + LIGHT),
     ("both", CABOCHA + EXTRA + FOURTH),
+    ("cross-pos", CABOCHA + LIGHT + CROSS_POS),
+    ("cross-form", CABOCHA + LIGHT + CROSS_FORM),
+    ("cross", CABOCHA + LIGHT + CROSS_POS + CROSS_FORM + TWO_BEFORE),
 ]
 
 out = sys.argv[1]
