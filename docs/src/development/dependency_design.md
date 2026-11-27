@@ -38,7 +38,7 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | A model for each of the three UniDic dictionaries of Lindera (`unidic`, `unidic-cwj`, `unidic-csj`), with one schema. | The three do not segment and tag alike: on the sentences of GSD train, two of them agree on every morpheme and its part of speech for 63% to 73% of the sentences. A model is checked against the name of its dictionary. The columns a schema reads are at the same places in the three. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | The chunker for UniDic has settings of its own: the base form as a fourth column, and L1 with the coefficient 0.25. The settings of the parser are the same as for IPADIC. | The cross-validation on the train file chooses them: the base form of UniDic, the lexeme, helps where the one of IPADIC did not. The files that are not trained on do not tell the two settings apart, and UD Japanese-PUD is a little lower with the new ones; the choice follows the cross-validation, as for IPADIC. For the parser the cross-validations were run again and choose what they chose for IPADIC. | [#1441](https://github.com/lindera/lindera/issues/1441) |
 | No accuracy target is set for UniDic. The numbers are reported next to those of IPADIC. | The targets come from baselines measured with IPADIC, and the numbers of two dictionaries are not counted on the same bunsetsu. | [#1441](https://github.com/lindera/lindera/issues/1441) |
-| Chunking is a conditional random field over `B` and `I`, trained with `lindera-crf`. | It is what CaboCha does, whose format and models the crate follows. It is not the better chunker of the two baselines: J.DepP, which decides each boundary by itself with a kernel classifier, chunks better when both are measured (see the baselines). Where that gain comes from is [#1464](https://github.com/lindera/lindera/issues/1464). | #1417, #1421, [#1433](https://github.com/lindera/lindera/issues/1433) |
+| Chunking is a conditional random field over `B` and `I`, trained with `lindera-crf`. | It is what CaboCha does, whose format and models the crate follows. J.DepP, which decides each boundary by itself with a kernel classifier, has the higher numbers when both are measured, by no more than chance: the defaults stay ([#1464](https://github.com/lindera/lindera/issues/1464), see [The chunking of J.DepP](#the-chunking-of-jdepp)). | #1417, #1421, [#1433](https://github.com/lindera/lindera/issues/1433) |
 | Chunking inference has a Viterbi of its own over a table of weights, and does not use `lindera-crf`. | `search_best_path` of `lindera-crf` needs every label of an edge registered in the model, through `&mut self`, so it does not fit sentences it has not seen; and the default build stays without a dependency. | #1417, #1421 |
 | Parsing is shift-reduce with a linear binary classifier over features and pairs of features. | Both reference implementations do this; it is linear in the length of the sentence. | #1417 |
 | What is known about a dictionary is in one value, the schema, as data: the columns by role, the function word patterns, the symbols. | The chunker, the parser and the output share it, and a second dictionary is a second value, not a second code path. | #1421, #1422 |
@@ -62,7 +62,7 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | Training data holds no head word and function word positions; what reads it computes them from the schema. | A change of the rule cannot leave stale positions in a file. | #1422 |
 | Settings are compared by cross-validation on the train file; the dev file chooses between close settings; the test file and PUD are for the reported result only. | Dev and test are small: the 95% interval of an accuracy near 90% is about ±1 point on them. | #1420 |
 | The accuracy targets are the ones under "Targets" below. | They are the baselines measured on the same data. | #1417 |
-| The targets keep their definition after the baselines were measured again: CaboCha's numbers for the chunking and for the whole analysis, J.DepP less one point for the dependency accuracy. | J.DepP, measured, is better than the numbers that were on record, and ahead of the chunking and of the whole analysis here. The targets say what the crate set out to reach, a chunker as good as CaboCha's and a parser close to J.DepP's; raising them to the better baseline when it is found to be better is another goal, and is [#1464](https://github.com/lindera/lindera/issues/1464). | [#1433](https://github.com/lindera/lindera/issues/1433) |
+| The targets keep their definition after the baselines were measured again: CaboCha's numbers for the chunking and for the whole analysis, J.DepP less one point for the dependency accuracy. | J.DepP, measured, is better than the numbers that were on record, and ahead of the chunking and of the whole analysis here. The targets say what the crate set out to reach, a chunker as good as CaboCha's and a parser close to J.DepP's; raising them to the better baseline when it is found to be better is another goal. For the chunking, [#1464](https://github.com/lindera/lindera/issues/1464) found no difference beyond chance to raise it to. | [#1433](https://github.com/lindera/lindera/issues/1433) |
 | A token filter writes its result in a field of `Token`, read with `Token::dependency`: the sentence, the bunsetsu, its head, what the token is in its bunsetsu, the score. `Token::details` and the MeCab output do not change. This replaces four string columns at the end of the details. | The details stay the features of the dictionary, for every output and every later filter, and `Token::as_value` shows the result, which it did not show of columns past the schema. It breaks code that builds a `Token` with a struct expression: `Token` is `#[non_exhaustive]` from here on, so the next field breaks nothing. | #1438 |
 | The filter is in `lindera-analysis`, behind its `dependency` feature, and its `kind` is `japanese_dependency`. | The configuration file, the command and the bindings all make a filter with `TokenFilterLoader::load_from_value`, a fixed `match`: one arm serves them all. A registry of filters would be a second way to name one. | #1438 |
 | The filter cuts a text into sentences, at `。`, `！` and `？` outside brackets, and numbers the bunsetsu from 0 in each; the result holds the number of the sentence. | A model is trained on sentences, and the lattice format numbers bunsetsu in a sentence. | #1438 |
@@ -203,7 +203,6 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 | Part | Notes | Issue |
 | --- | --- | --- |
 | IPADIC model | Done: the model is built, measured and published by each release, and the crate is published with it. The first release with both is 7.1.0. | [#1440](https://github.com/lindera/lindera/issues/1440) |
-| The chunking of J.DepP | Where it gains over a conditional random field, and whether the chunker can gain the same. | [#1464](https://github.com/lindera/lindera/issues/1464) |
 
 ### Open questions
 
@@ -221,7 +220,7 @@ On UD Japanese-GSD with IPADIC, from the baselines below:
 | Dependency accuracy with the bunsetsu of the answer (level 1) | 89.1 or more | 87.7 or more |
 | End-to-end dependency accuracy | 85.0 or more | 84.3 or more |
 
-The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines were measured again in #1433, from scripts in the repository; with the numbers that were on record before, the dependency target was 89.0 and 87.8. J.DepP as measured is ahead of `lindera-dependency` in the chunking (97.17 and 97.02) and in the whole analysis (85.99 and 84.65), which the targets do not ask for: see the decision above, and #1464. No target is set for UniDic (#1441): its numbers are reported next to these.
+The dependency target is J.DepP less one point; the other two are CaboCha's numbers. The same numbers on UD Japanese-PUD are reported. All three are met with IPADIC: chunking 96.85 and 96.92 (#1421), dependency with the bunsetsu of the answer 90.11 and 88.53, end to end 85.39 and 84.47 (#1437). The baselines were measured again in #1433, from scripts in the repository; with the numbers that were on record before, the dependency target was 89.0 and 87.8. J.DepP as measured is ahead of `lindera-dependency` in the chunking (97.17 and 97.02) and in the whole analysis (85.99 and 84.65), which the targets do not ask for: see the decision above. The difference of the chunking is within chance (#1464). No target is set for UniDic (#1441): its numbers are reported next to these.
 
 Besides the accuracy: inference builds for `wasm32-unknown-unknown`; the parser runs as a token filter and as a command; the size of the model and the throughput are measured and documented; the model is released with the provenance and the license of its training data.
 
@@ -264,7 +263,43 @@ The baselines of CaboCha and J.DepP are trained on the GSD train file, on the mo
 - **J.DepP**: the steps and the options of its own `make model` for its default classifier (a polynomial kernel of degree 2), untuned. It is better than the numbers that were on record, by 1.2 to 1.7 points of chunking F and 2.2 points from the morphemes. What J.DepP reports of itself agrees with `evaluate`. The setting of the lost measurement is not known: a linear classifier with the options of its `configure` gives 96.36 / 95.24 for the chunking and 86.98 / 86.44 at level 1, and J.DepP without options 94.34 / 94.53 and 83.93 / 83.44, neither the numbers on record.
 - **J.DepP takes a line by its first character**: a morpheme whose surface starts with `*` is read as a bunsetsu line, which stops it, and one that starts with `#` is dropped as a comment. The corpus has such morphemes, so J.DepP is given them with the full-width character, and the morphemes of its output are taken from its input (`jdepp_format.py`).
 
-**J.DepP is ahead of CaboCha and of `lindera-dependency` in the chunking, and through it in the whole analysis**; with the bunsetsu of the answer the three parsers are within 0.4 point of each other. The crate chunks as CaboCha does, and the notes said that this was the better of the two: measured, it is not. See #1464.
+**J.DepP is ahead of CaboCha and of `lindera-dependency` in the chunking, and through it in the whole analysis**; with the bunsetsu of the answer the three parsers are within 0.4 point of each other. The crate chunks as CaboCha does, and the notes said that this was the better of the two: measured, it is not, and neither is J.DepP's by more than chance.
+
+### The chunking of J.DepP
+
+[#1464](https://github.com/lindera/lindera/issues/1464) looked for where the chunker of J.DepP gains over the chunker here, 0.3 point of F on dev and 0.1 on test, and whether the chunker here can gain the same. It found a difference that is not more than chance, and the defaults stay.
+
+**Boundary by boundary** (`chunker_differences.py`), a boundary being the place before a morpheme where a bunsetsu may start. The cross-validation is the one the defaults were chosen with: the 10 folds of the train file, with J.DepP trained and run in the same folds (`jdepp_chunker_cv.sh`).
+
+| Text | Boundaries | Wrong, J.DepP | Wrong, here | The two differ | Only J.DepP right | Only here right | McNemar, exact |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| GSD dev | 11,428 | 86 | 93 | 37 | 22 | 15 | p = 0.32 |
+| GSD test | 12,049 | 91 | 96 | 51 | 28 | 23 | p = 0.58 |
+| PUD | 26,734 | 143 | 144 | 67 | 34 | 33 | p = 1.00 |
+| GSD train, cross-validated | 155,432 | 1,203 | 1,220 | 537 | 277 | 260 | p = 0.49 |
+
+- The 0.3 point of dev is seven boundaries of 11,428.
+- Over the cross-validation, J.DepP has F 96.98 and the chunker here 96.93. Of the 7,024 sentences, 203 are segmented right by J.DepP alone and 188 by the chunker here alone (p = 0.48).
+- The boundaries the two decide differently are of no kind in particular: the 37 of dev fall into 29 pairs of parts of speech before and after, with two boundaries at most in a pair.
+
+**What J.DepP uses** (`_event_gen_from_tuple (i)` in `src/pdep.cc`). Each boundary is decided on its own by a binary classifier, without a transition between labels, from thirteen features, of which a kernel of degree 2 takes every pair: the surface, the first and the second level of the part of speech and the conjugation form of the morpheme before and of the one after the boundary; the surface, the second level and the conjugation form of the morpheme two before; the surface of the two morphemes that follow. The template here lacks three things of that: combinations of two kinds of column across the boundary (the surface before with the part of speech after), a coarse part of speech (it has the four levels joined, and nothing coarser), and the conjugation form two morphemes before.
+
+**Candidates**, each the default template with lines for what it lacks, with the columns of today (`chunker_experiments.sh jdepp`). The pairs are sentences of the cross-validation segmented right by one of the two alone; the model is trained on the whole train file, and the time is `chunk` on its 7,024 sentences.
+
+| Template (L1) | F, cross-validated | Only the default right / only it right | p | F on dev / test / PUD | Model | Time |
+| --- | --- | --- | --- | --- | --- | --- |
+| The default (0.5) | 96.93 | | | 96.85 / 96.92 / 98.04 | 261,857 bytes | 0.51 s |
+| The surface with the part of speech across the boundary (0.5) | 96.92 | 46 / 46 | 1.00 | 96.91 / 97.07 / 97.99 | 297,400 bytes | 0.55 s |
+| The conjugation form before with the part of speech and the surface after (0.5) | 96.96 | 34 / 43 | 0.36 | 96.83 / 96.93 / 98.00 | 279,476 bytes | 0.54 s |
+| Both, and the conjugation form two before (0.5) | 96.95 | 54 / 61 | 0.58 | 96.91 / 97.07 / 97.99 | 314,221 bytes | 0.59 s |
+| Both, and the conjugation form two before (1.0) | 96.83 | 107 / 74 | 0.017 | | | |
+
+**The decision: the defaults stay.**
+
+- The chunker of J.DepP is not better than the chunker here by more than chance, on any of the three files and over the 7,024 sentences of the cross-validation. There is no gain to reach.
+- No candidate is better than the default by more than chance, and each is 7% to 20% larger and 6% to 15% slower. The 97.07 of two of them on test is seven bunsetsu of 4,509, and the same two are lower on PUD.
+- A coarse part of speech as a column of its own, which needs a change of code, was to be tried if J.DepP was significantly better and the templates did not reach it. It was not called for.
+- Not looked into: the whole analysis, where J.DepP is ahead by 0.6 point on dev and 0.2 on test from the morphemes. It is the parser of each on its own bunsetsu, and with the bunsetsu of the answer the two parsers have the same accuracy on dev.
 
 The baseline on PUD was 5,385 in #1417 and is 5,386 here: in one sentence of PUD (`w01040101`) a bunsetsu has two words whose head is outside it, and the conversion takes the last one.
 
@@ -395,7 +430,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic schema and models | Done |
 | [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | Done: the models for IPA, for JUMAN and for UniDic |
 | [#1466](https://github.com/lindera/lindera/issues/1466) | A JUMAN dictionary built from mecab-jumandic | Done |
-| [#1464](https://github.com/lindera/lindera/issues/1464) | Where the chunker of J.DepP gains, and whether the chunker can gain the same | Open |
+| [#1464](https://github.com/lindera/lindera/issues/1464) | Where the chunker of J.DepP gains, and whether the chunker can gain the same | Done: the difference is within chance, and the defaults stay |
 
 ## References
 

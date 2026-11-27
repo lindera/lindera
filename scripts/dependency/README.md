@@ -58,6 +58,8 @@ Run everything from the root of the repository.
 | `mecab_agreement.py` | The lines `mecab_morphemes.sh` prints: two outputs in MeCab's format compared |
 | `chunker_experiments.sh` | The experiments behind the defaults of the chunker: the cross-validation, the pairs of settings, the result. `--dictionary <name>` runs them with a UniDic dictionary; the stage `base` has the pairs around the base form, which the settings for UniDic rest on, and the stage `check` the settings for UniDic and their neighbours only |
 | `chunker_experiment.py`, `make_templates.py` | The driver and the feature templates of `chunker_experiments.sh` |
+| `chunker_differences.py` | The morpheme boundaries two chunkers decide differently, against the answer: the wrong boundaries of each, the boundaries only one of the two has right with McNemar's exact test, and with `--kinds` the parts of speech before and after them (#1464) |
+| `jdepp_chunker_cv.sh` | The chunker of J.DepP trained and run in the 10 folds of the cross-validation of `chunker_experiments.sh`, and left where its stage `jdepp` and `chunker_differences.py` compare it with the chunker here (#1464) |
 | `parser_instances.sh` | The training instances of the parser for the four files, with `lindera-dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back. `--dictionary` as for `convert_corpora.sh` |
 | `parser_experiments.sh` | The experiments behind the defaults of the parser: the cross-validations of the algorithm, the feature set, the pairs, their table and the quantization, the pairs of settings, the result on dev, test and PUD, and the speed. `--dictionary <name>` runs them with a UniDic dictionary |
 | `parser_experiment.py` | The driver of `parser_experiments.sh` |
@@ -122,6 +124,18 @@ scripts/dependency/mecab_morphemes.sh
 
 # The chunker: about an hour for all the stages.
 scripts/dependency/chunker_experiments.sh all
+
+# The chunker of J.DepP in the same folds, and the templates with what it
+# uses: about five minutes, after build_baselines.sh. Then the boundaries
+# the two decide differently, on dev and over the cross-validation.
+scripts/dependency/jdepp_chunker_cv.sh
+scripts/dependency/chunker_experiments.sh jdepp
+scripts/dependency/chunker_differences.py "$data/lattice/ja_gsd-ud-dev.lattice" \
+    "$data/baselines/jdepp/ja_gsd-ud-dev.chunked.lattice" \
+    "$data/chunker/full/default/ja_gsd-ud-dev.lattice" --kinds 8
+scripts/dependency/chunker_differences.py "$data/chunker/cv/jdepp/gold.lattice" \
+    "$data/chunker/cv/jdepp/system.lattice" \
+    "$data/chunker/cv/cform-light-l1-0.5/system.lattice"
 
 # The parser: every experiment, about ten minutes. The model of the
 # defaults is $data/parser/full/default/model.
@@ -205,6 +219,9 @@ UniDic are with the dictionaries of the release 7.0.0 of Lindera, which
 | `mecab_morphemes.sh` | The same segmentation in 99.61% (505/507) of dev, 99.63% (541/543) of test, 100.00% (1000/1000) of PUD and 99.79% (7035/7050) of train; the same in 6 columns in 90.93%, 93.74%, 91.30% and 90.30%, and in 7 columns in 2.96%, 4.05%, 0.00% and 2.81%. Without break characters, the same segmentation in all of dev, test and PUD, and in 99.97% (7048/7050) of train |
 | `chunker_experiments.sh default` | F 96.85 on dev, 96.92 on test, 98.04 on PUD; 4,325 feature strings, 8,656 weights, 261,851 bytes |
 | `chunker_experiments.sh cv` | F over the 10 folds of train, such as 96.83 for CaboCha's columns with L1 and 0.25, and 96.93 for the default setting; the README of the crate has the table |
+| `jdepp_chunker_cv.sh` | `cv jdepp: F 96.98 P 97.07 R 96.90` |
+| `chunker_experiments.sh jdepp` | F over the 10 folds: 96.93 for the default setting, 96.92, 96.96 and 96.95 for the three templates with L1 0.5, 96.83 for the largest with L1 1.0. The pairs with the default: `first only 46 second only 46 p 1.0000`, `34` and `43` with `p 0.3620`, `54` and `61` with `p 0.5760`, `107` and `74` with `p 0.0171`; and with J.DepP `first only 188 second only 203 neither 806 p 0.4790` |
+| `chunker_differences.py` | J.DepP as the first and the default chunker as the second. On dev: `boundaries 11428`, wrong 86 and 93, `the two differ on 37 boundaries: only the first right 22, only the second right 15, p 0.3240`, 29 kinds. Over the cross-validation: `boundaries 155432`, wrong 1203 and 1220, `the two differ on 537 boundaries: only the first right 277, only the second right 260, p 0.4899` |
 | `model_speed/` | 261,851 bytes; about 228 microseconds to read the file; chunking the train file at about 18,223 sentences per second with the model in memory and 16,896 on the bytes of the file. The times depend on the machine: these are of one core of an AMD Ryzen AI Max+ 395 |
 | `parser_experiments.sh final` | With the bunsetsu of the answer 90.11% on dev, 88.53% on test, 88.81% on PUD; from the morphemes 85.39%, 84.47%, 86.19%; 6,258,548 bytes, the same bytes twice |
 | `build_model.sh` | The model is 6,258,548 bytes, SHA-256 `793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46`, on x86_64 Linux with glibc 2.43 and Rust 1.100.0; the same bytes as the model of `parser_experiments.sh final`. The same sources, corpus, toolchain and platform give the same bytes, and the same archive for the same version. Another platform is not known to: the training of the chunker calls `exp` and `ln_1p` of its mathematics library |

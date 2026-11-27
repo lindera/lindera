@@ -28,7 +28,13 @@
 #   default  The defaults of `train-chunker` on the whole train file,
 #            evaluated on dev, test and PUD, and trained twice to see the
 #            same bytes.
-#   all      Every stage, in this order.
+#   jdepp    What #1464 measured: the cross-validation of the default
+#            setting and of three templates with the combinations J.DepP's
+#            chunker has, their pairs with the default, and the pair of
+#            the default with J.DepP's own chunker in the same folds, when
+#            jdepp_chunker_cv.sh was run. Needs no other stage, and is not
+#            part of `all`.
+#   all      Every stage but jdepp, in this order.
 #
 # The cross-validation trains ten models per setting: cv and small take
 # about an hour together.
@@ -76,6 +82,9 @@ columns_of() {
     cform-light) echo "surface,pos,cform light" ;;
     base-light) echo "surface,pos,base light" ;;
     cform-base) echo "surface,pos,cform,base both" ;;
+    cross-pos) echo "surface,pos,cform cross-pos" ;;
+    cross-form) echo "surface,pos,cform cross-form" ;;
+    cross) echo "surface,pos,cform cross" ;;
     *)
         echo "unknown set of columns $1" >&2
         exit 1
@@ -183,6 +192,28 @@ check() {
     done
 }
 
+jdepp() {
+    local columns regularization coefficient
+    # cform-light-l1-0.5 is the default setting. A template with more
+    # lines has more weights to hold down, so the largest one is tried
+    # with a larger coefficient too.
+    for setting in "cform-light l1 0.5" "cross-pos l1 0.5" "cross-form l1 0.5" \
+        "cross l1 0.5" "cross l1 1.0"; do
+        read -r columns regularization coefficient <<< "$setting"
+        cross_validate "$columns" "$regularization" "$coefficient"
+    done
+    for other in cross-pos-l1-0.5 cross-form-l1-0.5 cross-l1-0.5 cross-l1-1.0; do
+        "${experiment[@]}" compare "$bin" "$work" cform-light-l1-0.5 "$other"
+    done
+    # The chunker of J.DepP, which jdepp_chunker_cv.sh trains and runs in
+    # the same folds.
+    if [ -f "$work/cv/jdepp/system.lattice" ]; then
+        "${experiment[@]}" compare "$bin" "$work" cform-light-l1-0.5 jdepp
+    else
+        echo "jdepp: $work/cv/jdepp is not there; run jdepp_chunker_cv.sh for the pair with J.DepP"
+    fi
+}
+
 default() {
     "${experiment[@]}" full "$bin" "$lattice" "$work" default \
         ja_gsd-ud-dev,ja_gsd-ud-test,ja_pud-ud-test "${named[@]}"
@@ -198,7 +229,7 @@ default() {
 
 for stage in "${stages[@]}"; do
     case "$stage" in
-    table | cv | small | compare | base | check | default) "$stage" ;;
+    table | cv | small | compare | base | check | default | jdepp) "$stage" ;;
     all)
         table
         cv
