@@ -116,6 +116,7 @@ let surfaces: Vec<Vec<String>> = pool.tokenize_batch(&lines, threads, |tokens| {
 | `embed-unidic-cwj` | UniDic CWJ辞書をバイナリに埋め込む（`lindera/embed-unidic-cwj`へ委譲） | No |
 | `embed-unidic-csj` | UniDic CSJ辞書をバイナリに埋め込む（`lindera/embed-unidic-csj`へ委譲） | No |
 | `embed-sudachidict` | SudachiDict辞書をバイナリに埋め込む（`lindera/embed-sudachidict`へ委譲） | No |
+| `embed-jumandic` | JUMAN辞書をバイナリに埋め込む（`lindera/embed-jumandic`へ委譲） | No |
 | `embed-ko-dic` | ko-dic辞書をバイナリに埋め込む（`lindera/embed-ko-dic`へ委譲） | No |
 | `embed-cc-cedict` | CC-CEDICT辞書をバイナリに埋め込む（`lindera/embed-cc-cedict`へ委譲） | No |
 | `embed-jieba` | Jieba辞書をバイナリに埋め込む（`lindera/embed-jieba`へ委譲） | No |

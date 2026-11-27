@@ -49,7 +49,7 @@ if [ ! -d "$dir" ]; then
   exit 1
 fi
 
-dictionaries="ipadic ipadic-neologd unidic unidic-cwj unidic-csj sudachidict ko-dic cc-cedict jieba"
+dictionaries="ipadic ipadic-neologd unidic unidic-cwj unidic-csj sudachidict jumandic ko-dic cc-cedict jieba"
 # The dictionaries lindera-dependency has a model for.
 models="ipadic unidic unidic-cwj unidic-csj"
 targets="x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-unknown-linux-musl aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc aarch64-pc-windows-msvc"

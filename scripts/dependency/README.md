@@ -47,13 +47,15 @@ Run everything from the root of the repository.
 | `projection_stats.py` | The projection onto the morphemes of IPADIC, written independently in Python: the boundaries that fit, the bunsetsu merged. It writes lattice files |
 | `compare_outputs.py` | Compares the lattice files of `projection_stats.py` with those of `convert`, line by line |
 | `baseline_next.py` | The baseline "every bunsetsu depends on the next one", counted independently of `lindera-dependency evaluate` |
-| `build_baselines.sh` | Builds the tools of the baselines from source, at fixed versions: CRF++ c603ea6, MeCab 61b90ba with its IPA dictionary, CaboCha 96e100a, J.DepP 2022-03-18. Its header says what each needs to build with a current compiler |
+| `build_baselines.sh` | Builds the tools of the baselines from source, at fixed versions: CRF++ c603ea6, MeCab 61b90ba with its IPA dictionary and its JUMAN dictionary, CaboCha 96e100a, J.DepP 2022-03-18. Its header says what each needs to build with a current compiler |
 | `baselines.sh` | The baselines: CaboCha and J.DepP trained on the train file with the morphemes of IPADIC, and run on dev, test and PUD. For each, the dependency accuracy with the bunsetsu of the answer, the one from the morphemes and the F of the chunking, counted by `lindera-dependency evaluate`, next to what `cabocha-system-eval` and J.DepP report; and the arcs on which the two differ |
 | `cabocha_chunker_cost.sh` | The cost of CaboCha's chunker, which the baseline takes at 4: the F of the chunking for each candidate, on dev and test and over a 10-fold cross-validation of train |
 | `jdepp_format.py` | The input of J.DepP from a lattice file, and its outputs back in the lattice format. J.DepP takes a line by its first character, so a morpheme that starts with `*` or `#` is given to it with the full-width character |
 | `baseline_numbers.py` | The lines `baselines.sh` prints, from the JSON of `evaluate` |
 | `cabocha_models.sh` | The agreement of a converted model of CaboCha with CaboCha: the model for IPA is converted by `convert-cabocha`, with the defaults and without pruning, and the morphemes of the four lattice files are given to CaboCha and to `parse`. For each file, the sentences with the same bunsetsu and the bunsetsu with the same head, head word and function word; the same from text, where CaboCha tokenizes with MeCab; and the time of the two |
 | `cabocha_agreement.py` | The lines `cabocha_models.sh` prints: two outputs in the lattice format compared, on the same morphemes or on the same text |
+| `mecab_morphemes.sh` | The agreement of the morphemes of `lindera tokenize` with those of MeCab, for a dictionary both have: the JUMAN dictionary (the default) or IPADIC, with `--dictionary`. The text is the sentences of the four corpus files. It prints the sentences with the same segmentation and with the same features, what the first difference of a sentence is, and the same counts without break characters. Under a minute, after `build_baselines.sh`; it builds `lindera` with the dictionary embedded |
+| `mecab_agreement.py` | The lines `mecab_morphemes.sh` prints: two outputs in MeCab's format compared |
 | `chunker_experiments.sh` | The experiments behind the defaults of the chunker: the cross-validation, the pairs of settings, the result. `--dictionary <name>` runs them with a UniDic dictionary; the stage `base` has the pairs around the base form, which the settings for UniDic rest on, and the stage `check` the settings for UniDic and their neighbours only |
 | `chunker_experiment.py`, `make_templates.py` | The driver and the feature templates of `chunker_experiments.sh` |
 | `parser_instances.sh` | The training instances of the parser for the four files, with `lindera-dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back. `--dictionary` as for `convert_corpora.sh` |
@@ -109,6 +111,10 @@ scripts/dependency/cabocha_chunker_cost.sh
 # The model CaboCha distributes for IPA, converted and compared with
 # CaboCha on the same input: about a minute, after build_baselines.sh.
 scripts/dependency/cabocha_models.sh
+
+# The morphemes of Lindera's JUMAN dictionary against MeCab's: under a
+# minute, after build_baselines.sh.
+scripts/dependency/mecab_morphemes.sh
 
 # The chunker: about an hour for all the stages.
 scripts/dependency/chunker_experiments.sh all
@@ -190,6 +196,7 @@ UniDic are with the dictionaries of the release 7.0.0 of Lindera, which
 | `baselines.sh` | CaboCha: level 1 89.84% (3,271 / 3,641) on dev, 88.51% (3,511 / 3,967) on test, 88.65% (7,845 / 8,849) on PUD; from the morphemes 85.00%, 84.25%, 85.69%; chunking F 96.79, 96.80, 97.81; the same counts from `cabocha-system-eval`. J.DepP: level 1 90.11% (3,281 / 3,641), 88.71% (3,519 / 3,967), 88.98% (7,874 / 8,849); from the morphemes 85.99%, 84.65%, 86.45%; chunking F 97.17, 97.02, 98.04; the same from J.DepP itself. The two differ on 127, 196 and 424 arcs. The same lines twice |
 | `cabocha_chunker_cost.sh` | For the costs 0.5, 1, 2, 4, 8 and 16: chunking F 96.66, 96.64, 96.68, 96.79, 96.82, 96.86 on dev, and 96.45, 96.57, 96.63, 96.66, 96.66, 96.67 over the cross-validation |
 | `cabocha_models.sh` | `pairs: 3727492 of 10141653 kept, 3713127 with a weight` and `bytes: 51809439` with the defaults, `10141653 of 10141653 kept, 9988000 with a weight` and `bytes: 102008423` without pruning. On the same morphemes, for dev, test, PUD and train: `same bunsetsu 100.00%` (506, 542, 994 and 7,024 sentences), `same head 100.00%` (3,740, 4,059, 9,076 and 50,718 bunsetsu), `same positions 100.00%`, `largest score difference 0.000001`; without pruning `same head` 99.65% (3,727), 99.73% (4,048), 99.79% (9,057) and 99.71% (50,573). On the same text: `same morphemes` 97.04% (491 / 506), 98.15% (532 / 542), 91.15% (906 / 994) and 96.48% (6,777 / 7,024), `of which the same sentence 100.00%`. The seconds depend on the machine: 3.03 for `parse` and 0.92 for CaboCha on the one the documentation was written on |
+| `mecab_morphemes.sh` | The same segmentation in 99.61% (505/507) of dev, 99.63% (541/543) of test, 100.00% (1000/1000) of PUD and 99.79% (7035/7050) of train; the same in 6 columns in 90.93%, 93.74%, 91.30% and 90.30%, and in 7 columns in 2.96%, 4.05%, 0.00% and 2.81%. Without break characters, the same segmentation in all of dev, test and PUD, and in 99.97% (7048/7050) of train |
 | `chunker_experiments.sh default` | F 96.85 on dev, 96.92 on test, 98.04 on PUD; 4,325 feature strings, 8,656 weights, 261,851 bytes |
 | `chunker_experiments.sh cv` | F over the 10 folds of train, such as 96.83 for CaboCha's columns with L1 and 0.25, and 96.93 for the default setting; the README of the crate has the table |
 | `model_speed/` | 261,851 bytes; about 228 microseconds to read the file; chunking the train file at about 18,223 sentences per second with the model in memory and 16,896 on the bytes of the file. The times depend on the machine: these are of one core of an AMD Ryzen AI Max+ 395 |

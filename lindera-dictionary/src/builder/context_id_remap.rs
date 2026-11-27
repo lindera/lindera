@@ -20,6 +20,7 @@ use glob::glob;
 
 use crate::LinderaResult;
 use crate::builder::connection_cost_matrix::{MatrixSize, read_matrix_header};
+use crate::builder::prefix_dictionary::text_record;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
@@ -170,9 +171,13 @@ pub(crate) fn compute_context_id_remap_for_matrix(
             .flexible(metadata.flexible_csv)
             .from_reader(reader);
 
-        for result in rdr.records() {
-            let record =
-                result.map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
+        for result in rdr.byte_records() {
+            // The rows the prefix dictionary skips are not counted either.
+            let Some(record) =
+                text_record(result, encoding, metadata.skip_invalid_encoding, &path)?
+            else {
+                continue;
+            };
             if let Some(value) = record.get(left_index)
                 && let Ok(id) = u16::from_str(value.trim())
                 && (id as usize) < hist_left.len()

@@ -77,6 +77,7 @@ maturin develop --features train
 | `embed-unidic-cwj` | 日本語辞書（UniDic CWJ、1.2 GB）をバイナリに埋め込み | 無効 |
 | `embed-unidic-csj` | 日本語辞書（UniDic CSJ、1.2 GB）をバイナリに埋め込み | 無効 |
 | `embed-sudachidict` | 日本語辞書（SudachiDict）をバイナリに埋め込み | 無効 |
+| `embed-jumandic` | 日本語辞書（JUMAN）をバイナリに埋め込み | 無効 |
 | `embed-ipadic-neologd` | 日本語辞書（IPADIC NEologd）をバイナリに埋め込み | 無効 |
 | `embed-ko-dic` | 韓国語辞書（ko-dic）をバイナリに埋め込み | 無効 |
 | `embed-cc-cedict` | 中国語辞書（CC-CEDICT）をバイナリに埋め込み | 無効 |

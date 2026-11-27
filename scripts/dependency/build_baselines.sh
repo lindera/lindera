@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds the tools the baselines of lindera-dependency are measured with,
 # from their sources, outside the repository: CRF++, MeCab (and its IPA
-# dictionary), CaboCha and J.DepP, at fixed versions. Nothing of them is
-# committed here.
+# and JUMAN dictionaries), CaboCha and J.DepP, at fixed versions. Nothing of
+# them is committed here.
 #
 # Usage: build_baselines.sh [<tools directory>]
 #   <tools directory> defaults to scripts/dependency/data/tools, which git
@@ -36,7 +36,10 @@
 #   the machine, which fails.
 #
 # MeCab is built for its library, which CaboCha and J.DepP link. The tools
-# find their libraries without LD_LIBRARY_PATH (an rpath).
+# find their libraries without LD_LIBRARY_PATH (an rpath). Its dictionaries
+# are installed under `lib/mecab/dic`: `ipadic`, the default one, and
+# `jumandic`, which `mecab -d` takes, to compare the morphemes of Lindera
+# with those of MeCab (mecab_morphemes.sh).
 set -euo pipefail
 
 here=$(dirname "$(readlink -f "$0")")
@@ -55,7 +58,8 @@ cabocha https://github.com/taku910/cabocha/archive/96e100a62f6dadceb490cdd61c8c1
 jdepp https://www.tkl.iis.u-tokyo.ac.jp/~ynaga/jdepp/jdepp-2022-03-18.tar.gz e4a4328e1ad38970185471129a85da6db7079f41439f9f2abb34e7b62ec09232
 "
 versions=$tools/versions.txt
-if [ -f "$versions" ] && echo "$sources" | cmp -s - "$versions" && [ -x "$tools/bin/jdepp" ]; then
+if [ -f "$versions" ] && echo "$sources" | cmp -s - "$versions" && [ -x "$tools/bin/jdepp" ] &&
+    [ -s "$tools/lib/mecab/dic/jumandic/sys.dic" ]; then
     echo "the tools of these versions are in $tools"
     exit 0
 fi
@@ -123,6 +127,8 @@ unpack mecab mecab mecab
 make_install mecab --with-charset=utf8
 unpack mecab mecab-ipadic mecab-ipadic
 make_install mecab-ipadic --with-charset=utf8
+unpack mecab mecab-jumandic mecab-jumandic
+make_install mecab-jumandic --with-charset=utf8
 
 unpack cabocha cabocha
 helpers=$(automake --print-libdir)
@@ -157,6 +163,12 @@ for program in bin/crf_learn bin/mecab bin/cabocha bin/jdepp libexec/cabocha/cab
     libexec/cabocha/cabocha-system-eval; do
     if [ ! -x "$tools/$program" ]; then
         echo "$tools/$program was not built" >&2
+        exit 1
+    fi
+done
+for dictionary in ipadic jumandic; do
+    if [ ! -s "$tools/lib/mecab/dic/$dictionary/sys.dic" ]; then
+        echo "$tools/lib/mecab/dic/$dictionary was not built" >&2
         exit 1
     fi
 done

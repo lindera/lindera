@@ -7,6 +7,7 @@ members = [
     "lindera-jieba",
     "lindera-ipadic",
     "lindera-ipadic-neologd",
+    "lindera-jumandic",
     "lindera-ko-dic",
     "lindera-sudachidict",
     "lindera-unidic",
@@ -71,6 +72,7 @@ lindera-trainer = { version = "7.0.0", path = "lindera-trainer" }
 lindera-ipadic = { version = "7.0.0", path = "lindera-ipadic" }
 lindera-ipadic-neologd = { version = "7.0.0", path = "lindera-ipadic-neologd" }
 lindera-jieba = { version = "7.0.0", path = "lindera-jieba" }
+lindera-jumandic = { version = "7.0.0", path = "lindera-jumandic" }
 lindera-ko-dic = { version = "7.0.0", path = "lindera-ko-dic" }
 lindera-nodejs = { version = "7.0.0", path = "lindera-nodejs" }
 lindera-sudachidict = { version = "7.0.0", path = "lindera-sudachidict" }

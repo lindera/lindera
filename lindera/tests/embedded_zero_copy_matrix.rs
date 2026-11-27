@@ -12,7 +12,8 @@
     feature = "embed-unidic",
     feature = "embed-unidic-cwj",
     feature = "embed-unidic-csj",
-    feature = "embed-sudachidict"
+    feature = "embed-sudachidict",
+    feature = "embed-jumandic"
 ))]
 
 use lindera::dictionary::load_dictionary;
@@ -70,4 +71,10 @@ fn embedded_unidic_csj_matrix_is_zero_copy() {
 #[cfg(feature = "embed-sudachidict")]
 fn embedded_sudachidict_matrix_is_zero_copy() {
     assert_embedded_matrix_is_borrowed("embedded://sudachidict");
+}
+
+#[test]
+#[cfg(feature = "embed-jumandic")]
+fn embedded_jumandic_matrix_is_zero_copy() {
+    assert_embedded_matrix_is_borrowed("embedded://jumandic");
 }

@@ -31,6 +31,9 @@ embed-unidic-csj = [
 embed-sudachidict = [
     "lindera-sudachidict/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary
+embed-jumandic = [
+    "lindera-jumandic/embed-jumandic",
+] # Embed JUMAN dictionary in the binary
 embed-ko-dic = [
     "lindera-ko-dic/embed-ko-dic",
 ] # Embed ko-dic dictionary in the binary
@@ -74,6 +77,7 @@ lindera-dictionary = { workspace = true }
 lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }
 lindera-jieba = { workspace = true, optional = true }
+lindera-jumandic = { workspace = true, optional = true }
 lindera-ko-dic = { workspace = true, optional = true }
 lindera-sudachidict = { workspace = true, optional = true }
 lindera-trainer = { workspace = true, optional = true }

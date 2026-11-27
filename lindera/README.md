@@ -40,7 +40,7 @@ The main feature flags of this crate:
 | `mmap` | Memory-mapped loading as the default for filesystem dictionaries | Yes |
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`) | No |
 | `dependency` | The token filter `japanese_dependency`: bunsetsu dependency analysis (depends on `lindera-dependency`) | No |
-| `embed-ipadic`, `embed-ipadic-neologd`, `embed-unidic`, `embed-unidic-cwj`, `embed-unidic-csj`, `embed-sudachidict` | Embed a Japanese dictionary in the binary | No |
+| `embed-ipadic`, `embed-ipadic-neologd`, `embed-unidic`, `embed-unidic-cwj`, `embed-unidic-csj`, `embed-sudachidict`, `embed-jumandic` | Embed a Japanese dictionary in the binary | No |
 | `embed-ko-dic` | Embed the Korean dictionary (ko-dic) in the binary | No |
 | `embed-cc-cedict`, `embed-jieba` | Embed a Chinese dictionary in the binary | No |
 

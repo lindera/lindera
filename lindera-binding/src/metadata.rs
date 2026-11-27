@@ -45,13 +45,15 @@ fn default_user_dictionary_schema() -> CoreSchema {
 /// not expose it), nor is `lindera_version`, which the dictionary builder
 /// stamps when it writes a dictionary (#1303), nor `context_id_map`, which
 /// the builder writes into a dictionary it relabels. `space_penalty`,
-/// `skip_whitespace`, `connection_id_mapping`, `char_def_format` and
-/// `lexicon_format` are retained, so a dictionary built from a
+/// `skip_whitespace`, `connection_id_mapping`, `char_def_format`,
+/// `lexicon_format` and `skip_invalid_encoding` are retained, so a
+/// dictionary built from a
 /// `metadata.json` that ships left-space penalty rules (ko-dic), turns
 /// whitespace skipping off (SudachiDict), enables the relabelling of context
 /// IDs (ko-dic, UniDic), selects Sudachi's `char.def` format (SudachiDict,
-/// #1388) or Sudachi's lexicon format (SudachiDict, #1389) keeps them, and
-/// so does a user dictionary built with that metadata.
+/// #1388) or Sudachi's lexicon format (SudachiDict, #1389), or skips the
+/// rows that are not text in its encoding (the JUMAN dictionary, #1466)
+/// keeps them, and so does a user dictionary built with that metadata.
 #[derive(Debug, Clone)]
 pub struct CoreMetadata {
     /// Dictionary name.
@@ -84,6 +86,10 @@ pub struct CoreMetadata {
     /// context IDs by access frequency (`true` for ko-dic and UniDic); see
     /// `DictionaryBuilder::with_context_id_freq`.
     pub connection_id_mapping: bool,
+    /// Whether a system dictionary build skips the rows of the lexicons
+    /// that are not text in the encoding, instead of failing (`true` for
+    /// the JUMAN dictionary, #1466).
+    pub skip_invalid_encoding: bool,
     /// The format of the dictionary's `char.def` (#1388): MeCab's, the
     /// default, or Sudachi's (SudachiDict).
     pub char_def_format: CharDefFormat,
@@ -112,8 +118,8 @@ impl CoreMetadata {
     /// # Returns
     ///
     /// The new `CoreMetadata`, with no `space_penalty` and no `skip_whitespace`
-    /// setting, `connection_id_mapping` off, and MeCab's `char.def` and
-    /// lexicon formats.
+    /// setting, `connection_id_mapping` and `skip_invalid_encoding` off, and
+    /// MeCab's `char.def` and lexicon formats.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
@@ -143,6 +149,7 @@ impl CoreMetadata {
             space_penalty: None,
             skip_whitespace: None,
             connection_id_mapping: false,
+            skip_invalid_encoding: false,
             char_def_format: CharDefFormat::Mecab,
             lexicon_format: LexiconFormat::Mecab,
         }
@@ -181,7 +188,7 @@ impl From<Metadata> for CoreMetadata {
     /// Converts a lindera [`Metadata`] into a [`CoreMetadata`] (dropping
     /// `model_info`, `lindera_version` and `context_id_map`, keeping
     /// `space_penalty`, `skip_whitespace`, `connection_id_mapping`,
-    /// `char_def_format` and `lexicon_format`).
+    /// `skip_invalid_encoding`, `char_def_format` and `lexicon_format`).
     fn from(metadata: Metadata) -> Self {
         Self {
             name: metadata.name,
@@ -197,6 +204,7 @@ impl From<Metadata> for CoreMetadata {
             space_penalty: metadata.space_penalty,
             skip_whitespace: metadata.skip_whitespace,
             connection_id_mapping: metadata.connection_id_mapping,
+            skip_invalid_encoding: metadata.skip_invalid_encoding,
             char_def_format: metadata.char_def_format,
             lexicon_format: metadata.lexicon_format,
         }
@@ -206,12 +214,13 @@ impl From<Metadata> for CoreMetadata {
 impl From<CoreMetadata> for Metadata {
     /// Converts a [`CoreMetadata`] into a lindera [`Metadata`] (`model_info`,
     /// `lindera_version` and `context_id_map` are `None`; `space_penalty`,
-    /// `skip_whitespace`, `connection_id_mapping`, `char_def_format` and
-    /// `lexicon_format` are carried over).
+    /// `skip_whitespace`, `connection_id_mapping`, `skip_invalid_encoding`,
+    /// `char_def_format` and `lexicon_format` are carried over).
     fn from(metadata: CoreMetadata) -> Self {
         let space_penalty = metadata.space_penalty;
         let skip_whitespace = metadata.skip_whitespace;
         let connection_id_mapping = metadata.connection_id_mapping;
+        let skip_invalid_encoding = metadata.skip_invalid_encoding;
         let char_def_format = metadata.char_def_format;
         let lexicon_format = metadata.lexicon_format;
         let mut converted = Metadata::new(
@@ -229,6 +238,7 @@ impl From<CoreMetadata> for Metadata {
         converted.space_penalty = space_penalty;
         converted.skip_whitespace = skip_whitespace;
         converted.connection_id_mapping = connection_id_mapping;
+        converted.skip_invalid_encoding = skip_invalid_encoding;
         converted.char_def_format = char_def_format;
         converted.lexicon_format = lexicon_format;
         converted
@@ -351,6 +361,31 @@ mod tests {
 
         let rebuilt: Metadata = CoreMetadata::from(metadata).into();
         assert!(rebuilt.connection_id_mapping);
+    }
+
+    /// The `metadata.json` of the JUMAN dictionary skips the rows that are
+    /// not text in its encoding; the setting must survive the same round
+    /// trip, so that a dictionary the bindings build from it builds, as
+    /// `lindera build` does: six rows of mecab-jumandic are not UTF-8
+    /// (#1466).
+    #[test]
+    fn keeps_skip_invalid_encoding_from_jumandic_metadata() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../lindera-jumandic/metadata.json");
+        let json = std::fs::read_to_string(&path).unwrap();
+        let metadata: Metadata = serde_json::from_str(&json).unwrap();
+        assert!(metadata.skip_invalid_encoding);
+
+        let rebuilt: Metadata = CoreMetadata::from(metadata).into();
+        assert!(rebuilt.skip_invalid_encoding);
+        // A dictionary that does not set it keeps failing on such a row.
+        assert!(
+            !CoreMetadata::new(None, None, None, None, None, None, None, None, None, None)
+                .skip_invalid_encoding
+        );
+        let plain: Metadata =
+            CoreMetadata::new(None, None, None, None, None, None, None, None, None, None).into();
+        assert!(!plain.skip_invalid_encoding);
     }
 
     /// SudachiDict's `metadata.json` selects Sudachi's `char.def` format;

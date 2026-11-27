@@ -437,6 +437,7 @@ impl DictionaryBuilder {
             .flexible_csv(self.metadata.flexible_csv)
             .encoding(self.metadata.encoding.clone())
             .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
+            .skip_invalid_encoding(self.metadata.skip_invalid_encoding)
             .schema(self.metadata.dictionary_schema.clone())
             .lexicon_format(self.metadata.lexicon_format)
             .context_id_remap(remap)

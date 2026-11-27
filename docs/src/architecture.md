@@ -14,6 +14,7 @@ graph TB
     UNIDICCWJ["lindera-unidic-cwj"]
     UNIDICCSJ["lindera-unidic-csj"]
     SUDACHIDICT["lindera-sudachidict"]
+    JUMANDIC["lindera-jumandic"]
     KODIC["lindera-ko-dic"]
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
@@ -37,6 +38,7 @@ graph TB
     DICT --> UNIDICCWJ
     DICT --> UNIDICCSJ
     DICT --> SUDACHIDICT
+    DICT --> JUMANDIC
     DICT --> KODIC
     DICT --> CCCEDICT
     DICT --> JIEBA
@@ -47,6 +49,7 @@ graph TB
     UNIDICCWJ --> SEGMENTER
     UNIDICCSJ --> SEGMENTER
     SUDACHIDICT --> SEGMENTER
+    JUMANDIC --> SEGMENTER
     KODIC --> SEGMENTER
     CCCEDICT --> SEGMENTER
     JIEBA --> SEGMENTER
@@ -84,6 +87,7 @@ graph TB
 | `lindera-unidic-cwj` | Dictionary | Japanese dictionary based on UniDic for contemporary written Japanese (UniDic CWJ). |
 | `lindera-unidic-csj` | Dictionary | Japanese dictionary based on UniDic for contemporary spoken Japanese (UniDic CSJ). |
 | `lindera-sudachidict` | Dictionary | Japanese dictionary based on SudachiDict. |
+| `lindera-jumandic` | Dictionary | Japanese dictionary based on mecab-jumandic, with JUMAN's parts of speech. |
 | `lindera-ko-dic` | Dictionary | Korean dictionary based on ko-dic. |
 | `lindera-cc-cedict` | Dictionary | Chinese dictionary based on CC-CEDICT. |
 | `lindera-jieba` | Dictionary | Chinese dictionary based on Jieba. |
@@ -129,6 +133,7 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 | `embed-unidic-cwj` | Embed the UniDic CWJ dictionary into the binary (1.2 GB) | Disabled |
 | `embed-unidic-csj` | Embed the UniDic CSJ dictionary into the binary (1.2 GB) | Disabled |
 | `embed-sudachidict` | Embed the SudachiDict dictionary into the binary | Disabled |
+| `embed-jumandic` | Embed the JUMAN dictionary into the binary | Disabled |
 | `embed-ko-dic` | Embed the ko-dic dictionary into the binary | Disabled |
 | `embed-cc-cedict` | Embed the CC-CEDICT dictionary into the binary | Disabled |
 | `embed-jieba` | Embed the Jieba dictionary into the binary | Disabled |

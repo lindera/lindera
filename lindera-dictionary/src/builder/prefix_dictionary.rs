@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use byteorder::{LittleEndian, WriteBytesExt};
-use csv::StringRecord;
+use csv::{ByteRecord, StringRecord};
 use encoding_rs::{Encoding, UTF_8};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
@@ -30,6 +30,9 @@ pub struct PrefixDictionaryBuilder {
     /* If set to UTF-8, it can also read UTF-16 files with BOM. */
     encoding: Cow<'static, str>,
     skip_invalid_cost_or_id: bool,
+    /// Whether a row that is not text in the encoding is skipped with a
+    /// warning, instead of failing the build (#1466).
+    skip_invalid_encoding: bool,
     schema: Schema,
     /// The format of the lexicon, which decides whether the fields of each
     /// row are decoded as they are read (#1389).
@@ -45,6 +48,67 @@ pub struct PrefixDictionaryBuilder {
     matrix_size: Option<MatrixSize>,
 }
 
+/// Takes a row of a lexicon CSV file as text.
+///
+/// A row that is not text in the encoding of the dictionary is an error,
+/// unless the dictionary asks to skip such rows (`skip_invalid_encoding` in
+/// its metadata): then it is dropped with a warning that names the file and
+/// the line. For UTF-8 it is a row with bytes that are not UTF-8. For
+/// another encoding, the reader has replaced what it could not decode by
+/// U+FFFD, which no such source can hold: a row with that character is
+/// dropped when rows are skipped, and kept otherwise, as before.
+///
+/// # Arguments
+///
+/// * `result` - The row as the CSV reader gave it.
+/// * `encoding` - The encoding of the dictionary.
+/// * `skip_invalid_encoding` - Whether a row that is not text is skipped.
+/// * `filename` - The file the row is from, for the messages.
+///
+/// # Returns
+///
+/// The row, `None` for a row that is skipped, or an error naming the file
+/// for a row the CSV reader could not read or that is not text.
+pub(crate) fn text_record(
+    result: csv::Result<ByteRecord>,
+    encoding: &'static Encoding,
+    skip_invalid_encoding: bool,
+    filename: &Path,
+) -> LinderaResult<Option<StringRecord>> {
+    let context = || format!("Failed to parse CSV record in file: {filename:?}");
+    let record = result.map_err(|err| {
+        LinderaErrorKind::Content
+            .with_error(anyhow!(err))
+            .add_context(context())
+    })?;
+    let line = record.position().map_or(0, |position| position.line());
+    let skipped = |problem: &str| {
+        warn!(
+            "Skipping a lexicon entry: {}: line {line}: {problem}",
+            filename.display()
+        );
+    };
+    match StringRecord::from_byte_record(record) {
+        Ok(record) => {
+            if skip_invalid_encoding
+                && encoding != UTF_8
+                && record.iter().any(|field| field.contains('\u{FFFD}'))
+            {
+                skipped(&format!("it is not text in {}", encoding.name()));
+                return Ok(None);
+            }
+            Ok(Some(record))
+        }
+        Err(err) if skip_invalid_encoding => {
+            skipped(&format!("it is not UTF-8 ({})", err.utf8_error()));
+            Ok(None)
+        }
+        Err(err) => Err(LinderaErrorKind::Content
+            .with_error(anyhow!("line {line}: {}", err.utf8_error()))
+            .add_context(context())),
+    }
+}
+
 /// Options for [`PrefixDictionaryBuilder`]. Every field has a default, so
 /// [`Self::builder`] is infallible.
 #[derive(Default)]
@@ -52,6 +116,7 @@ pub struct PrefixDictionaryBuilderOptions {
     flexible_csv: Option<bool>,
     encoding: Option<Cow<'static, str>>,
     skip_invalid_cost_or_id: Option<bool>,
+    skip_invalid_encoding: Option<bool>,
     schema: Option<Schema>,
     lexicon_format: Option<LexiconFormat>,
     context_id_remap: Option<Arc<ContextIdMap>>,
@@ -71,6 +136,21 @@ impl PrefixDictionaryBuilderOptions {
 
     pub fn skip_invalid_cost_or_id(&mut self, value: bool) -> &mut Self {
         self.skip_invalid_cost_or_id = Some(value);
+        self
+    }
+
+    /// Sets whether the rows that are not text in the encoding are
+    /// skipped with a warning, instead of failing the build.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Whether such rows are skipped. `false` unless set.
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    pub fn skip_invalid_encoding(&mut self, value: bool) -> &mut Self {
+        self.skip_invalid_encoding = Some(value);
         self
     }
 
@@ -121,6 +201,7 @@ impl PrefixDictionaryBuilderOptions {
             flexible_csv: self.flexible_csv.unwrap_or(true),
             encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
             skip_invalid_cost_or_id: self.skip_invalid_cost_or_id.unwrap_or(false),
+            skip_invalid_encoding: self.skip_invalid_encoding.unwrap_or(false),
             schema: self.schema.clone().unwrap_or_default(),
             lexicon_format: self.lexicon_format.unwrap_or_default(),
             context_id_remap: self.context_id_remap.clone(),
@@ -136,6 +217,7 @@ impl PrefixDictionaryBuilder {
             flexible_csv: true,
             encoding: "UTF-8".into(),
             skip_invalid_cost_or_id: false,
+            skip_invalid_encoding: false,
             schema,
             lexicon_format: LexiconFormat::Mecab,
             context_id_remap: None,
@@ -236,9 +318,9 @@ impl PrefixDictionaryBuilder {
     ///
     /// # Returns
     ///
-    /// The rows in file order, without the rows the context-id check skipped,
-    /// or an error naming the file and the line of a row that cannot be
-    /// decoded.
+    /// The rows in file order, without the rows the context-id check skipped
+    /// and the rows that are not text when such rows are skipped, or an
+    /// error naming the file and the line of a row that cannot be decoded.
     fn read_csv_files(
         &self,
         filenames: &[PathBuf],
@@ -268,12 +350,12 @@ impl PrefixDictionaryBuilder {
                 .flexible(self.flexible_csv)
                 .from_reader(reader);
 
-            for result in rdr.records() {
-                let record = result.map_err(|err| {
-                    LinderaErrorKind::Content
-                        .with_error(anyhow!(err))
-                        .add_context(format!("Failed to parse CSV record in file: {filename:?}"))
-                })?;
+            for result in rdr.byte_records() {
+                let Some(record) =
+                    text_record(result, encoding, self.skip_invalid_encoding, filename)?
+                else {
+                    continue;
+                };
                 let line = record.position().map_or(0, |position| position.line());
                 let record = decode_record(self.lexicon_format, record).map_err(|message| {
                     LinderaErrorKind::Content

@@ -243,6 +243,30 @@ jobs:
       - name: Run test
         run: cargo test -p lindera-sudachidict --features embed-sudachidict
 
+  test-lindera-jumandic:
+    name: Test lindera-jumandic (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera-jumandic --features embed-jumandic
+
   test-lindera-ko-dic:
     name: Test lindera-ko-dic (${{ matrix.toolchain }})
     needs: [test-lindera-dictionary]
@@ -310,6 +334,7 @@ jobs:
       - test-lindera-unidic-cwj
       - test-lindera-unidic-csj
       - test-lindera-sudachidict
+      - test-lindera-jumandic
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
       - test-lindera-jieba
@@ -347,6 +372,7 @@ jobs:
       - test-lindera-unidic-cwj
       - test-lindera-unidic-csj
       - test-lindera-sudachidict
+      - test-lindera-jumandic
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
       - test-lindera-jieba
@@ -369,7 +395,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
 
       - name: Run test
-        run: cargo test -p lindera-segmenter --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba
+        run: cargo test -p lindera-segmenter --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-jumandic,embed-ko-dic,embed-cc-cedict,embed-jieba
 
   test-lindera-analysis:
     name: Test lindera-analysis (${{ matrix.toolchain }})
@@ -437,7 +463,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
 
       - name: Run test
-        run: cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-ko-dic,embed-cc-cedict,embed-jieba
+        run: cargo test -p lindera --features embed-ipadic,embed-ipadic-neologd,embed-unidic,embed-sudachidict,embed-jumandic,embed-ko-dic,embed-cc-cedict,embed-jieba
 
   test-lindera-binding:
     name: Test lindera-binding (${{ matrix.toolchain }})

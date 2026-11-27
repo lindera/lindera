@@ -31,6 +31,9 @@ embed-unidic-csj = [
 embed-sudachidict = [
     "lindera-segmenter/embed-sudachidict",
 ] # Embed SudachiDict dictionary in the binary
+embed-jumandic = [
+    "lindera-segmenter/embed-jumandic",
+] # Embed JUMAN dictionary in the binary
 embed-ko-dic = [
     "lindera-segmenter/embed-ko-dic",
 ] # Embed ko-dic dictionary in the binary

@@ -140,6 +140,18 @@ pub struct Metadata {
     pub default_field_value: String,   // Default value for fields in simple user dictionary
     pub flexible_csv: bool,            // Handle CSV columns flexibly
     pub skip_invalid_cost_or_id: bool, // Skip invalid cost or ID
+    /// Skip the rows of the lexicon CSV files that are not text in
+    /// `encoding`, with a warning that names the file and the line (#1466).
+    /// Without it, such a row fails the build of a UTF-8 dictionary, and
+    /// for another encoding the bytes without a character become U+FFFD.
+    /// mecab-jumandic sets it: six rows of its `AuxV.csv` end a character
+    /// after two of its three bytes, in the release itself. Optional and
+    /// `false` by default, which is right for a source without such rows:
+    /// a wrong `encoding` of a UTF-8 source then fails the build instead of
+    /// dropping rows. Omitted from the file when `false`, so existing
+    /// `metadata.json` files stay byte-identical.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub skip_invalid_encoding: bool,
     /// Reorder connection-cost context IDs by frequency at build time so that
     /// frequently-used connection-matrix cells cluster in cache. Optional and
     /// defaults to `false`; when `false` the field is omitted from `metadata.json`
@@ -226,7 +238,8 @@ impl Default for Metadata {
 
 impl Metadata {
     /// Creates metadata for a dictionary in the current on-disk format, with
-    /// `lindera_version` and every optional setting (`connection_id_mapping`,
+    /// `lindera_version` and every optional setting (`skip_invalid_encoding`,
+    /// `connection_id_mapping`,
     /// `context_id_map`, `model_info`, `space_penalty`, `skip_whitespace`)
     /// left unset, and `char_def_format` and `lexicon_format` at MeCab's.
     ///
@@ -272,6 +285,7 @@ impl Metadata {
             name,
             flexible_csv,
             skip_invalid_cost_or_id,
+            skip_invalid_encoding: false,
             connection_id_mapping: false,
             context_id_map: None,
             user_dictionary_schema: userdic_schema,

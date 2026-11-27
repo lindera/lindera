@@ -852,3 +852,107 @@ fn build_unknown_dictionary_checks_the_categories() {
     assert!(err.contains(&expected), "{err}");
     assert!(!output.path().join("unk.bin").exists());
 }
+
+/// A lexicon as mecab-jumandic has it (#1466): a row in the middle ends a
+/// character after two of its three bytes, in each field it is written in.
+fn lexicon_with_a_row_that_is_not_utf8() -> Vec<u8> {
+    let mut lexicon = b"\xE6\x9C\xAC,0,0,200,\xE5\x90\x8D\xE8\xA9\x9E\n".to_vec();
+    // で and the first two bytes of another hiragana.
+    lexicon.extend_from_slice(b"\xE3\x81\xA7\xE3\x81,0,0,100,\xE5\x90\x8D\xE8\xA9\x9E\n");
+    lexicon.extend_from_slice(b"\xE6\x97\xA5\xE6\x9C\xAC,0,0,100,\xE5\x90\x8D\xE8\xA9\x9E\n");
+    lexicon
+}
+
+/// Builds a source whose lexicon is the given bytes.
+///
+/// Returns the directory of the built dictionary, and the message of the
+/// build error if there is one.
+fn build_bytes(metadata: Metadata, lexicon: &[u8]) -> (tempfile::TempDir, Result<(), String>) {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source_with(input.path(), "", UNK_DEF, MATRIX_DEF);
+    fs::write(input.path().join("lex.csv"), lexicon).unwrap();
+    let result = DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .map_err(|err| format!("{err:?}"));
+    (output, result)
+}
+
+/// A row that is not text in the encoding of the dictionary fails the
+/// build, with the file and the line: a wrong `encoding` is found that way.
+#[test]
+fn build_dictionary_rejects_a_row_that_is_not_utf8() {
+    let (_output, result) =
+        build_bytes(Metadata::default(), &lexicon_with_a_row_that_is_not_utf8());
+    let message = result.expect_err("the row is not UTF-8");
+    assert!(message.contains("lex.csv"), "{message}");
+    assert!(message.contains("line 2"), "{message}");
+    assert!(message.contains("invalid utf-8"), "{message}");
+}
+
+/// With `skip_invalid_encoding` (the JUMAN dictionary, #1466) such a row is
+/// dropped, and the rows around it are built.
+#[test]
+fn build_dictionary_skips_a_row_that_is_not_utf8_when_asked_to() {
+    let metadata = Metadata {
+        skip_invalid_encoding: true,
+        ..Metadata::default()
+    };
+    let (output, result) = build_bytes(metadata, &lexicon_with_a_row_that_is_not_utf8());
+    result.expect("the row that is not UTF-8 is skipped");
+
+    let dictionary =
+        Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+    let prefix = &dictionary.prefix_dictionary;
+    assert_eq!(prefix.find_surface("本").len(), 1);
+    assert_eq!(prefix.find_surface("日本").len(), 1);
+    assert!(prefix.find_surface("で").is_empty());
+    // The setting is kept in the built metadata, and a dictionary that does
+    // not set it has no such key.
+    let built = fs::read_to_string(output.path().join("metadata.json")).unwrap();
+    let built: Metadata = Metadata::load(built.as_bytes()).unwrap();
+    assert!(built.skip_invalid_encoding);
+    let plain = tempfile::tempdir().unwrap();
+    let source = tempfile::tempdir().unwrap();
+    write_source(source.path());
+    DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(source.path(), plain.path())
+        .unwrap();
+    let plain = fs::read_to_string(plain.path().join("metadata.json")).unwrap();
+    assert!(!plain.contains("skip_invalid_encoding"), "{plain}");
+    assert!(
+        !Metadata::load(plain.as_bytes())
+            .unwrap()
+            .skip_invalid_encoding
+    );
+}
+
+/// The same for another encoding: what cannot be decoded becomes U+FFFD,
+/// which no EUC-JP source holds. Such a row is kept unless rows are
+/// skipped, as it always was.
+#[test]
+fn build_dictionary_skips_a_row_that_is_not_text_in_another_encoding() {
+    // 本, then で and a first byte of a character without its second, then
+    // 日本, in EUC-JP.
+    let mut lexicon = b"\xCB\xDC,0,0,200,\xCC\xBE\xBB\xEC\n".to_vec();
+    lexicon.extend_from_slice(b"\xA4\xC7\xA4,0,0,100,\xCC\xBE\xBB\xEC\n");
+    lexicon.extend_from_slice(b"\xC6\xFC\xCB\xDC,0,0,100,\xCC\xBE\xBB\xEC\n");
+    let metadata = |skip: bool| Metadata {
+        encoding: "EUC-JP".to_string(),
+        skip_invalid_encoding: skip,
+        ..Metadata::default()
+    };
+    let surfaces = |output: &tempfile::TempDir| {
+        let dictionary = Dictionary::load_from_path(output.path()).unwrap();
+        ["本", "日本", "で\u{FFFD}"]
+            .map(|surface| dictionary.prefix_dictionary.find_surface(surface).len())
+    };
+
+    let (output, result) = build_bytes(metadata(true), &lexicon);
+    result.expect("the row is skipped");
+    assert_eq!(surfaces(&output), [1, 1, 0]);
+
+    let (output, result) = build_bytes(metadata(false), &lexicon);
+    result.expect("the row is kept with the replacement character");
+    assert_eq!(surfaces(&output), [1, 1, 1]);
+}

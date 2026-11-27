@@ -107,7 +107,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--max-grouping-len`: Cap on unknown-word grouping, in characters beyond the first (MeCab's `max-grouping-size`; MeCab defaults to 24). The cap is applied at each position: a run (characters that each share a `char.def` category with the one before, as in MeCab) longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. `0` or omitted: unbounded. See the [Segmenter](../lindera/segmenter.md#unknown-word-grouping) documentation for an example
 - `--disable-unknown-word-ladder`: Disable the MeCab/Vibrato-inspired unknown-word length ladder (`char.def`'s `LENGTH` field). Enabled by default. Disabling it leaves out these candidates, as before v6; other changes since then, such as unknown words that start inside a grouped run, still apply. See the [Segmenter](../lindera/segmenter.md#unknown-word-grouping) documentation
 - `--break-characters <CHARS>`: Break characters, each character of `CHARS` (default: `・`). No unknown word crosses a boundary between a break character and another character, in any mode, and in decompose mode no system-dictionary word does either; user-dictionary words and words of break characters only stay. See the [Segmenter](../lindera/segmenter.md#break-characters) documentation
-- `--disable-break-characters`: Use no break characters, which gives MeCab's segmentation: with a dictionary whose `char.def` puts `・` in the katakana category (IPADIC and UniDic do, SudachiDict does not), an unknown katakana word runs through `・` (`レノン・ジョン` stays one word), while a dictionary word before it still ends there (`ジョン・レノン` splits). Cannot be combined with `--break-characters`
+- `--disable-break-characters`: Use no break characters, which gives MeCab's segmentation: with a dictionary whose `char.def` puts `・` in the katakana category (IPADIC and UniDic do, SudachiDict does not; the JUMAN dictionary puts it with the digits, and a number then runs through it, as in `66・0`), an unknown katakana word runs through `・` (`レノン・ジョン` stays one word), while a dictionary word before it still ends there (`ジョン・レノン` splits). Cannot be combined with `--break-characters`
 - `--disable-space-penalty`: Disable the left-space penalty (mecab-ko's `left-space-penalty-factor`) that a dictionary shipping rules in its `metadata.json` applies by default (ko-dic ships mecab-ko-dic's). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it together with `--disable-skip-whitespace` turns off both changes since v6.0 in how Korean is read around spaces (this penalty and whitespace skipping), but not the other output changes since then, such as the split of punctuation runs like `."`. See the [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) documentation
 - `--space-penalty-rules`: Use explicit left-space penalty rules as JSON instead of the dictionary's, e.g. `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`. Mutually exclusive with `--disable-space-penalty`
 - `--mmap`: Use memory-mapped file loading for the dictionary directory's word list. Ignored for `embedded://` dictionaries and when the `mmap` feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.
@@ -753,6 +753,12 @@ A dictionary's `metadata.json` selects the format of its lexicon CSV files with 
 
 `unk.def` is read as written in both formats, as Sudachi reads it.
 
+### Rows that are not in the encoding
+
+A row of a lexicon CSV file that is not UTF-8 fails the build of a dictionary whose `encoding` is UTF-8: it is how a wrong `encoding` is found. With `"skip_invalid_encoding": true` in the `metadata.json`, the builder skips such a row and warns of it, with the file and the line ([#1466](https://github.com/lindera/lindera/issues/1466)). The default is `false`. Of the official dictionaries, the JUMAN dictionary alone sets it: six rows of its source end in the middle of a character (see [Build](../lindera-jumandic/build.md#the-six-rows-that-are-skipped)).
+
+For an encoding other than UTF-8, bytes that have no character in the encoding become U+FFFD, the replacement character, and the build goes on; with the setting, a row that has such bytes is skipped in the same way.
+
 ### Examples
 
 #### Build IPADIC (Japanese dictionary)
@@ -925,7 +931,7 @@ Download the pre-built dictionary archive matching the CLI version from the [Git
 
 ### Download parameters
 
-- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`; or a model of the dependency parser, one of `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj`: the one for the dictionary of that name
+- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba`; or a model of the dependency parser, one of `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj`: the one for the dictionary of that name
 - `--force`: Re-download and replace the dictionary or the model even when the CLI's version built it
 
 ### Storage location

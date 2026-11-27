@@ -45,6 +45,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 | `embed-unidic-cwj` | UniDic CWJ | 日本語 |
 | `embed-unidic-csj` | UniDic CSJ | 日本語 |
 | `embed-sudachidict` | SudachiDict | 日本語 |
+| `embed-jumandic` | JUMAN 辞書 | 日本語 |
 | `embed-ko-dic` | ko-dic | 韓国語 |
 | `embed-cc-cedict` | CC-CEDICT | 中国語 |
 | `embed-jieba` | Jieba | 中国語 |

@@ -21,6 +21,7 @@ lindera/
 ├── lindera-unidic-cwj/     # UniDic CWJ dictionary (Japanese)
 ├── lindera-unidic-csj/     # UniDic CSJ dictionary (Japanese)
 ├── lindera-sudachidict/    # SudachiDict dictionary (Japanese)
+├── lindera-jumandic/       # JUMAN dictionary (Japanese)
 ├── lindera-ko-dic/         # ko-dic dictionary (Korean)
 ├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
 ├── lindera-jieba/          # Jieba dictionary (Chinese)
@@ -93,6 +94,7 @@ Each dictionary crate contains pre-built dictionary data for a specific language
 | `lindera-unidic-cwj` | Japanese | UniDic CWJ |
 | `lindera-unidic-csj` | Japanese | UniDic CSJ |
 | `lindera-sudachidict` | Japanese | SudachiDict |
+| `lindera-jumandic` | Japanese | mecab-jumandic |
 | `lindera-ko-dic` | Korean | ko-dic |
 | `lindera-cc-cedict` | Chinese | CC-CEDICT |
 | `lindera-jieba` | Chinese | Jieba |

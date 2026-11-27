@@ -134,6 +134,11 @@
     - [ビルド](./lindera-sudachidict/build.md)
     - [使用例](./lindera-sudachidict/examples.md)
 
+- [Lindera JUMAN 辞書](./lindera-jumandic.md)
+    - [辞書フォーマット](./lindera-jumandic/dictionary_format.md)
+    - [ビルド](./lindera-jumandic/build.md)
+    - [使用例](./lindera-jumandic/examples.md)
+
 - [Lindera ko-dic](./lindera-ko-dic.md)
     - [辞書フォーマット](./lindera-ko-dic/dictionary_format.md)
     - [ビルド](./lindera-ko-dic/build.md)
