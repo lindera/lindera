@@ -4,7 +4,7 @@ both in the lattice format. The numbers of cabocha_models.sh.
 
 Usage:
     cabocha_agreement.py outputs <label> <output of CaboCha> <output of parse> [--differences <file>]
-    cabocha_agreement.py text <label> <output of CaboCha> <output of parse>
+    cabocha_agreement.py text <label> <output of CaboCha> <output of parse> [--columns <count>]
     cabocha_agreement.py sentences <lattice> <text>
 
 outputs    The two were given the same morphemes. One line with:
@@ -27,14 +27,15 @@ outputs    The two were given the same morphemes. One line with:
            do not hold the same sentences with the same morphemes.
 
 text       The two were given the same text, and each tokenized it: CaboCha
-           with MeCab and mecab-ipadic, `parse` with Lindera. One line
+           with MeCab and its dictionary, `parse` with Lindera. One line
            with:
 
            - the sentences with the same segmentation into morphemes;
            - the sentences where the morphemes also have the same first
-             seven feature columns (the part of speech, the conjugation
-             and the base form: what the features of a model are made
-             from);
+             feature columns (the part of speech, the conjugation and the
+             base form: what the features of a model are made from).
+             `--columns` says how many: seven for IPADIC, the default,
+             and five for the JUMAN dictionary;
            - of those, the sentences that are the same in everything.
 
 sentences  Writes the sentences of a lattice file as text, one a line: the
@@ -46,7 +47,7 @@ import re
 import sys
 
 BUNSETSU = re.compile(r"^\* (\d+) (-?\d+)([A-Z])(?: (\d+)/(\d+))?(?: (-?[0-9.eE+-]+))?")
-# The feature columns a schema of IPADIC reads.
+# The feature columns a schema of IPADIC reads: the default of `text`.
 COLUMNS = 7
 
 
@@ -171,23 +172,28 @@ def outputs(argv):
                 file.write("\n".join(mine) + "\n\n")
 
 
-def columns(morpheme):
+def columns(morpheme, count):
     """The surface of a morpheme line and its first feature columns."""
     surface, features = morpheme.split("\t", 1)
     values = next(csv.reader([features]))
-    values += ["*"] * (COLUMNS - len(values))
-    return surface, values[:COLUMNS]
+    values += ["*"] * (count - len(values))
+    return surface, values[:count]
 
 
 def text(argv):
+    count = COLUMNS
+    if "--columns" in argv:
+        index = argv.index("--columns")
+        count = int(argv[index + 1])
+        argv = argv[:index] + argv[index + 2 :]
     if len(argv) != 3:
         sys.exit(__doc__)
     label, cabocha_path, parse_path = argv
     cabocha, ours = both(cabocha_path, parse_path)
     same_segmentation = same_morphemes = same_all = 0
     for theirs, mine in zip(cabocha, ours):
-        one = [columns(morpheme) for morpheme in theirs[1]]
-        other = [columns(morpheme) for morpheme in mine[1]]
+        one = [columns(morpheme, count) for morpheme in theirs[1]]
+        other = [columns(morpheme, count) for morpheme in mine[1]]
         if [surface for surface, _ in one] != [surface for surface, _ in other]:
             continue
         same_segmentation += 1

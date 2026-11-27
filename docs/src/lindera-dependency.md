@@ -25,7 +25,7 @@ Start with the [Installation](./lindera-dependency/installation.md) and the [Qui
 - **Give the head word and the function word of a bunsetsu**, and recognize punctuation and brackets, from a schema of the dictionary. IPADIC is the first schema.
 - **Read and write the lattice format** of CaboCha (`cabocha -f1`), and check that a sentence is the tree the parsers assume.
 - **Make training data** from a dependency corpus such as UD Japanese-GSD, on the morphemes of the dictionary the parser will run with.
-- **Convert the model CaboCha distributes for IPA** into a model file that analyzes as CaboCha does. Such a model is limited to research and personal use, as CaboCha's.
+- **Convert the models CaboCha distributes for IPA and for JUMAN** into a model file that analyzes as CaboCha does. Such a model is limited to research and personal use, as CaboCha's.
 - **Evaluate** chunking and dependency accuracy as CaboCha and J.DepP count them, and compare two outputs with a paired test.
 
 The default build has no dependency and builds for `wasm32-unknown-unknown`: it holds the types, the lattice format, the schema, the model file, the chunker and the parser. The command is behind the `cli` feature, and the training and the evaluation behind the `train` feature.

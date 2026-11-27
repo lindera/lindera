@@ -793,13 +793,13 @@ pub(crate) struct ConvertCabochaArgs {
     /// The chunker model of CaboCha.
     #[clap(
         long = "chunker",
-        help = "Chunker model of CaboCha in text, as model/chunk.ipa.txt of its source"
+        help = "Chunker model of CaboCha in text, as model/chunk.ipa.txt or model/chunk.juman.txt of its source"
     )]
     chunker: PathBuf,
     /// The parser model of CaboCha.
     #[clap(
         long = "parser",
-        help = "Parser model of CaboCha in text, as model/dep.ipa.txt of its source"
+        help = "Parser model of CaboCha in text, for the same part-of-speech set as the chunker model: model/dep.ipa.txt or model/dep.juman.txt"
     )]
     parser: PathBuf,
     /// The model.

@@ -260,16 +260,41 @@ fn the_pruning_is_the_one_of_cabocha_unless_it_is_asked_for() {
 }
 
 #[test]
+fn converts_a_model_for_juman_into_one_for_jumandic() {
+    let directory = tempfile::tempdir().unwrap();
+    let chunker = directory.path().join("chunk.juman.txt");
+    let parser = directory.path().join("dep.juman.txt");
+    let model = directory.path().join("cabocha.model");
+    fs::write(&chunker, CHUNKER).unwrap();
+    // The part-of-speech set is read in the header of the parser model.
+    fs::write(&parser, PARSER.replace("posset: IPA", "posset: JUMAN")).unwrap();
+
+    let summary = success(run(
+        &["convert-cabocha"],
+        &[
+            ("--chunker", &chunker),
+            ("--parser", &parser),
+            ("--output", &model),
+        ],
+    ));
+    assert_eq!(value(&summary, "dictionary"), "jumandic");
+    let read = Model::new(fs::read(&model).unwrap()).unwrap();
+    assert_eq!(read.dictionary(), "jumandic");
+    assert_eq!(read.schema(), &schema(PartOfSpeechSet::Juman));
+    assert_ne!(read.schema(), &schema(PartOfSpeechSet::Ipa));
+}
+
+#[test]
 fn fails_with_the_cause() {
     let directory = tempfile::tempdir().unwrap();
     let chunker = directory.path().join("chunk.ipa.txt");
     let parser = directory.path().join("dep.ipa.txt");
-    let other = directory.path().join("dep.juman.txt");
+    let other = directory.path().join("dep.unidic.txt");
     let model = directory.path().join("cabocha.model");
     let missing = directory.path().join("missing.txt");
     fs::write(&chunker, CHUNKER).unwrap();
     fs::write(&parser, PARSER).unwrap();
-    fs::write(&other, PARSER.replace("posset: IPA", "posset: JUMAN")).unwrap();
+    fs::write(&other, PARSER.replace("posset: IPA", "posset: UNIDIC")).unwrap();
 
     let convert = |chunker: &Path, parser: &Path, arguments: &[&str]| {
         let mut all = vec!["convert-cabocha"];
@@ -286,7 +311,7 @@ fn fails_with_the_cause() {
     for (error, expected) in [
         (
             convert(&chunker, &other, &[]),
-            "the model is for the part-of-speech set JUMAN, which is not supported",
+            "the model is for the part-of-speech set UNIDIC, which is not supported",
         ),
         (
             convert(&parser, &chunker, &[]),

@@ -19,11 +19,13 @@ That is: the BSD license applies to the programs, the training tools and the doc
 | Model of CaboCha | Files | |
 | --- | --- | --- |
 | IPA | `chunk.ipa.txt`, `dep.ipa.txt` | Converted, for the dictionary `ipadic` |
-| JUMAN | `chunk.juman.txt`, `dep.juman.txt` | Refused: Lindera has no JUMAN dictionary yet ([#1466](https://github.com/lindera/lindera/issues/1466)), and the rule for the head of a bunsetsu is another one |
+| JUMAN | `chunk.juman.txt`, `dep.juman.txt` | Converted, for the dictionary `jumandic`, the [JUMAN dictionary](../lindera-jumandic.md) |
 | UniDic | `chunk.unidic.txt`, `dep.unidic.txt` | Refused: its columns are read in another way, and whether its features agree with the morphemes of Lindera's UniDic is not known yet ([#1442](https://github.com/lindera/lindera/issues/1442)) |
 | Named entities | `ne.*.txt` | Not converted |
 
 The files are the text models in `model/` of CaboCha's source, in UTF-8. The compiled models of an installation (`dep.ipa.model`) are not read: they depend on the machine.
+
+The two files have to be those of one model. The part-of-speech set is read in the header of the parser model (`posset: IPA`), and the chunker model does not say which it is for: `chunk.ipa.txt` with `dep.juman.txt` converts without an error, into a model that chunks wrongly.
 
 ## Converting
 
@@ -88,6 +90,60 @@ EOS
 
 From Rust, `lindera_dependency::cabocha::convert` takes the content of the two files and gives the two models and what it did.
 
+### The model for JUMAN
+
+The model for JUMAN is the one CaboCha's page gives the highest accuracy for: it was trained on the Kyoto corpus as it is, where the other two were trained on the corpus tokenized again. It is converted in the same way:
+
+```sh
+lindera-dependency convert-cabocha \
+    --chunker cabocha/model/chunk.juman.txt \
+    --parser cabocha/model/dep.juman.txt \
+    --output cabocha-juman.model
+```
+
+```text
+dictionary: jumandic
+chunker feature strings: 330800
+support vectors: 113652 (57639 positive)
+parser feature strings: 149674
+pairs: 3687535 of 10578633 kept, 3676410 with a weight
+unit: 2.277111690318634e-7
+bytes: 52011417
+seconds: 4.0
+The models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.
+```
+
+The file is a model for `jumandic`. `lindera-dependency` embeds no dictionary but IPADIC, so `--dict` takes the directory of the JUMAN dictionary, which `lindera download jumandic` installs, from 7.1.0 on, and [`lindera build`](../lindera-jumandic/build.md) makes from the source:
+
+```sh
+echo "太郎は花子が読んでいる本を次郎に渡した。" \
+    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+```
+
+```text
+* 0 5D 0/1 0.000000
+太郎	名詞,人名,*,*,太郎,たろう,人名:日本:名:45:0.00106
+は	助詞,副助詞,*,*,は,は,*
+* 1 2D 0/1 1.847622
+花子	名詞,人名,*,*,花子,はなこ,人名:日本:名:912:0.00019
+が	助詞,格助詞,*,*,が,が,*
+* 2 3D 0/1 1.407350
+読んで	動詞,*,子音動詞マ行,タ系連用テ形,読む,よんで,代表表記:読む/よむ
+いる	接尾辞,動詞性接尾辞,母音動詞,基本形,いる,いる,連語
+* 3 5D 0/1 0.000000
+本	名詞,普通名詞,*,*,本,ほん,代表表記:本/ほん 漢字読み:音 カテゴリ:人工物-その他;抽象物
+を	助詞,格助詞,*,*,を,を,*
+* 4 5D 0/1 0.000000
+次郎	名詞,人名,*,*,次郎,じろう,人名:日本:名:135:0.00068
+に	助詞,格助詞,*,*,に,に,*
+* 5 -1D 0/0 0.000000
+渡した	動詞,*,子音動詞サ行,タ形,渡す,わたした,代表表記:渡す/わたす 付属動詞候補（基本） 自他動詞:自:渡る/わたる
+。	特殊,句点,*,*,。,。,連語
+EOS
+```
+
+`cabocha -f1 -n0 -P JUMAN`, with MeCab and mecab-jumandic, writes the same bunsetsu, heads, positions and scores for this sentence, with `-0.468695` where no decision is made. Its lines differ in the last column of the particles, `連語` where Lindera has `*`: the two take another one of two entries of the same cost ([Examples](../lindera-jumandic/examples.md#agreement-with-mecab)), in a column the model does not read.
+
 ## What is converted
 
 **The chunker** is a CRF++ model in text. Its template, its feature strings and its weights go into the chunker part as they are, with the weights rounded to 32-bit floats, as CRF++ keeps them in the compiled model CaboCha reads.
@@ -106,20 +162,23 @@ From Rust, `lindera_dependency::cabocha::convert` takes the content of the two f
 
 The defaults are those of `cabocha-model-index`, with which CaboCha's own build compiles its models. `--sigma 0 --min-support 1` keeps every pair, which is the kernel itself, and not what CaboCha parses with:
 
-| | Pairs kept | Pairs with a weight | File | Conversion |
-| --- | --- | --- | --- | --- |
-| The defaults | 3,727,492 of 10,141,653 | 3,713,127 | 51.8 MB | 3.6 s |
-| `--sigma 0 --min-support 1` | 10,141,653 | 9,988,000 | 102.0 MB | 4.5 s |
+| Model | | Pairs kept | Pairs with a weight | File | Conversion |
+| --- | --- | --- | --- | --- | --- |
+| IPA | The defaults | 3,727,492 of 10,141,653 | 3,713,127 | 51.8 MB | 3.6 s |
+| IPA | `--sigma 0 --min-support 1` | 10,141,653 | 9,988,000 | 102.0 MB | 4.5 s |
+| JUMAN | The defaults | 3,687,535 of 10,578,633 | 3,676,410 | 52.0 MB | 4.0 s |
+| JUMAN | `--sigma 0 --min-support 1` | 10,578,633 | 10,450,076 | 106.2 MB | 4.9 s |
 
 **What makes the features** is data of the model file, and CaboCha's for a converted model:
 
 - the surface is normalized by CaboCha's table before it becomes a feature or is matched as a mark: the half-width katakana in full width, the full-width letters, digits and signs in ASCII (`ＡＢＣ` is `ABC`, `ｶﾞ` is `ガ`);
-- the function words are 助詞, 助動詞, 動詞,非自立, 動詞,接尾, 形容詞,非自立 and 形容詞,接尾, and the head is the last morpheme that is neither one of them nor a 記号. It is not the schema `ipadic` of this crate, which has more patterns ([Head and Function Word](./head_and_function_word.md)): in 利用 / し / た the head is し here, and 利用 there;
+- for IPA, the function words are 助詞, 助動詞, 動詞,非自立, 動詞,接尾, 形容詞,非自立 and 形容詞,接尾, and the head is the last morpheme that is neither one of them nor a 記号. It is not the schema `ipadic` of this crate, which has more patterns ([Head and Function Word](./head_and_function_word.md)): in 利用 / し / た the head is し here, and 利用 there;
+- for JUMAN, the function word is the last morpheme that is not a 特殊, and the head the last that is not a 特殊, a 助詞 or a 接尾辞. The two are found apart, which is another form of the rule ([Head and Function Word](./head_and_function_word.md#the-rule)): a bunsetsu of one noun has the noun as both. The part of speech has two levels, and the conjugation form is the fourth column;
 - the punctuation is `。` and `、`, and the brackets are those of CaboCha, each matched as the whole surface.
 
 ## Agreement with CaboCha
 
-`scripts/dependency/cabocha_models.sh` converts the model for IPA and gives the same input to CaboCha 0.69 (96e100a, built by `scripts/dependency/build_baselines.sh`, with the model as its own build compiled it) and to `lindera-dependency parse` with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.
+`scripts/dependency/cabocha_models.sh` converts the model for IPA, or with `--posset juman` the one for JUMAN, and gives the same input to CaboCha 0.69 (96e100a, built by `scripts/dependency/build_baselines.sh`, with the model as its own build compiled it) and to `lindera-dependency parse` with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.
 
 On the same morphemes, those of Lindera with IPADIC, everything is the same:
 
@@ -145,11 +204,35 @@ From text, CaboCha tokenizes with MeCab and mecab-ipadic, and `parse` with Linde
 
 The other sentences are tokenized differently, nearly all of them at a katakana word that is not in the dictionary (332 of 335 on PUD and GSD train): MeCab gives `コリ・シューマン` as one word where Lindera gives three, and `メトロ` / `ポリ` / `タン` where Lindera gives `メトロポリタン`. That is a difference of the tokenizers, not of the models.
 
+### With the model for JUMAN
+
+The input is the 9,100 sentences of the same files, and the morphemes are those of MeCab with mecab-jumandic. Everything is the same:
+
+| File | Sentences with the same bunsetsu | Bunsetsu with the same head | Bunsetsu with the same head word and function word |
+| --- | --- | --- | --- |
+| GSD dev | 100% (507 / 507) | 100% (3,870 / 3,870) | 100% (4,377 / 4,377) |
+| GSD test | 100% (543 / 543) | 100% (4,194 / 4,194) | 100% (4,737 / 4,737) |
+| PUD | 100% (1,000 / 1,000) | 100% (9,430 / 9,430) | 100% (10,430 / 10,430) |
+| GSD train | 100% (7,050 / 7,050) | 100% (52,811 / 52,811) | 100% (59,861 / 59,861) |
+
+The scores are the same to six decimals here too. With `--sigma 0 --min-support 1` the bunsetsu are the same and 99.63% to 99.77% of the heads (3,861 / 3,870, 4,181 / 4,194, 9,395 / 9,430 and 52,648 / 52,811): one head in 320 (220 of 70,305).
+
+From text, CaboCha tokenizes with MeCab and mecab-jumandic, and Lindera with its JUMAN dictionary, built from the same source (`lindera tokenize`, whose morphemes `parse` is given). The morphemes are the same in nearly every sentence, in the five columns the model reads, and those sentences are analyzed the same:
+
+| File | Sentences with the same morphemes | Of which analyzed the same |
+| --- | --- | --- |
+| GSD dev | 99.61% (505 / 507) | 100% (505 / 505) |
+| GSD test | 99.63% (541 / 543) | 100% (541 / 541) |
+| PUD | 100% (1,000 / 1,000) | 100% (1,000 / 1,000) |
+| GSD train | 99.79% (7,035 / 7,050) | 100% (7,035 / 7,035) |
+
+The 19 other sentences are tokenized differently, 17 of them at a `・` between digits, which `lindera tokenize --disable-break-characters` reads as MeCab does ([Examples](../lindera-jumandic/examples.md#agreement-with-mecab)).
+
 ## Limits
 
-- **Speed.** `parse` takes 3.03 s for the 7,024 sentences of GSD train from their morphemes, and CaboCha 0.92 s. A converted model keeps each pair with a weight of its own, where the models of this crate hash the pairs into a table: see [Model File](./model_file.md) for their speed.
+- **Speed.** `parse` takes 3.03 s for the 7,024 sentences of GSD train from their morphemes, and CaboCha 0.92 s. The model for JUMAN is no slower: on a machine that was busy, where those two took 3.32 s and 1.21 s, it took 3.03 s and CaboCha 1.09 s for the 7,050 sentences. A converted model keeps each pair with a weight of its own, where the models of this crate hash the pairs into a table: see [Model File](./model_file.md) for their speed.
 - **The score of an arc to the last bunsetsu** is 0, as with every model of this crate.
-- **A long bunsetsu.** CaboCha keeps at most 128 features and 2,048 bytes of feature strings for a bunsetsu, and this crate all of them. The 76,659 bunsetsu of the text above have at most 40 features and 882 bytes, so the limit is not met there; a bunsetsu beyond it would differ.
+- **A long bunsetsu.** CaboCha keeps at most 128 features and 2,048 bytes of feature strings for a bunsetsu, and this crate all of them. The 76,659 bunsetsu of the text above have at most 40 features and 882 bytes, and the 79,405 of the morphemes of mecab-jumandic at most 42 and 818, so the limit is not met there; a bunsetsu beyond it would differ.
 - **The chunker** is asked for the best path that starts with `B`; CaboCha takes the best path and then makes the first morpheme start a bunsetsu. CRF++ adds the weights of a morpheme in a 32-bit float, and this crate in 64 bits. Neither changed a bunsetsu of the text above.
 - **The accuracy** of CaboCha's models is not measured here: the Kyoto corpus is not available, and an accuracy on UD Japanese-GSD would compare two standards of bunsetsu.
 - **Not verified**: CaboCha built with another compiler or system than GCC 15.2 on Linux (x86_64).

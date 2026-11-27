@@ -151,5 +151,5 @@ pub mod sentence;
 
 pub use error::{Error, Result};
 pub use morpheme::{DictionaryMorpheme, Morpheme};
-pub use schema::{Marks, Normalization, Pattern, Schema, SurfaceRule, Symbols};
+pub use schema::{HeadRule, Marks, Normalization, Pattern, Schema, SurfaceRule, Symbols};
 pub use sentence::{ArcType, Bunsetsu, Sentence, Violation, tree_violations};

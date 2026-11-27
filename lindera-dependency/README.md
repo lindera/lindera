@@ -323,7 +323,7 @@ name of the dictionary, and a morpheme with fewer feature columns than the
 schema reads is refused when it is analyzed. Morphemes of another dictionary
 that are wide enough are told apart by the name only.
 
-The format is version 2: a magic number (`LDMODEL`), the version, the name of
+The format is version 3: a magic number (`LDMODEL`), the version, the name of
 the dictionary, the schema, a list of the parts, and the parts. A table of
 strings is stored sorted, with a hash table over it, and is looked up where
 it is. The
@@ -945,7 +945,9 @@ With CaboCha's feature set and the other defaults, the result is lower:
 
 CaboCha comes with models trained on the Kyoto University Text Corpus, which
 cannot be trained again without the corpus. `convert-cabocha`, in the
-`train` build, converts the model for IPA into a model file for `ipadic`:
+`train` build, converts the model for IPA into a model file for `ipadic`,
+and the model for JUMAN (`chunk.juman.txt`, `dep.juman.txt`) into one for
+`jumandic`:
 
 ```sh
 lindera-dependency convert-cabocha \
@@ -971,7 +973,14 @@ support vectors of its parser expanded as `cabocha-model-index` expands
 them, with its pruning (`--sigma`, `--min-support`, `--frequent-features`)
 and its whole numbers. The file is 51.8 MB.
 
-The models for JUMAN and for UniDic are refused. The table of the
+The same holds for the model for JUMAN, on the morphemes of MeCab with
+mecab-jumandic for the 9,100 sentences of the same files
+(`cabocha_models.sh --posset juman`); its file is 52.0 MB. Its rule for the
+head word is another form, which the schema holds as `HeadRule::LastWords`:
+the function word is the last morpheme that is not a 特殊, and the head
+word is found apart from it.
+
+The models for UniDic are refused. The table of the
 normalization is CaboCha's `src/normalizer.rule`, under its BSD license
 (`NOTICE.txt`). The
 [documentation](../docs/src/lindera-dependency/cabocha_models.md) has the

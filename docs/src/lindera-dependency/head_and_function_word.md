@@ -38,6 +38,8 @@ The rule is the one of CaboCha (`findHead`):
 
 So a bunsetsu without a function word has both at its head word (本 alone: `0/0`), and a bunsetsu of symbols only has both at its first morpheme.
 
+A schema can have the other form `findHead` has, the one CaboCha uses for JUMAN (`HeadRule::LastWords` in `Schema::head_rule`): the function word is the last morpheme that is not a symbol, and the head word the last one that is neither a symbol nor in the list of what is not a head. The two are found apart, the patterns of the function words are not read, and step 3 is left out. The schemas of this crate do not use it; a model converted from [CaboCha's for JUMAN](./cabocha_models.md) does, with 特殊 as its symbols and 助詞 and 接尾辞 as what is not a head: 読んで / いる has `0/1`, as いる is a 接尾辞 there.
+
 A pattern is a prefix of the part-of-speech levels (動詞, 非自立), optionally with the base forms the morpheme may have and with a pattern for the morpheme before it in the bunsetsu. A morpheme with fewer feature columns than the schema names matches no pattern on the missing ones; nothing panics.
 
 ## Punctuation and brackets
