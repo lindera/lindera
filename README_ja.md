@@ -1,5 +1,7 @@
 # Lindera
 
+[English](README.md) · **日本語** · [Türkçe](README_tr.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Crates.io](https://img.shields.io/crates/v/lindera.svg)](https://crates.io/crates/lindera)
 
 Rust で実装された形態素解析ライブラリです。本プロジェクトは [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs) からフォークされました。
