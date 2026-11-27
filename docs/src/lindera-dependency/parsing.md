@@ -304,7 +304,7 @@ passes: 19
 updates: 21374
 feature strings: 62380
 pair weights: 2762034
-bytes: 6258548
+bytes: 6258554
 ```
 
 A last line, `seconds:`, has the time of the training; it is left out here. Training the same data again gives the same bytes.
@@ -348,7 +348,7 @@ With the defaults, trained on the train file of UD Japanese-GSD (commit c662dc9)
 
 The targets of the project, from CaboCha and J.DepP trained on the same data, are 89.1 on dev and 87.7 on test with the bunsetsu of the answer, and 85.0 on dev and 84.3 on test from the morphemes. The two tools are run by [`scripts/dependency/baselines.sh`](https://github.com/lindera/lindera/tree/main/scripts/dependency) ([#1433](https://github.com/lindera/lindera/issues/1433)): CaboCha gives 89.84 and 88.51 with the bunsetsu of the answer and 85.00 and 84.25 from the morphemes, J.DepP 90.11 and 88.71, and 85.99 and 84.65. J.DepP is ahead from the morphemes because it chunks better (F 97.17 and 97.02): see [#1464](https://github.com/lindera/lindera/issues/1464).
 
-The model file with the chunker and the parser has 6,258,548 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see [Model File](./model_file.md#size-and-speed).
+The model file with the chunker and the parser has 6,258,554 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see [Model File](./model_file.md#size-and-speed).
 
 ### With UniDic
 

@@ -304,7 +304,7 @@ passes: 19
 updates: 21374
 feature strings: 62380
 pair weights: 2762034
-bytes: 6258548
+bytes: 6258554
 ```
 
 この後に、学習の時間を書いた `seconds:` の行が続きます（ここでは省いています）。同じデータで学習し直すと、同じバイト列になります。
@@ -348,7 +348,7 @@ UD Japanese-GSD（commit c662dc9）の train と IPADIC で、既定の設定で
 
 このプロジェクトの目標は、同じデータで学習した CaboCha・J.DepP の値から決めたもので、正解の文節で dev 89.1・test 87.7、形態素から dev 85.0・test 84.3 です。2 つのツールは、[`scripts/dependency/baselines.sh`](https://github.com/lindera/lindera/tree/main/scripts/dependency) で動かせます（[#1433](https://github.com/lindera/lindera/issues/1433)）。CaboCha は、正解の文節で 89.84 と 88.51、形態素から 85.00 と 84.25 です。J.DepP は 90.11 と 88.71、85.99 と 84.65 です。J.DepP が形態素からの解析で上回るのは、区切りが良いためです（F 97.17 と 97.02）。[#1464](https://github.com/lindera/lindera/issues/1464) を見てください。
 
-区切りと解析器を入れたモデルファイルは 6,258,548 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。[モデルファイル](./model_file.md#大きさと速さ)を参照してください。
+区切りと解析器を入れたモデルファイルは 6,258,554 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。[モデルファイル](./model_file.md#大きさと速さ)を参照してください。
 
 ### UniDic の場合
 

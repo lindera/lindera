@@ -90,7 +90,7 @@ train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 261851
+bytes: 261857
 ```
 
 The output is a [model file](./model_file.md) for the dictionary `ipadic`, with the chunker as its only part. Training the same data again gives the same bytes. The weights are `f64`. The format may change until the first release.
