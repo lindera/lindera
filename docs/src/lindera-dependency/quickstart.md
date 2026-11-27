@@ -127,3 +127,5 @@ With the two paths as its arguments, it prints:
 ```
 
 To parse morphemes that do not come from Lindera, or to use the chunker and the parser on their own, see [Parsing](./parsing.md) and [Model File](./model_file.md).
+
+For what the result says, on more kinds of sentence, and for a program that uses it, see [Reading and Using the Result](./reading_the_result.md).

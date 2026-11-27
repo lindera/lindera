@@ -13,7 +13,7 @@ Lindera Dependency (`lindera-dependency`) is a crate for Japanese bunsetsu depen
 
 > The crate is on crates.io from Lindera 7.1.0 on, and each release of Lindera publishes the **models for IPADIC and for the three UniDic dictionaries** with it. The analysis is complete from morphemes to dependencies: the training data, the chunker, the parser, the model file, the evaluation and a command for text are here, and the token filter of Lindera is in the default builds of the `lindera` command and of the bindings.
 
-Start with the [Installation](./lindera-dependency/installation.md) and the [Quick Start](./lindera-dependency/quickstart.md). The work is tracked in [#1417](https://github.com/lindera/lindera/issues/1417).
+Start with the [Installation](./lindera-dependency/installation.md) and the [Quick Start](./lindera-dependency/quickstart.md); [Reading and Using the Result](./lindera-dependency/reading_the_result.md) says what a bunsetsu and a dependency are and how to read what comes out. The work is tracked in [#1417](https://github.com/lindera/lindera/issues/1417).
 
 ## What it can do
 
@@ -34,6 +34,7 @@ The default build has no dependency and builds for `wasm32-unknown-unknown`: it 
 
 - [Installation](./lindera-dependency/installation.md) -- The crate, the builds that have the token filter, and the three ways to get the model
 - [Quick Start](./lindera-dependency/quickstart.md) -- One sentence parsed with the released model, from the command line and from Rust
+- [Reading and Using the Result](./lindera-dependency/reading_the_result.md) -- What a bunsetsu and a dependency are, the result of several kinds of sentence, a program that uses it, and how far to trust it
 - [Architecture](./lindera-dependency/architecture.md) -- The modules, the types, the lattice format and the feature flags
 - [Chunking](./lindera-dependency/chunking.md) -- Segmenting morphemes into bunsetsu, and training a model
 - [Parsing](./lindera-dependency/parsing.md) -- Finding the head of each bunsetsu: the loop, the features, training a model, and its accuracy
