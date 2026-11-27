@@ -52,6 +52,7 @@
     - [Chunking](./lindera-dependency/chunking.md)
     - [Parsing](./lindera-dependency/parsing.md)
     - [Model File](./lindera-dependency/model_file.md)
+    - [CaboCha's Models](./lindera-dependency/cabocha_models.md)
     - [Command Line](./lindera-dependency/command_line.md)
     - [Token Filter](./lindera-dependency/token_filter.md)
     - [Head and Function Word](./lindera-dependency/head_and_function_word.md)

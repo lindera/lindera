@@ -198,9 +198,9 @@ A classifier is trained on the features of one set and parses with the same set.
 
 | | CaboCha | This crate | Why |
 | --- | --- | --- | --- |
-| Surface | Normalized by a table (full width and half width) | As the tokenizer gives it | The schema recognizes a symbol in both widths, by its part of speech and by its surface |
-| Punctuation and brackets | 。 and 、, ten opening and ten closing brackets, by the normalized surface | Those of the schema, which also has `,` `.` `，` `．` and more brackets | IPADIC gives a half-width symbol as a noun |
-| Head and function word | `findHead` with the patterns of the tag set | `Schema::positions`, which has more patterns for IPADIC | See [Head and Function Word](./head_and_function_word.md) |
+| Surface | Normalized by a table (full width and half width) | As the tokenizer gives it, unless the schema has a normalization | The schemas of this crate have none: they recognize a symbol in both widths, by its part of speech and by its surface. A [model converted from CaboCha](./cabocha_models.md) has CaboCha's table |
+| Punctuation and brackets | 。 and 、, ten opening and ten closing brackets, by the normalized surface | Those of the schema, which also has `,` `.` `，` `．` and more brackets | IPADIC gives a half-width symbol as a noun. A model converted from CaboCha has CaboCha's marks and its way to match them |
+| Head and function word | `findHead` with the patterns of the tag set | `Schema::positions`, which has more patterns for IPADIC | See [Head and Function Word](./head_and_function_word.md). A model converted from CaboCha has CaboCha's patterns |
 | The morpheme after the head | No such feature | The group `after` | The head of the schema is the content word |
 | A bunsetsu whose head is not known | Attached to the next one, without an instance (partial training) | Not supported: a bunsetsu without a head is the root | The training data has the head of every bunsetsu |
 | Score of an arc to the last bunsetsu | The score of the decision before, which is unrelated | 0 | That decision is not asked |

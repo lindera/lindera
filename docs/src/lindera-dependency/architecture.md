@@ -11,7 +11,8 @@ lindera-dependency/src/
 ├── schema.rs             # Schema: columns, head word and function word
 ├── schema/
 │   ├── pattern.rs        # Pattern over the morphemes of a bunsetsu
-│   └── symbols.rs        # Marks, Symbols: punctuation and brackets
+│   ├── symbols.rs        # Marks, Symbols, SurfaceRule: punctuation and brackets
+│   └── normalization.rs  # Normalization: a table that replaces parts of a surface
 ├── chunker.rs            # Chunker
 ├── chunker/
 │   ├── columns.rs        # Column: what a template reads from a morpheme
@@ -36,6 +37,11 @@ lindera-dependency/src/
 │   ├── convert.rs        # Word dependencies to bunsetsu dependencies
 │   └── project.rs        # Bunsetsu onto the morphemes of a dictionary
 ├── evaluation.rs         # Chunking and dependency accuracy (train)
+├── cabocha.rs            # Converting the models of CaboCha (train)
+├── cabocha/
+│   ├── crfpp.rs          # Reading a CRF++ model in text
+│   ├── svm.rs            # Reading the support vectors, and expanding them
+│   └── normalizer.rule   # CaboCha's table for the normalization of a surface
 ├── error.rs              # Error types
 ├── bytes.rs              # Helpers for the bytes of a model
 └── bin/
@@ -162,6 +168,7 @@ With the `cli` feature the crate builds the `lindera-dependency` command, which 
 | `train-chunker` | `train` | Trains the chunker and writes a model file | [Chunking](./chunking.md) |
 | `instances` | `train` | Writes the training instances of the parser | [Parsing](./parsing.md) |
 | `train-parser` | `train` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](./parsing.md) |
+| `convert-cabocha` | `train` | Converts the chunker and parser models of CaboCha into a model file | [CaboCha's Models](./cabocha_models.md) |
 
 The command is in this crate, not in `lindera-cli`: it writes the lattice format and holds the training, which a user of the tokenizer does not need. `lindera-cli` runs the parser as a [token filter](./token_filter.md).
 

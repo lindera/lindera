@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 // The version of the model file format this crate reads; a
                 // test of the `embedded` module keeps it equal to the one
                 // of `model`.
-                format_version: 1,
+                format_version: 2,
                 file_env,
                 output,
                 how_to_make: "build the model with scripts/dependency/build_model.sh of the \

@@ -16,14 +16,14 @@
 //!
 //! # The format
 //!
-//! Version 1, little endian. A string is its length in bytes as a `u32`,
+//! Version 2, little endian. A string is its length in bytes as a `u32`,
 //! then its UTF-8.
 //!
 //! ```text
 //! the magic number         8 bytes, "LDMODEL" and a zero
 //! the version              u32
 //! the name of the dictionary  string
-//! the schema
+//! the schema, with its normalization of the surface
 //! the number of parts      u32
 //! for each part:           its kind u32 (1 the chunker, 2 the parser),
 //!                          its offset from the first byte of the file u64,
@@ -108,7 +108,7 @@ use table::{Layout, Table};
 const MAGIC: &[u8; 8] = b"LDMODEL\0";
 
 /// The version of the format.
-pub(crate) const VERSION: u32 = 1;
+pub(crate) const VERSION: u32 = 2;
 
 /// The kind of the chunker part.
 const KIND_CHUNKER: u32 = 1;
@@ -701,7 +701,7 @@ mod tests {
     use super::*;
     use crate::chunker::model::tests::model as chunker_model;
     use crate::lattice::LatticeMorpheme;
-    use crate::schema::Pattern;
+    use crate::schema::{Normalization, Pattern};
 
     /// A chunker for which a particle continues a bunsetsu and anything
     /// else starts one, with weights that are told apart.
@@ -758,12 +758,14 @@ mod tests {
             conjugation_type: None,
             conjugation_form: Some(7),
             base_form: None,
-            // The patterns and the symbols go to the bytes too.
+            // The patterns, the symbols and the normalization go to the
+            // bytes too.
             function_words: vec![Pattern::new(&["助詞"])],
             not_heads: vec![Pattern::new(&["名詞", "非自立"]).after(Pattern::default())],
             particles: vec![Pattern::new(&["助詞", "格助詞"])],
             lexicalized: vec![Pattern::new(&["副詞"]), Pattern::new(&["連体詞"])],
             symbols: Schema::ipadic().symbols,
+            normalization: Normalization::new(&[("ｶﾞ", "ガ"), ("１", "1")]).unwrap(),
         };
         let transitions = [
             [0.0, 0.25, -3.0],
@@ -796,7 +798,7 @@ mod tests {
             .unwrap();
         let bytes = builder.to_bytes();
         assert_eq!(&bytes[..8], b"LDMODEL\0");
-        assert_eq!(bytes[8..12], [1, 0, 0, 0]);
+        assert_eq!(bytes[8..12], [2, 0, 0, 0]);
         // The same parts give the same bytes, whatever the order of the
         // table of the chunker in memory.
         assert_eq!(builder.to_bytes(), bytes);
@@ -968,12 +970,12 @@ mod tests {
             error(b"LDCHUNK\0\x03\0\0\0"),
             "not a model file: the magic number is missing"
         );
-        for version in [0, 2, 3] {
+        for version in [0, 1, 3] {
             let mut other = bytes.clone();
             other[8] = version;
             assert_eq!(
                 error(&other),
-                format!("the model has the version {version}, and this crate reads 1")
+                format!("the model has the version {version}, and this crate reads 2")
             );
         }
 

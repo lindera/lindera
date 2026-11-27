@@ -323,7 +323,7 @@ name of the dictionary, and a morpheme with fewer feature columns than the
 schema reads is refused when it is analyzed. Morphemes of another dictionary
 that are wide enough are told apart by the name only.
 
-The format is version 1: a magic number (`LDMODEL`), the version, the name of
+The format is version 2: a magic number (`LDMODEL`), the version, the name of
 the dictionary, the schema, a list of the parts, and the parts. A table of
 strings is stored sorted, with a hash table over it, and is looked up where
 it is. The
@@ -683,9 +683,9 @@ default. `FeatureSet::cabocha()` is the same without `after`.
 
 Where the features differ from CaboCha's:
 
-- The surface is not normalized. Punctuation and brackets are those of the
-  schema, which recognizes them by part of speech and by surface, in both
-  widths.
+- The surface is not normalized, unless the schema has a normalization.
+  Punctuation and brackets are those of the schema, which recognizes them
+  by part of speech and by surface, in both widths.
 - The head and the function word are those of `Schema::positions`, which
   has more patterns for IPADIC than CaboCha (see above).
 - A bunsetsu whose head is not known (CaboCha's partial training) is not
@@ -940,6 +940,42 @@ With CaboCha's feature set and the other defaults, the result is lower:
 | UD Japanese-GSD dev | 89.15% (3,246 / 3,641) | 84.45% (3,075 / 3,641) | 96.85 |
 | UD Japanese-GSD test | 88.30% (3,503 / 3,967) | 84.30% (3,344 / 3,967) | 96.92 |
 | UD Japanese-PUD | 88.33% (7,816 / 8,849) | 85.59% (7,574 / 8,849) | 98.04 |
+
+## Converting the models of CaboCha
+
+CaboCha comes with models trained on the Kyoto University Text Corpus, which
+cannot be trained again without the corpus. `convert-cabocha`, in the
+`train` build, converts the model for IPA into a model file for `ipadic`:
+
+```sh
+lindera-dependency convert-cabocha \
+    --chunker cabocha/model/chunk.ipa.txt \
+    --parser cabocha/model/dep.ipa.txt \
+    --output cabocha-ipa.model
+```
+
+**The models of CaboCha are not under the license of CaboCha: its page
+limits the use of the distributed models as they are to research and
+personal use. A converted model is under the same terms. Convert the files
+of your own copy of CaboCha, and do not distribute the result.** This crate
+holds no model of CaboCha.
+
+The converted model analyzes as CaboCha does. On the morphemes of Lindera
+with IPADIC for the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD,
+every sentence has the bunsetsu, the heads, the head words and the function
+words CaboCha 0.69 gives, and the scores are the same to six decimals
+(`scripts/dependency/cabocha_models.sh`). What makes it so is in the model
+file: CaboCha's normalization of the surface, its rule for the head and the
+function word, its punctuation and brackets (`cabocha::schema`), and the
+support vectors of its parser expanded as `cabocha-model-index` expands
+them, with its pruning (`--sigma`, `--min-support`, `--frequent-features`)
+and its whole numbers. The file is 51.8 MB.
+
+The models for JUMAN and for UniDic are refused. The table of the
+normalization is CaboCha's `src/normalizer.rule`, under its BSD license
+(`NOTICE.txt`). The
+[documentation](../docs/src/lindera-dependency/cabocha_models.md) has the
+terms of the models in full, the numbers and the limits.
 
 ## Evaluation
 

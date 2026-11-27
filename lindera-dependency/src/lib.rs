@@ -133,6 +133,8 @@
 //! ```
 
 mod bytes;
+#[cfg(feature = "train")]
+pub mod cabocha;
 pub mod chunker;
 #[cfg(feature = "train")]
 pub mod corpus;
@@ -149,5 +151,5 @@ pub mod sentence;
 
 pub use error::{Error, Result};
 pub use morpheme::{DictionaryMorpheme, Morpheme};
-pub use schema::{Marks, Pattern, Schema, Symbols};
+pub use schema::{Marks, Normalization, Pattern, Schema, SurfaceRule, Symbols};
 pub use sentence::{ArcType, Bunsetsu, Sentence, Violation, tree_violations};

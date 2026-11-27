@@ -68,6 +68,9 @@ Each decision has the issue that made it. A decision is changed by a pull reques
 | The filter cuts a text into sentences, at `。`, `！` and `？` outside brackets, and numbers the bunsetsu from 0 in each; the result holds the number of the sentence. | A model is trained on sentences, and the lattice format numbers bunsetsu in a sentence. | #1438 |
 | The filter refuses the tokens of another dictionary than the one of the model, and tokens an earlier filter removed or joined. | Both give a wrong analysis without failing. | #1438 |
 | The crate will read the models CaboCha distributes through a converter, after the first release. Those models are not redistributed. | Feature extraction is separate from decoding for this. | #1417, #1421 |
+| A converted model reproduces what CaboCha parses with, not the kernel it was trained with: the pruning of `cabocha-model-index` with its defaults, and its whole numbers. The settings are options. | The goal is the analysis CaboCha gives. With them every decision of 9,066 sentences is the same; the kernel itself changes one head in 360. | [#1442](https://github.com/lindera/lindera/issues/1442) |
+| What makes the features of a model is data of its schema, down to the normalization of the surface and the way a mark is matched. | A model of another program is only right with that program's features, and a schema in code would be one schema for a dictionary. The file is version 2 for it. | [#1442](https://github.com/lindera/lindera/issues/1442) |
+| The three models of CaboCha are to be converted, and a JUMAN dictionary is added to Lindera for the one of JUMAN. | Decided by the maintainer on 2026-11-27. The model for JUMAN is the one trained on the Kyoto corpus directly. | [#1442](https://github.com/lindera/lindera/issues/1442), [#1466](https://github.com/lindera/lindera/issues/1466) |
 | The command for text is in the binary of this crate, in a build without the training code: the `cli` feature holds the command, `train` adds the training to it. The `lindera` command follows with the filter and the publication. | A user of the command does not get `lindera-crf`. `lindera-cli` is published and cannot depend on a crate that is not, and an output format of `lindera tokenize` needs the token filter. | #1439 |
 | Of CaboCha's options the command keeps the lattice output (`-f1`) and the three input layers (`-I`), as `--input-layer`. The tree, XML and CoNLL outputs, the output layer and the named entities are not kept. | The lattice format is what other tools read, and its writer exists. The layers are what `parse` and `parse --chunk` did, as one option. The morphemes alone and the bunsetsu alone have commands of their own. | #1439 |
 | The command reads, parses and writes one sentence at a time, and stops at the first sentence that fails, with what it wrote before. | It stands in a pipe, and its memory does not grow with the input. | #1439 |
@@ -133,7 +136,7 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 
 - **The loop** is `parseShiftReduce` of CaboCha and `_parseLinear` of J.DepP: a stack of the bunsetsu without a head, each following bunsetsu as the target, the top of the stack as the source. An arc to the last bunsetsu is not asked. The loop takes the decision as a function, so the classifier and the answer of a sentence run the same code.
 - **The features** are CaboCha's (`src/selector.cpp`, `src/dep.cpp`), in seven groups: the distance, the source, the target, the bunsetsu before the source, the one after the target, the bunsetsu already attached, and the gap. They are made once for each bunsetsu and put together for a decision, generic over what a string is turned into: the number of the classifier when parsing, the string itself for training instances.
-- **Differences from CaboCha**: the surface is not normalized, and punctuation and brackets are those of the schema; the head and the function word are those of the schema of #1422; a bunsetsu without a known head is not supported; an arc that is not asked has the score 0, where CaboCha writes the score of the decision before.
+- **Differences from CaboCha**, with the schemas of this crate: the surface is not normalized, and punctuation and brackets are those of the schema; the head and the function word are those of the schema of #1422; a bunsetsu without a known head is not supported; an arc that is not asked has the score 0, where CaboCha writes the score of the decision before. The first two are data of the schema since #1442, and a model converted from CaboCha has CaboCha's.
 - **J.DepP's features** (`jdepp/pdep.cc`) differ: four bunsetsu by the first morpheme, the head, the tail and the last one; whether two heads have the same surface; the balance of brackets; the particles of the bunsetsu in between that compete for the target; nothing of the bunsetsu already attached. What only J.DepP has was not tried: the targets were met without it.
 - **`LinearClassifier`** adds a bias, the weights of the features and the weights of their pairs, from hash tables. It is the least that parses with weights made by hand; a trained model has its own (see below).
 - **Training instances** are the decisions the loop asks when the answer decides, each with its features and its answer, as in CaboCha's training mode. The answer gives the tree of every sentence of the training data back.
@@ -181,12 +184,26 @@ Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided
 - **WebAssembly takes the bytes of a model**, with `appendDependencyFilter`: there is no path to read. The builder of `lindera-binding` takes a filter that was made in Rust for it, and runs it where it was appended among the filters given by `kind`.
 - **Not verified**: a dictionary other than IPADIC, for which there is no schema yet.
 
+### Converter for the models of CaboCha ([#1442](https://github.com/lindera/lindera/issues/1442))
+
+- **The module `cabocha`**, behind `train`: a reader of the CRF++ text model, a reader of the parser text model, the expansion of the support vectors, CaboCha's schema for IPA, and `convert`. The command is `convert-cabocha`. Reading a converted model needs nothing of it: the default build reads it as any model.
+- **The expansion follows `FastSVMModel::compile` step by step**: the weights added in 32-bit floats in the order of the support vectors, the count of a pair in a byte, the pairs of two frequent features kept and the others by their count and their weight, the unit as the largest weight over 1,048,575, and the truncation. A decision then adds up the whole numbers CaboCha adds up, and its sign cannot differ by a rounding.
+- **The weights stay whole numbers.** A parser model has a unit, what the sum of its weights is multiplied by, and the bias is not in it; the file writes it as the scale of unquantized weights, which was always 1 before. A converted model is not quantized: `i8` would change its decisions.
+- **`Schema` got two things**: `Normalization`, a table applied with the longest match, used for the surface column of the chunker, for the surfaces of the features and for matching a mark; and `SurfaceRule`, how a surface is matched against the characters of a mark. CaboCha matches the whole surface (`((` is not a bracket), and a mark by its surface is still a word for the head rule: an unknown `(` is a noun for IPADIC, and can be a head. The schemas of this crate keep the other rule, and no normalization.
+- **The table is CaboCha's file**, `src/normalizer.rule`, included as it is with its notice (`NOTICE.txt`). It is part of the software, under the BSD license, not of the models.
+- **As in CaboCha, a mark is matched after the normalization**, so `｛`, `｝`, `’` and `”`, which the table turns into ASCII, are not brackets, though CaboCha's patterns list them.
+- **The chunker takes the weights as 32-bit floats**, which is what CRF++ keeps in the compiled model CaboCha reads.
+- **Measured** (`cabocha_models.sh`): on the morphemes of Lindera for the 9,066 sentences of UD Japanese-GSD and PUD, the same bunsetsu, heads, head words and function words as CaboCha 0.69 in every sentence, and the same scores to six decimals. 3,727,492 of 10,141,653 pairs are kept, 51.8 MB, 3.6 s to convert. From text, 91% to 98% of the sentences have the morphemes MeCab gives; the others differ at katakana words that are not in the dictionary.
+- **Slower than CaboCha**: 3.03 s against 0.92 s for 7,024 sentences. CaboCha has a dense table for the pairs of frequent features; a model file looks every pair up in the sorted pairs of a feature.
+- **Not done**: the models for JUMAN ([#1466](https://github.com/lindera/lindera/issues/1466) first) and for UniDic. JUMAN needs the head rule without the move of the function word and a negated pattern; UniDic two numbers of levels of the part of speech.
+
 ## What is to come
 
 | Part | Notes | Issue |
 | --- | --- | --- |
 | IPADIC model | Done: the model is built, measured and published by each release, and the crate is published with it. The first release with both is 7.1.0. | [#1440](https://github.com/lindera/lindera/issues/1440) |
-| Converter for the models of CaboCha | The normalization table of the surface, the reader of a CRF++ text model, and the expansion of the support vectors of the parser model. | [#1442](https://github.com/lindera/lindera/issues/1442) |
+| The models of CaboCha for JUMAN and UniDic | The model for IPA is converted. JUMAN needs a dictionary ([#1466](https://github.com/lindera/lindera/issues/1466)) and its head rule as data; UniDic needs to be checked against the morphemes of Lindera's UniDic first. | [#1442](https://github.com/lindera/lindera/issues/1442) |
+| A JUMAN dictionary | `mecab-jumandic` as a dictionary of Lindera. | [#1466](https://github.com/lindera/lindera/issues/1466) |
 | The chunking of J.DepP | Where it gains over a conditional random field, and whether the chunker can gain the same. | [#1464](https://github.com/lindera/lindera/issues/1464) |
 
 ### Open questions
@@ -377,7 +394,8 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 | [#1439](https://github.com/lindera/lindera/issues/1439) | Command | Done |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC model, and the publication of the crate | Open |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic schema and models | Done |
-| [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | Open |
+| [#1442](https://github.com/lindera/lindera/issues/1442) | Converter for the models of CaboCha | The model for IPA done; JUMAN and UniDic open |
+| [#1466](https://github.com/lindera/lindera/issues/1466) | A JUMAN dictionary built from mecab-jumandic | Open |
 | [#1464](https://github.com/lindera/lindera/issues/1464) | Where the chunker of J.DepP gains, and whether the chunker can gain the same | Open |
 
 ## References
