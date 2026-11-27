@@ -477,7 +477,7 @@
 <tr><td>Models for UniDic, chunking F on dev, test, PUD</td><td><code>unidic</code> 97.03, 97.24, 98.00; <code>unidic-cwj</code> 96.63, 97.02, 97.89; <code>unidic-csj</code> 96.60, 96.95, 97.78</td><td>Script: <code>build_model.sh --dictionary &lt;name&gt;</code>, <code>model_accuracy.py</code></td></tr>
 <tr><td>The same, level 1</td><td><code>unidic</code> 89.67%, 88.69%, 88.67%; <code>unidic-cwj</code> 89.35%, 88.91%, 88.58%; <code>unidic-csj</code> 89.75%, 88.90%, 88.59%</td><td>The same</td></tr>
 <tr><td>The same, end to end</td><td><code>unidic</code> 85.06%, 84.88%, 85.93%; <code>unidic-cwj</code> 84.22%, 84.71%, 85.73%; <code>unidic-csj</code> 84.58%, 84.65%, 85.58%</td><td>The same</td></tr>
-<tr><td>Size of the models for UniDic</td><td><code>unidic</code> 6,257,148 bytes, <code>unidic-cwj</code> 6,258,600, <code>unidic-csj</code> 6,267,183</td><td>Script: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
+<tr><td>Size of the models for UniDic</td><td><code>unidic</code> 6,257,154 bytes, <code>unidic-cwj</code> 6,258,606, <code>unidic-csj</code> 6,267,189</td><td>Script: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
 <tr><td><code>SYN_HEAD</code> of GSD against "last morpheme that is not a symbol" and "the morpheme after the head"</td><td>87–88% and 81–82%</td><td>Prototype, lost</td></tr>
 </tbody></table>
 </div>
@@ -504,16 +504,16 @@
 <tr><td>The defaults: level 1 with the bunsetsu of the answer</td><td>dev 90.11% (3,281 / 3,641), test 88.53% (3,512 / 3,967), PUD 88.81% (7,859 / 8,849)</td><td>Script: <code>parser_experiments.sh final</code></td></tr>
 <tr><td>The defaults: end to end</td><td>dev 85.39% (3,109 / 3,641), test 84.47% (3,351 / 3,967), PUD 86.19% (7,627 / 8,849)</td><td>Script: <code>parser_experiments.sh final</code></td></tr>
 <tr><td>The defaults with CaboCha's feature set</td><td>With the bunsetsu of the answer: dev 89.15%, test 88.30%, PUD 88.33%. End to end: dev 84.45%, test 84.30%, PUD 85.59%</td><td>Script: <code>parser_experiments.sh final</code></td></tr>
-<tr><td>The default model</td><td>6,258,548 bytes with the chunker; 62,380 feature strings; 19 passes, 21,374 support vectors of 66,000 decisions; about 3 seconds; the same bytes when trained twice</td><td>Script: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>The default model</td><td>6,258,554 bytes with the chunker; 62,380 feature strings; 19 passes, 21,374 support vectors of 66,000 decisions; about 3 seconds; the same bytes when trained twice</td><td>Script: <code>parser_experiments.sh final</code></td></tr>
 <tr><td>The default model on the 542 sentences of test, one core of an AMD Ryzen AI Max+ 395</td><td>Read in 2,732 microseconds; chunking 20,354, parsing 16,678, both 8,718 sentences per second</td><td>Script: <code>parser_experiments.sh speed</code></td></tr>
-<tr><td>The same with the other tables of the pairs</td><td>Hashed, four bytes: 19,028,600 bytes, parsing 13,375. A weight for every pair, one byte: 24,514,588 bytes, 2,741; four bytes: 38,162,161 bytes, 2,679</td><td>Script: <code>parser_experiments.sh speed</code></td></tr>
+<tr><td>The same with the other tables of the pairs</td><td>Hashed, four bytes: 19,028,606 bytes, parsing 13,375. A weight for every pair, one byte: 24,514,594 bytes, 2,741; four bytes: 38,162,167 bytes, 2,679</td><td>Script: <code>parser_experiments.sh speed</code></td></tr>
 <tr><td>The command on the text of the 543 sentences of test, repeated 100 times, with the default model and the embedded IPADIC</td><td>About 6,600 sentences per second from the text to the lattice format; 5 ms to load the dictionary and the model</td><td>Script: <code>parse_speed.sh</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="model-file"><a class="header" href="#model-file">Model file</a></h3>
 <p>The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0. Chunking is measured on the 7,024 sentences of the train file, the best of seven rounds.</p>
 <div class="table-wrapper"><table><thead><tr><th>Number</th><th>Value</th><th>From</th></tr></thead><tbody>
-<tr><td>Model file with the default chunker</td><td>261,851 bytes, 4,325 feature strings; the same bytes when trained twice; F unchanged: 96.85, 96.92, 98.04</td><td>Script: <code>chunker_experiments.sh default</code></td></tr>
+<tr><td>Model file with the default chunker</td><td>261,857 bytes, 4,325 feature strings; the same bytes when trained twice; F unchanged: 96.85, 96.92, 98.04</td><td>Script: <code>chunker_experiments.sh default</code></td></tr>
 <tr><td>The chunker on a model file against the chunker-only file of before</td><td>The same lines in the outputs for dev, test and PUD</td><td><code>chunk</code> before and after #1437, compared with <code>cmp</code>; not kept as a script</td></tr>
 <tr><td>Time to read the file, with every check</td><td>228 microseconds</td><td>Script: <code>model_speed/</code></td></tr>
 <tr><td>Chunking with the model in memory (a hash table of the standard library)</td><td>18,223 sentences per second</td><td>Script: <code>model_speed/</code></td></tr>

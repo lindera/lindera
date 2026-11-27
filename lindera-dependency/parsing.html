@@ -427,7 +427,7 @@ passes: 19
 updates: 21374
 feature strings: 62380
 pair weights: 2762034
-bytes: 6258548
+bytes: 6258554
 </code></pre>
 <p>A last line, <code>seconds:</code>, has the time of the training; it is left out here. Training the same data again gives the same bytes.</p>
 <div class="table-wrapper"><table><thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead><tbody>
@@ -462,7 +462,7 @@ cargo run --release -p lindera-dependency --features train -- parse \
 </tbody></table>
 </div>
 <p>The targets of the project, from CaboCha and J.DepP trained on the same data, are 89.1 on dev and 87.7 on test with the bunsetsu of the answer, and 85.0 on dev and 84.3 on test from the morphemes. The two tools are run by <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency/baselines.sh</code></a> (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>): CaboCha gives 89.84 and 88.51 with the bunsetsu of the answer and 85.00 and 84.25 from the morphemes, J.DepP 90.11 and 88.71, and 85.99 and 84.65. J.DepP is ahead from the morphemes because it chunks better (F 97.17 and 97.02): see <a href="https://github.com/lindera/lindera/issues/1464">#1464</a>.</p>
-<p>The model file with the chunker and the parser has 6,258,548 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see <a href="./model_file.html#size-and-speed">Model File</a>.</p>
+<p>The model file with the chunker and the parser has 6,258,554 bytes. On one core of an AMD Ryzen AI Max+ 395 it is read in about 3 ms, and chunks and parses about 8,700 sentences per second; see <a href="./model_file.html#size-and-speed">Model File</a>.</p>
 <h3 id="with-unidic"><a class="header" href="#with-unidic">With UniDic</a></h3>
 <p>The models for the three UniDic dictionaries, each trained on the train file converted with its dictionary, with the <a href="./chunking.html#with-unidic">settings of the chunker for UniDic</a> and the defaults of <code>train-parser</code>. With the bunsetsu of the answer:</p>
 <div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>

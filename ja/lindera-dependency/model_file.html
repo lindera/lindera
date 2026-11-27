@@ -270,7 +270,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <tr><td>辞書</td><td>IPADIC（<code>ipadic</code>）。<code>lindera-ipadic</code> クレートが mecab-ipadic 2.7.0 から作るもの</td></tr>
 <tr><td>学習データ</td><td><a href="https://github.com/UniversalDependencies/UD_Japanese-GSD">UD Japanese-GSD</a>（c662dc9）の train のファイルを、IPADIC で<a href="./training_data.html">変換</a>したもの。7,024 文</td></tr>
 <tr><td>設定</td><td><a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a> と <a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a> の既定</td></tr>
-<tr><td>大きさ</td><td>6,258,548 バイト</td></tr>
+<tr><td>大きさ</td><td>6,258,554 バイト</td></tr>
 <tr><td>ライセンス</td><td>MIT。表示を添えます。<a href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルのライセンス</a>を見てください</td></tr>
 </tbody></table>
 </div>
@@ -307,9 +307,9 @@ cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ip
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
-chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
-archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
+chunker: 3de637c03f8d5d0a5cd4aebe3f9d5d1865f345404efbc636e29adf830b0ffa92  chunker.model
+model: 15219d04e8536e9eab5c2ad63fb3ff62203618bd9df7343afefe902619346655  lindera-dependency-ipadic/dependency.model (6258554 bytes)
+archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  lindera-dependency-ipadic-7.0.0.zip
 </code></pre>
 <p><code>--check &lt;sha256&gt;</code> を付けると、作ったファイルの SHA-256 が違うときに、スクリプトが失敗します。未コミットの変更がある作業ツリーでは、スクリプトは動きません。表示する commit が、ファイルの元になったソースと一致するようにするためです。</p>
 <p>ソース、コーパス、toolchain、プラットフォームが同じなら、同じバイト列になります。学習は、時刻にも、スレッドの数にも、ハッシュ表の順序にも依存しません。別のプラットフォームで同じバイト列になるかは、分かっていません。区切りの学習は、プラットフォームの数学ライブラリの <code>exp</code> と <code>ln_1p</code> を呼び、その最後の 1 ビットはライブラリによって違うことがあります。ファイルの表示（<code>NOTICE.txt</code>）に、作ったプラットフォームを書いてあります。リリースのモデルは、リリースのランナーが作るので、ほかの端末で作ったものとバイト列が違うことがあります。そのアーカイブの SHA-256 は、公開したクレートの <code>prebuilt.json</code> にあります。リリースは、作ったモデルを dev・test・PUD で測り、数がこのドキュメントの値と違えば止まります（<a href="../development/dictionary_release.html#lindera-dependency-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">辞書のリリース</a>）。</p>
@@ -342,7 +342,7 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <tr><td>作り直す</td><td><a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh --dictionary &lt;name&gt;</code></a>。辞書のディレクトリは <code>--dict</code> で渡す</td></tr>
 <tr><td>学習データ</td><td>その辞書で<a href="./training_data.html">変換した</a> UD Japanese-GSD の train。7,024 文</td></tr>
 <tr><td>設定</td><td>UniDic 用の <a href="./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88"><code>train-chunker</code></a> の設定と、<code>train-parser</code> の既定</td></tr>
-<tr><td>大きさ</td><td><code>unidic</code> は 6,257,148 バイト、<code>unidic-cwj</code> は 6,258,600 バイト、<code>unidic-csj</code> は 6,267,183 バイト</td></tr>
+<tr><td>大きさ</td><td><code>unidic</code> は 6,257,154 バイト、<code>unidic-cwj</code> は 6,258,606 バイト、<code>unidic-csj</code> は 6,267,189 バイト</td></tr>
 <tr><td>ライセンス</td><td>MIT。NOTICE に、辞書の NOTICE が入る。UniDic は、GPL v2.0・LGPL v2.1・BSD ライセンスのいずれかを利用者が選べる</td></tr>
 </tbody></table>
 </div>
@@ -350,10 +350,10 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <p>モデルの学習のために UniDic を埋め込むことはありません。<code>build_model.sh</code> は、<code>--dict</code> で辞書のディレクトリを受け取るか、ワークスペースの版のリリースの辞書を <code>lindera download</code> で入れます。リリースは、組み立てたばかりの辞書で各モデルを学習し、学習に使っていないファイルで測り、数が<a href="./parsing.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">文書</a>の値と違えば止まります。IPADIC の場合と同じです。</p>
 <p>4 つのモデルを、それぞれの辞書で変換した UD Japanese-GSD の test で、AMD Ryzen AI Max+ 395 の 1 コアで測りました。速さは 1 秒あたりの文の数です。それぞれ 1 回の計測の値で、計測ごとに数 % 変わります。</p>
 <div class="table-wrapper"><table><thead><tr><th>辞書</th><th>ファイルの大きさ（バイト）</th><th>うち区切り</th><th>区切り</th><th>正解の文節の解析</th><th>区切りと解析</th><th>テキストから（形態素解析を含む）</th><th>辞書とモデルの読み込み</th><th>トークンフィルター（1 トークンあたりのマイクロ秒）</th></tr></thead><tbody>
-<tr><td>IPADIC</td><td>6,258,548</td><td>261,851</td><td>20,500</td><td>17,500</td><td>8,900</td><td>7,000</td><td>5 ms</td><td>5.3</td></tr>
-<tr><td><code>unidic</code></td><td>6,257,148</td><td>360,869</td><td>13,100</td><td>17,400</td><td>6,900</td><td>5,300</td><td>59 ms</td><td>6.4</td></tr>
-<tr><td><code>unidic-cwj</code></td><td>6,258,600</td><td>360,019</td><td>13,400</td><td>16,400</td><td>6,900</td><td>4,500</td><td>388 ms</td><td>6.9</td></tr>
-<tr><td><code>unidic-csj</code></td><td>6,267,183</td><td>365,215</td><td>11,900</td><td>15,000</td><td>6,500</td><td>4,100</td><td>389 ms</td><td>7.2</td></tr>
+<tr><td>IPADIC</td><td>6,258,554</td><td>261,857</td><td>20,500</td><td>17,500</td><td>8,900</td><td>7,000</td><td>5 ms</td><td>5.3</td></tr>
+<tr><td><code>unidic</code></td><td>6,257,154</td><td>360,875</td><td>13,100</td><td>17,400</td><td>6,900</td><td>5,300</td><td>59 ms</td><td>6.4</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>6,258,606</td><td>360,025</td><td>13,400</td><td>16,400</td><td>6,900</td><td>4,500</td><td>388 ms</td><td>6.9</td></tr>
+<tr><td><code>unidic-csj</code></td><td>6,267,189</td><td>365,221</td><td>11,900</td><td>15,000</td><td>6,500</td><td>4,100</td><td>389 ms</td><td>7.2</td></tr>
 </tbody></table>
 </div>
 <p>UniDic の区切りは、4 つの列を 36 行のテンプレートで読みます。IPADIC は 3 つの列と 24 行で、UniDic のほうが 3 分の 1 ほど遅くなります。テキストからの速さの差は、大半が形態素解析によるものです。UniDic CWJ と UniDic CSJ は、1.3 GB のディレクトリから読み込みます。</p>
@@ -410,8 +410,8 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <h2 id="大きさと速さ"><a class="header" href="#大きさと速さ">大きさと速さ</a></h2>
 <p>UD Japanese-GSD の train と IPADIC で学習した、既定のモデル（区切りと解析器）の値です。test の 542 文で測りました。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
-<tr><td>両方の部分を入れたファイルの大きさ</td><td>6,258,548 バイト</td></tr>
-<tr><td>そのうち区切りを、単独のファイルにした大きさ</td><td>261,851 バイト</td></tr>
+<tr><td>両方の部分を入れたファイルの大きさ</td><td>6,258,554 バイト</td></tr>
+<tr><td>そのうち区切りを、単独のファイルにした大きさ</td><td>261,857 バイト</td></tr>
 <tr><td>読み込みの時間（<code>Model::new</code>。すべての検査を含む）</td><td>約 2.7 ms</td></tr>
 <tr><td>区切り</td><td>毎秒 約 20,400 文</td></tr>
 <tr><td>正解の文節の解析</td><td>毎秒 約 16,700 文</td></tr>
@@ -421,15 +421,15 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <p>対の表は 1 バイトの重みが 2^22 個で、ファイルの 4.2 MB を占めます。残りのほとんどは、解析器の素性の文字列 62,380 個です。</p>
 <p>対の重みの持ち方で変わるのは、大きさと速さで、精度ではありません（<a href="./parsing.html#%E6%97%A2%E5%AE%9A%E3%81%AE%E9%81%B8%E3%81%B3%E6%96%B9">既定の選び方</a>を参照）。</p>
 <div class="table-wrapper"><table><thead><tr><th>対</th><th>重み</th><th>ファイルの大きさ</th><th>解析、毎秒の文の数</th></tr></thead><tbody>
-<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>1 バイト</td><td>6,258,548 バイト</td><td>約 16,700</td></tr>
-<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>4 バイト</td><td>19,028,600 バイト</td><td>約 13,400</td></tr>
-<tr><td>対ごとの重み</td><td>1 バイト</td><td>24,514,588 バイト</td><td>約 2,700</td></tr>
-<tr><td>対ごとの重み</td><td>4 バイト</td><td>38,162,161 バイト</td><td>約 2,700</td></tr>
+<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>1 バイト</td><td>6,258,554 バイト</td><td>約 16,700</td></tr>
+<tr><td>2^22 個の重みにハッシュで割り当てる</td><td>4 バイト</td><td>19,028,606 バイト</td><td>約 13,400</td></tr>
+<tr><td>対ごとの重み</td><td>1 バイト</td><td>24,514,594 バイト</td><td>約 2,700</td></tr>
+<tr><td>対ごとの重み</td><td>4 バイト</td><td>38,162,167 バイト</td><td>約 2,700</td></tr>
 </tbody></table>
 </div>
 <p>同じデータで学習した区切りだけ（素性の文字列は 4,325 個）を、train の 7,024 文で測った値です。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
-<tr><td>ファイルの大きさ</td><td>261,851 バイト</td></tr>
+<tr><td>ファイルの大きさ</td><td>261,857 バイト</td></tr>
 <tr><td>読み込みの時間（<code>Model::new</code>。すべての検査を含む）</td><td>約 0.2 ms</td></tr>
 <tr><td>ファイルの区切りでの区切り</td><td>毎秒 約 16,896 文</td></tr>
 <tr><td>同じ区切りをメモリに持った場合（標準ライブラリのハッシュ表）</td><td>毎秒 約 18,223 文</td></tr>

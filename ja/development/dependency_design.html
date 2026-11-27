@@ -477,7 +477,7 @@
 <tr><td>UniDic のモデル、区切りの F（dev、test、PUD）</td><td><code>unidic</code> 97.03、97.24、98.00。<code>unidic-cwj</code> 96.63、97.02、97.89。<code>unidic-csj</code> 96.60、96.95、97.78</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code>、<code>model_accuracy.py</code></td></tr>
 <tr><td>同じ、正解の文節を与えた場合</td><td><code>unidic</code> 89.67%、88.69%、88.67%。<code>unidic-cwj</code> 89.35%、88.91%、88.58%。<code>unidic-csj</code> 89.75%、88.90%、88.59%</td><td>同じ</td></tr>
 <tr><td>同じ、形態素からの場合</td><td><code>unidic</code> 85.06%、84.88%、85.93%。<code>unidic-cwj</code> 84.22%、84.71%、85.73%。<code>unidic-csj</code> 84.58%、84.65%、85.58%</td><td>同じ</td></tr>
-<tr><td>UniDic のモデルの大きさ</td><td><code>unidic</code> 6,257,148 バイト、<code>unidic-cwj</code> 6,258,600、<code>unidic-csj</code> 6,267,183</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
+<tr><td>UniDic のモデルの大きさ</td><td><code>unidic</code> 6,257,154 バイト、<code>unidic-cwj</code> 6,258,606、<code>unidic-csj</code> 6,267,189</td><td>スクリプト: <code>build_model.sh --dictionary &lt;name&gt;</code></td></tr>
 <tr><td>GSD の <code>SYN_HEAD</code> と、「記号でない最後の形態素」「主辞の次の形態素」</td><td>87〜88% と 81〜82%</td><td>試作・消失</td></tr>
 </tbody></table>
 </div>
@@ -504,16 +504,16 @@
 <tr><td>既定: 正解の文節での level 1</td><td>dev 90.11%（3,281 / 3,641）、test 88.53%（3,512 / 3,967）、PUD 88.81%（7,859 / 8,849）</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
 <tr><td>既定: end to end</td><td>dev 85.39%（3,109 / 3,641）、test 84.47%（3,351 / 3,967）、PUD 86.19%（7,627 / 8,849）</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
 <tr><td>既定を CaboCha の素性の集合にした場合</td><td>正解の文節で dev 89.15%、test 88.30%、PUD 88.33%。end to end で dev 84.45%、test 84.30%、PUD 85.59%</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
-<tr><td>既定のモデル</td><td>区切りを含めて 6,258,548 バイト。素性の文字列 62,380 個。19 回り、66,000 件の判定のうちサポートベクター 21,374 件。約 3 秒。2 回学習して同じバイト列</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
+<tr><td>既定のモデル</td><td>区切りを含めて 6,258,554 バイト。素性の文字列 62,380 個。19 回り、66,000 件の判定のうちサポートベクター 21,374 件。約 3 秒。2 回学習して同じバイト列</td><td>スクリプト: <code>parser_experiments.sh final</code></td></tr>
 <tr><td>既定のモデルを test の 542 文で。AMD Ryzen AI Max+ 395 の 1 コア</td><td>読み込み 2,732 マイクロ秒。区切り毎秒 20,354 文、解析 16,678 文、両方で 8,718 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
-<tr><td>同じものを、対のほかの持ち方で</td><td>ハッシュ・4 バイト: 19,028,600 バイト、解析 13,375 文。対ごとの重み・1 バイト: 24,514,588 バイト、2,741 文。4 バイト: 38,162,161 バイト、2,679 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
+<tr><td>同じものを、対のほかの持ち方で</td><td>ハッシュ・4 バイト: 19,028,606 バイト、解析 13,375 文。対ごとの重み・1 バイト: 24,514,594 バイト、2,741 文。4 バイト: 38,162,167 バイト、2,679 文</td><td>スクリプト: <code>parser_experiments.sh speed</code></td></tr>
 <tr><td>コマンドを、test の 543 文のテキストを 100 回繰り返した入力で。既定のモデルと、埋め込んだ IPADIC</td><td>テキストからラティス形式まで、毎秒約 6,600 文。辞書とモデルの読み込みは 5 ミリ秒</td><td>スクリプト: <code>parse_speed.sh</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="モデルファイル"><a class="header" href="#モデルファイル">モデルファイル</a></h3>
 <p>既定の区切りのモデルを、AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使って測りました。区切りは、train の 7,024 文で測り、7 回のうち最も速い回の値です。</p>
 <div class="table-wrapper"><table><thead><tr><th>数字</th><th>値</th><th>出どころ</th></tr></thead><tbody>
-<tr><td>既定の区切りを入れたモデルファイル</td><td>261,851 バイト、素性の文字列 4,325 個。2 回学習して同じバイト列。F は変わらず 96.85、96.92、98.04</td><td>スクリプト: <code>chunker_experiments.sh default</code></td></tr>
+<tr><td>既定の区切りを入れたモデルファイル</td><td>261,857 バイト、素性の文字列 4,325 個。2 回学習して同じバイト列。F は変わらず 96.85、96.92、98.04</td><td>スクリプト: <code>chunker_experiments.sh default</code></td></tr>
 <tr><td>モデルファイルの上の区切りと、それより前の区切りだけのファイル</td><td>dev・test・PUD の出力が、同じ行</td><td>#1437 の前後の <code>chunk</code> の出力を <code>cmp</code> で比べた。スクリプトは残していない</td></tr>
 <tr><td>ファイルの読み込みの時間（すべての検査を含む）</td><td>228 マイクロ秒</td><td>スクリプト: <code>model_speed/</code></td></tr>
 <tr><td>モデルをメモリに持った区切り（標準ライブラリのハッシュ表）</td><td>毎秒 18,223 文</td><td>スクリプト: <code>model_speed/</code></td></tr>

@@ -427,7 +427,7 @@ passes: 19
 updates: 21374
 feature strings: 62380
 pair weights: 2762034
-bytes: 6258548
+bytes: 6258554
 </code></pre>
 <p>この後に、学習の時間を書いた <code>seconds:</code> の行が続きます（ここでは省いています）。同じデータで学習し直すと、同じバイト列になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>オプション</th><th>既定</th><th>意味</th></tr></thead><tbody>
@@ -462,7 +462,7 @@ cargo run --release -p lindera-dependency --features train -- parse \
 </tbody></table>
 </div>
 <p>このプロジェクトの目標は、同じデータで学習した CaboCha・J.DepP の値から決めたもので、正解の文節で dev 89.1・test 87.7、形態素から dev 85.0・test 84.3 です。2 つのツールは、<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency"><code>scripts/dependency/baselines.sh</code></a> で動かせます（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。CaboCha は、正解の文節で 89.84 と 88.51、形態素から 85.00 と 84.25 です。J.DepP は 90.11 と 88.71、85.99 と 84.65 です。J.DepP が形態素からの解析で上回るのは、区切りが良いためです（F 97.17 と 97.02）。<a href="https://github.com/lindera/lindera/issues/1464">#1464</a> を見てください。</p>
-<p>区切りと解析器を入れたモデルファイルは 6,258,548 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。<a href="./model_file.html#%E5%A4%A7%E3%81%8D%E3%81%95%E3%81%A8%E9%80%9F%E3%81%95">モデルファイル</a>を参照してください。</p>
+<p>区切りと解析器を入れたモデルファイルは 6,258,554 バイトです。AMD Ryzen AI Max+ 395 の 1 コアで、読み込みは約 3 ms、区切りと解析を合わせて毎秒 約 8,700 文です。<a href="./model_file.html#%E5%A4%A7%E3%81%8D%E3%81%95%E3%81%A8%E9%80%9F%E3%81%95">モデルファイル</a>を参照してください。</p>
 <h3 id="unidic-の場合"><a class="header" href="#unidic-の場合">UniDic の場合</a></h3>
 <p>3 つの UniDic の辞書のモデルです。それぞれ、その辞書で変換した train で、<a href="./chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">UniDic 用の区切りの設定</a>と <code>train-parser</code> の既定で学習しました。正解の文節を与えた場合です。</p>
 <div class="table-wrapper"><table><thead><tr><th>辞書</th><th>UD Japanese-GSD dev</th><th>UD Japanese-GSD test</th><th>UD Japanese-PUD</th></tr></thead><tbody>
