@@ -202,7 +202,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex 2.0.1",
- "syn 3.0.10",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1635,7 +1635,7 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "napi-derive-backend 7.0.1",
+ "napi-derive-backend",
  "num_cpus",
  "serde",
  "serde_json",
@@ -1927,23 +1927,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3f284288c8a2a4a66519e24dcc0cbfa1b7e0abc37bdd073185c68276f08f3d3"
 dependencies = [
  "convert_case",
- "napi-derive-backend 8.0.0",
+ "napi-derive-backend",
  "proc-macro2",
  "quote",
  "syn 3.0.10",
  "unicode-ident",
-]
-
-[[package]]
-name = "napi-derive-backend"
-version = "7.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "314cd6ca42bd978fd8bae84b4137e1322bbf3e83552fca8dbd7d18034188ff3a"
-dependencies = [
- "convert_case",
- "proc-macro2",
- "quote",
- "syn 3.0.10",
 ]
 
 [[package]]
