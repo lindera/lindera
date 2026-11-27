@@ -353,13 +353,13 @@
 <li><strong>区切りの重みは、32 ビットの浮動小数点の値にする</strong>。CaboCha が読むコンパイル済みのモデルで、CRF++ がそう持つためである。</li>
 <li><strong>測った結果</strong>（<code>cabocha_models.sh</code>）: UD Japanese-GSD と PUD の 9,066 文の Lindera の形態素で、文節、係り先、主辞と機能語が、すべての文で CaboCha 0.69 と同じ。点数も小数 6 桁まで同じ。残る対は 10,141,653 のうち 3,727,492、ファイルは 51.8 MB、変換は 3.6 秒。テキストからだと、形態素が MeCab と同じになる文は 91%〜98% で、残りは辞書に無いカタカナの語のところで違う。</li>
 <li><strong>CaboCha より遅い</strong>: 7,024 文で 3.03 秒（CaboCha は 0.92 秒）。CaboCha は、頻度の高い素性どうしの対を密な表で持つ。モデルファイルは、どの対も、素性ごとに整列した対の中から探す。</li>
-<li><strong>済んでいないこと</strong>: JUMAN（先に <a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）と UniDic のモデル。JUMAN には、機能語を主辞に合わせる補正の無い主辞の規則と、否定のパターンが要る。UniDic には、品詞の段数を 2 通り持つことが要る。</li>
+<li><strong>JUMAN のモデル</strong>には、<code>Schema</code> にもう 1 つ要った。主辞の規則の形を表す <code>HeadRule</code> である。CaboCha は、JUMAN の機能語を「特殊でない最後の形態素」として決め、主辞はそれとは別に決め、最後の補正をしない。<code>LastWords</code> がこの形で、このクレートのスキーマは、もう一方の形のままである。パターンに否定を足して補正の有無をフラグにする形ではなく、列挙にした。使う場所が 1 つなので、足すものを 1 つにした。この 1 バイトのために、モデルファイルの版を 3 にした。測った結果: 9,100 文の MeCab と mecab-jumandic の形態素で、すべてが CaboCha と同じで、点数も小数 6 桁まで同じ。残る対は 10,578,633 のうち 3,687,535、ファイルは 52.0 MB、変換は 4.0 秒。テキストからだと、Lindera の JUMAN 辞書の形態素が MeCab と同じになる文は、ファイルごとに 99.61%〜100%。</li>
+<li><strong>済んでいないこと</strong>: UniDic のモデル。品詞の段数を 2 通り持つことが要る。</li>
 </ul>
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
 <tr><td>IPADIC のモデル</td><td>完了。リリースのたびに、モデルを作り、測り、公開する。クレートも一緒に公開する。両方が入る最初のリリースは 7.1.0。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
-<tr><td>CaboCha の JUMAN と UniDic のモデル</td><td>IPA のモデルは変換できる。JUMAN には、辞書（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）と、主辞の規則をデータにすることが要る。UniDic は、先に Lindera の UniDic の形態素と合うかを確かめる。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
-<tr><td>JUMAN の辞書</td><td><code>mecab-jumandic</code> を Lindera の辞書にする。</td><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td></tr>
+<tr><td>CaboCha の UniDic のモデル</td><td>IPA と JUMAN のモデルは変換できる。UniDic は、先に Lindera の UniDic の形態素と合うかを確かめる。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
 <tr><td>J.DepP の区切り</td><td>条件付き確率場に対してどこで勝っているか、ここの区切りが同じだけ良くなるか。</td><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td></tr>
 </tbody></table>
 </div>
@@ -527,8 +527,8 @@
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のスキーマとモデル</td><td>済み</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td><td>CaboCha のモデルの変換器</td><td>IPA のモデルは済み。JUMAN と UniDic は未着手</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td><td>mecab-jumandic から作る JUMAN の辞書</td><td>未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td><td>CaboCha のモデルの変換器</td><td>IPA と JUMAN のモデルは済み。UniDic は未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td><td>mecab-jumandic から作る JUMAN の辞書</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td><td>J.DepP の区切りがどこで勝っているか、ここの区切りが同じだけ良くなるか</td><td>未着手</td></tr>
 </tbody></table>
 </div>

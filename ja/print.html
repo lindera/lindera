@@ -2524,7 +2524,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <li><strong>文節の主辞と機能語を求め</strong>、句読点と括弧を見分ける。辞書のスキーマから決めます。最初のスキーマは IPADIC です。</li>
 <li>CaboCha の<strong>ラティス形式</strong>（<code>cabocha -f1</code>）<strong>を読み書きし</strong>、文が、解析器の仮定する木であるかを検査する。</li>
 <li>UD Japanese-GSD のような係り受けのコーパスから、解析器を動かす辞書の形態素の上で、<strong>学習データを作る</strong>。</li>
-<li><strong>CaboCha が配布する IPA のモデルを変換し</strong>、CaboCha と同じ解析をするモデルファイルにする。そのモデルの利用は、CaboCha のモデルと同じく、研究目的と個人利用に限られる。</li>
+<li><strong>CaboCha が配布する IPA と JUMAN のモデルを変換し</strong>、CaboCha と同じ解析をするモデルファイルにする。そのモデルの利用は、CaboCha のモデルと同じく、研究目的と個人利用に限られる。</li>
 <li>文節の区切りと係り受けの精度を、CaboCha・J.DepP と同じ数え方で<strong>評価し</strong>、2 つの出力を対の検定で比べる。</li>
 </ul>
 <p>既定のビルドは依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。コマンドは <code>cli</code> feature の裏に、学習と評価は <code>train</code> feature の裏にあります。</p>
@@ -3498,18 +3498,18 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 </div>
 <p>UniDic の区切りは、4 つの列を 36 行のテンプレートで読みます。IPADIC は 3 つの列と 24 行で、UniDic のほうが 3 分の 1 ほど遅くなります。テキストからの速さの差は、大半が形態素解析によるものです。UniDic CWJ と UniDic CSJ は、1.3 GB のディレクトリから読み込みます。</p>
 <h2 id="形式"><a class="header" href="#形式">形式</a></h2>
-<p>版は 2 です。数はすべてリトルエンディアンです。文字列は、バイト数を <code>u32</code> で書き、その後に UTF-8 を続けます。</p>
+<p>版は 3 です。数はすべてリトルエンディアンです。文字列は、バイト数を <code>u32</code> で書き、その後に UTF-8 を続けます。</p>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
 <tr><td>マジックナンバー</td><td>8 バイト</td><td><code>LDMODEL</code> と 0 のバイト</td></tr>
-<tr><td>版</td><td><code>u32</code></td><td>2</td></tr>
+<tr><td>版</td><td><code>u32</code></td><td>3</td></tr>
 <tr><td>辞書</td><td>文字列</td><td>辞書の名前。空ではない</td></tr>
-<tr><td>スキーマ</td><td></td><td>品詞・活用・原形の列。機能語、主辞にならないもの、助詞、表層を使う機能語のパターン。記号と、表層を記号の文字と照合する方法の 1 バイト（0: 表層のすべての文字がその文字である。1: 表層がその 1 文字である。表層で見分けた記号は、語として扱う）。表層の正規化（規則の数と、規則ごとの 2 つの文字列。置き換える前と後。整列済み）</td></tr>
+<tr><td>スキーマ</td><td></td><td>品詞・活用・原形の列。機能語、主辞にならないもの、助詞、表層を使う機能語のパターン。記号と、表層を記号の文字と照合する方法の 1 バイト（0: 表層のすべての文字がその文字である。1: 表層がその 1 文字である。表層で見分けた記号は、語として扱う）。表層の正規化（規則の数と、規則ごとの 2 つの文字列。置き換える前と後。整列済み）。主辞の規則の 1 バイト（0: 機能語は主辞にならず、主辞が後ろにあれば機能語を主辞に合わせる。1: 記号でない最後の形態素が機能語で、2 つは別々に決める）</td></tr>
 <tr><td>部分の数</td><td><code>u32</code></td><td></td></tr>
 <tr><td>部分ごとに</td><td><code>u32</code>、<code>u64</code>、<code>u64</code></td><td>種類、ファイルの先頭からの位置、長さ</td></tr>
 <tr><td>部分</td><td></td><td>一覧の順に、すき間なく、ファイルの終わりまで</td></tr>
 </tbody></table>
 </div>
-<p>区切りの部分の種類は 1、解析器の部分の種類は 2 で、この順に並びます。ほかの種類の部分があるファイル、同じ種類が 2 つあるファイル、部分がすき間なく並んでいないファイル、最後の部分の後にバイトが残るファイルは断ります。ほかの版のファイルも断ります。版 1 には、記号の表層の規則と正規化がありませんでした。版 1 は、リリースに入ったことがありません。</p>
+<p>区切りの部分の種類は 1、解析器の部分の種類は 2 で、この順に並びます。ほかの種類の部分があるファイル、同じ種類が 2 つあるファイル、部分がすき間なく並んでいないファイル、最後の部分の後にバイトが残るファイルは断ります。ほかの版のファイルも断ります。版 1 には、記号の表層の規則と正規化がありませんでした。版 2 には、主辞の規則がありませんでした。どちらも、リリースに入ったことがありません。</p>
 <h3 id="区切りの部分"><a class="header" href="#区切りの部分">区切りの部分</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>欄</th><th>型</th><th>中身</th></tr></thead><tbody>
 <tr><td>列の数</td><td><code>u32</code></td><td></td></tr>
@@ -3589,12 +3589,13 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 <h2 id="対応するモデル"><a class="header" href="#対応するモデル">対応するモデル</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>CaboCha のモデル</th><th>ファイル</th><th></th></tr></thead><tbody>
 <tr><td>IPA</td><td><code>chunk.ipa.txt</code>、<code>dep.ipa.txt</code></td><td>変換できます。辞書 <code>ipadic</code> 用のモデルになります</td></tr>
-<tr><td>JUMAN</td><td><code>chunk.juman.txt</code>、<code>dep.juman.txt</code></td><td>断ります。Lindera にはまだ JUMAN の辞書が無く（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）、文節の主辞の規則も別のものです</td></tr>
+<tr><td>JUMAN</td><td><code>chunk.juman.txt</code>、<code>dep.juman.txt</code></td><td>変換できます。辞書 <code>jumandic</code>（<a href="lindera-dependency/../lindera-jumandic.html">JUMAN 辞書</a>）用のモデルになります</td></tr>
 <tr><td>UniDic</td><td><code>chunk.unidic.txt</code>、<code>dep.unidic.txt</code></td><td>断ります。列の読み方が別のもので、その素性が Lindera の UniDic の形態素と合うかは、まだ分かっていません（<a href="https://github.com/lindera/lindera/issues/1442">#1442</a>）</td></tr>
 <tr><td>固有表現</td><td><code>ne.*.txt</code></td><td>変換しません</td></tr>
 </tbody></table>
 </div>
 <p>ファイルは、CaboCha のソースの <code>model/</code> にあるテキスト形式のモデルで、UTF-8 のものです。インストール先にあるコンパイル済みのモデル（<code>dep.ipa.model</code>）は読みません。マシンに依存する形式のためです。</p>
+<p>2 つのファイルは、同じモデルのものを渡してください。品詞体系は、解析器のモデルのヘッダー（<code>posset: IPA</code>）から読みます。区切りのモデルには、どの体系のものかが書かれていません。<code>chunk.ipa.txt</code> と <code>dep.juman.txt</code> を渡すと、エラーにならずに、文節を誤って区切るモデルができます。</p>
 <h2 id="変換"><a class="header" href="#変換">変換</a></h2>
 <p>コマンドは、<code>train</code> の feature を付けたビルドにあります。</p>
 <pre><code class="language-sh">cargo install lindera-dependency --features train,embed-ipadic
@@ -3643,6 +3644,48 @@ EOS
 </code></pre>
 <p><code>cabocha -f1 -n0</code> は、この文に同じ結果を書きます。違うのは 1 つの数字だけで、最後の文節への係りの点数です。この係りは判定をしません。CaboCha はそこに直前の判定の点数（<code>-0.742128</code>）を書き、<code>parse</code> は 0 を書きます。</p>
 <p>Rust からは、<code>lindera_dependency::cabocha::convert</code> に 2 つのファイルの内容を渡すと、2 つのモデルと、変換で行ったことの記録が返ります。</p>
+<h3 id="juman-のモデル"><a class="header" href="#juman-のモデル">JUMAN のモデル</a></h3>
+<p>JUMAN のモデルは、CaboCha のページで精度が最も高いとされているモデルです。京大コーパスをそのまま使って学習されています。ほかの 2 つは、コーパスを形態素解析し直して学習されています。変換のしかたは同じです。</p>
+<pre><code class="language-sh">lindera-dependency convert-cabocha \
+    --chunker cabocha/model/chunk.juman.txt \
+    --parser cabocha/model/dep.juman.txt \
+    --output cabocha-juman.model
+</code></pre>
+<pre><code class="language-text">dictionary: jumandic
+chunker feature strings: 330800
+support vectors: 113652 (57639 positive)
+parser feature strings: 149674
+pairs: 3687535 of 10578633 kept, 3676410 with a weight
+unit: 2.277111690318634e-7
+bytes: 52011417
+seconds: 4.0
+The models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.
+</code></pre>
+<p>できたファイルは <code>jumandic</code> 用のモデルです。<code>lindera-dependency</code> が埋め込める辞書は IPADIC だけなので、<code>--dict</code> には JUMAN 辞書のディレクトリを渡します。7.1.0 からは <code>lindera download jumandic</code> で取得でき、<a href="lindera-dependency/../lindera-jumandic/build.html"><code>lindera build</code></a> でソースから作ることもできます。</p>
+<pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
+    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+</code></pre>
+<pre><code class="language-text">* 0 5D 0/1 0.000000
+太郎	名詞,人名,*,*,太郎,たろう,人名:日本:名:45:0.00106
+は	助詞,副助詞,*,*,は,は,*
+* 1 2D 0/1 1.847622
+花子	名詞,人名,*,*,花子,はなこ,人名:日本:名:912:0.00019
+が	助詞,格助詞,*,*,が,が,*
+* 2 3D 0/1 1.407350
+読んで	動詞,*,子音動詞マ行,タ系連用テ形,読む,よんで,代表表記:読む/よむ
+いる	接尾辞,動詞性接尾辞,母音動詞,基本形,いる,いる,連語
+* 3 5D 0/1 0.000000
+本	名詞,普通名詞,*,*,本,ほん,代表表記:本/ほん 漢字読み:音 カテゴリ:人工物-その他;抽象物
+を	助詞,格助詞,*,*,を,を,*
+* 4 5D 0/1 0.000000
+次郎	名詞,人名,*,*,次郎,じろう,人名:日本:名:135:0.00068
+に	助詞,格助詞,*,*,に,に,*
+* 5 -1D 0/0 0.000000
+渡した	動詞,*,子音動詞サ行,タ形,渡す,わたした,代表表記:渡す/わたす 付属動詞候補（基本） 自他動詞:自:渡る/わたる
+。	特殊,句点,*,*,。,。,連語
+EOS
+</code></pre>
+<p>MeCab と mecab-jumandic を使う <code>cabocha -f1 -n0 -P JUMAN</code> は、この文に、同じ文節・係り先・位置・点数を書きます。判定をしないところには <code>-0.468695</code> を書きます。形態素の行は、助詞の最後の列が違います。Lindera が <code>*</code> のところが <code>連語</code> です。同じコストの 2 つのエントリから、別のほうを採るためです（<a href="lindera-dependency/../lindera-jumandic/examples.html#mecab-%E3%81%A8%E3%81%AE%E4%B8%80%E8%87%B4">使用例</a>）。この列を、モデルは読みません。</p>
 <h2 id="変換するもの"><a class="header" href="#変換するもの">変換するもの</a></h2>
 <p><strong>区切りのモデル</strong>は、CRF++ のテキスト形式のモデルです。テンプレート、素性の文字列、重みを、そのまま区切りの部分に入れます。重みは 32 ビットの浮動小数点に丸めます。CaboCha が読むコンパイル済みのモデルで、CRF++ がそう持つためです。</p>
 <p><strong>解析器のモデル</strong>は、2 次のカーネルの support vector です。判定の点数は、support vector についての和 <code>Σ α (1 + s)^2</code> で、<code>s</code> は support vector が判定と共有する素性の数です。これは、バイアス、素性ごとの重み、素性の対ごとの重みに、誤差なく展開できます。解析器の部分が持つのは、この形です。ただし、CaboCha はそのままでは解析しません。<code>cabocha-model-index</code> がテキストのモデルをコンパイルするときに近似します。変換は同じ手順を踏むので、判定で足し合わせる整数が CaboCha と同じになります。</p>
@@ -3658,19 +3701,22 @@ EOS
 </tbody></table>
 </div>
 <p>既定は <code>cabocha-model-index</code> の既定で、CaboCha 自身のビルドは、これで付属のモデルをコンパイルします。<code>--sigma 0 --min-support 1</code> はすべての対を残します。これはカーネルそのもので、CaboCha が解析に使うものではありません。</p>
-<div class="table-wrapper"><table><thead><tr><th></th><th>残る対</th><th>重みのある対</th><th>ファイル</th><th>変換の時間</th></tr></thead><tbody>
-<tr><td>既定</td><td>10,141,653 のうち 3,727,492</td><td>3,713,127</td><td>51.8 MB</td><td>3.6 秒</td></tr>
-<tr><td><code>--sigma 0 --min-support 1</code></td><td>10,141,653</td><td>9,988,000</td><td>102.0 MB</td><td>4.5 秒</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>モデル</th><th></th><th>残る対</th><th>重みのある対</th><th>ファイル</th><th>変換の時間</th></tr></thead><tbody>
+<tr><td>IPA</td><td>既定</td><td>10,141,653 のうち 3,727,492</td><td>3,713,127</td><td>51.8 MB</td><td>3.6 秒</td></tr>
+<tr><td>IPA</td><td><code>--sigma 0 --min-support 1</code></td><td>10,141,653</td><td>9,988,000</td><td>102.0 MB</td><td>4.5 秒</td></tr>
+<tr><td>JUMAN</td><td>既定</td><td>10,578,633 のうち 3,687,535</td><td>3,676,410</td><td>52.0 MB</td><td>4.0 秒</td></tr>
+<tr><td>JUMAN</td><td><code>--sigma 0 --min-support 1</code></td><td>10,578,633</td><td>10,450,076</td><td>106.2 MB</td><td>4.9 秒</td></tr>
 </tbody></table>
 </div>
 <p><strong>素性を作るもの</strong>は、モデルファイルのデータです。変換したモデルでは、CaboCha のものになります。</p>
 <ul>
 <li>表層は、素性にする前と、記号として照合する前に、CaboCha の表で正規化します。半角カナは全角に、全角の英字・数字・記号は ASCII になります（<code>ＡＢＣ</code> は <code>ABC</code>、<code>ｶﾞ</code> は <code>ガ</code>）。</li>
-<li>機能語は、助詞、助動詞、動詞,非自立、動詞,接尾、形容詞,非自立、形容詞,接尾です。主辞は、そのどれでもなく記号でもない、最後の形態素です。このクレートの <code>ipadic</code> のスキーマとは違います。そちらはパターンが多く（<a href="lindera-dependency/./head_and_function_word.html">主辞と機能語</a>）、利用 / し / た の主辞は、ここでは し、そちらでは 利用 です。</li>
+<li>IPA では、機能語は、助詞、助動詞、動詞,非自立、動詞,接尾、形容詞,非自立、形容詞,接尾です。主辞は、そのどれでもなく記号でもない、最後の形態素です。このクレートの <code>ipadic</code> のスキーマとは違います。そちらはパターンが多く（<a href="lindera-dependency/./head_and_function_word.html">主辞と機能語</a>）、利用 / し / た の主辞は、ここでは し、そちらでは 利用 です。</li>
+<li>JUMAN では、機能語は、特殊でない最後の形態素です。主辞は、特殊・助詞・接尾辞のどれでもない最後の形態素です。2 つは別々に決めます。規則の形が IPA とは違い（<a href="lindera-dependency/./head_and_function_word.html#%E8%A6%8F%E5%89%87">主辞と機能語</a>）、名詞 1 語の文節では、その名詞が両方になります。品詞は 2 段で、活用形は 4 列目です。</li>
 <li>句読点は <code>。</code> と <code>、</code>、括弧は CaboCha のもので、どれも表層の全体で照合します。</li>
 </ul>
 <h2 id="cabocha-との一致"><a class="header" href="#cabocha-との一致">CaboCha との一致</a></h2>
-<p><code>scripts/dependency/cabocha_models.sh</code> は、IPA のモデルを変換し、同じ入力を、CaboCha 0.69（96e100a。<code>scripts/dependency/build_baselines.sh</code> でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う <code>lindera-dependency parse</code> に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。</p>
+<p><code>scripts/dependency/cabocha_models.sh</code> は、IPA のモデル（<code>--posset juman</code> を付けると JUMAN のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。<code>scripts/dependency/build_baselines.sh</code> でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う <code>lindera-dependency parse</code> に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。</p>
 <p>同じ形態素（Lindera と IPADIC のもの）を渡すと、すべてが一致します。</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>文節が同じ文</th><th>係り先が同じ文節</th><th>主辞と機能語が同じ文節</th></tr></thead><tbody>
 <tr><td>GSD dev</td><td>100%（506 / 506）</td><td>100%（3,740 / 3,740）</td><td>100%（4,246 / 4,246）</td></tr>
@@ -3690,11 +3736,30 @@ EOS
 </tbody></table>
 </div>
 <p>残りの文は、形態素の切り方が違います。そのほとんどは、辞書に無いカタカナの語のところです（PUD と GSD train で 335 文のうち 332 文）。MeCab は <code>コリ・シューマン</code> を 1 語にし、Lindera は 3 語にします。MeCab が <code>メトロ</code> / <code>ポリ</code> / <code>タン</code> と切るところを、Lindera は <code>メトロポリタン</code> にします。これはトークナイザーの違いで、モデルの違いではありません。</p>
+<h3 id="juman-のモデルでの一致"><a class="header" href="#juman-のモデルでの一致">JUMAN のモデルでの一致</a></h3>
+<p>入力は、同じファイルの 9,100 文で、形態素は MeCab と mecab-jumandic のものです。すべてが一致します。</p>
+<div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>文節が同じ文</th><th>係り先が同じ文節</th><th>主辞と機能語が同じ文節</th></tr></thead><tbody>
+<tr><td>GSD dev</td><td>100%（507 / 507）</td><td>100%（3,870 / 3,870）</td><td>100%（4,377 / 4,377）</td></tr>
+<tr><td>GSD test</td><td>100%（543 / 543）</td><td>100%（4,194 / 4,194）</td><td>100%（4,737 / 4,737）</td></tr>
+<tr><td>PUD</td><td>100%（1,000 / 1,000）</td><td>100%（9,430 / 9,430）</td><td>100%（10,430 / 10,430）</td></tr>
+<tr><td>GSD train</td><td>100%（7,050 / 7,050）</td><td>100%（52,811 / 52,811）</td><td>100%（59,861 / 59,861）</td></tr>
+</tbody></table>
+</div>
+<p>点数も、ここでも小数 6 桁まで同じです。<code>--sigma 0 --min-support 1</code> では、文節は同じで、係り先は 99.63%〜99.77% が同じです（3,861 / 3,870、4,181 / 4,194、9,395 / 9,430、52,648 / 52,811）。係り先が変わるのは 320 個に 1 個です（70,305 のうち 220）。</p>
+<p>テキストからの場合、CaboCha は MeCab と mecab-jumandic で、Lindera は同じソースから作った JUMAN 辞書で形態素にします（<code>lindera tokenize</code> の形態素を <code>parse</code> に渡します）。モデルが読む 5 列では、ほぼすべての文で形態素が同じになり、その文の解析は同じです。</p>
+<div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>形態素が同じ文</th><th>そのうち解析が同じ文</th></tr></thead><tbody>
+<tr><td>GSD dev</td><td>99.61%（505 / 507）</td><td>100%（505 / 505）</td></tr>
+<tr><td>GSD test</td><td>99.63%（541 / 543）</td><td>100%（541 / 541）</td></tr>
+<tr><td>PUD</td><td>100%（1,000 / 1,000）</td><td>100%（1,000 / 1,000）</td></tr>
+<tr><td>GSD train</td><td>99.79%（7,035 / 7,050）</td><td>100%（7,035 / 7,035）</td></tr>
+</tbody></table>
+</div>
+<p>残りの 19 文は、形態素の切り方が違います。そのうち 17 文は、数字の間の <code>・</code> のところで、<code>lindera tokenize --disable-break-characters</code> なら MeCab と同じに読みます（<a href="lindera-dependency/../lindera-jumandic/examples.html#mecab-%E3%81%A8%E3%81%AE%E4%B8%80%E8%87%B4">使用例</a>）。</p>
 <h2 id="制限"><a class="header" href="#制限">制限</a></h2>
 <ul>
-<li><strong>速さ</strong>。GSD train の 7,024 文を形態素から解析するのに、<code>parse</code> は 3.03 秒、CaboCha は 0.92 秒かかります。変換したモデルは、対ごとに重みを持ちます。このクレートのモデルは、対を表にハッシュします。そちらの速さは<a href="lindera-dependency/./model_file.html">モデルファイル</a>を見てください。</li>
+<li><strong>速さ</strong>。GSD train の 7,024 文を形態素から解析するのに、<code>parse</code> は 3.03 秒、CaboCha は 0.92 秒かかります。JUMAN のモデルも、これより遅くはありません。ほかの処理が動いていて、この 2 つが 3.32 秒と 1.21 秒かかった状態で、7,050 文に 3.03 秒、CaboCha は 1.09 秒でした。変換したモデルは、対ごとに重みを持ちます。このクレートのモデルは、対を表にハッシュします。そちらの速さは<a href="lindera-dependency/./model_file.html">モデルファイル</a>を見てください。</li>
 <li><strong>最後の文節への係りの点数</strong>は 0 です。このクレートのどのモデルでも同じです。</li>
-<li><strong>長い文節</strong>。CaboCha は、1 つの文節について、素性を 128 個、素性の文字列を 2,048 バイトまでしか持ちません。このクレートはすべて持ちます。上のテキストの 76,659 文節は、最大でも 40 個・882 バイトで、上限に届きません。上限を超える文節では、結果が違いえます。</li>
+<li><strong>長い文節</strong>。CaboCha は、1 つの文節について、素性を 128 個、素性の文字列を 2,048 バイトまでしか持ちません。このクレートはすべて持ちます。上のテキストの 76,659 文節は、最大でも 40 個・882 バイトで、mecab-jumandic の形態素の 79,405 文節は、最大でも 42 個・818 バイトで、上限に届きません。上限を超える文節では、結果が違いえます。</li>
 <li><strong>区切り</strong>。このクレートは、<code>B</code> で始まる最良の経路を探します。CaboCha は、最良の経路を取ってから、最初の形態素を文節の始まりにします。また、CRF++ は 1 つの形態素の重みを 32 ビットの浮動小数点で足し、このクレートは 64 ビットで足します。どちらも、上のテキストの文節を変えませんでした。</li>
 <li><strong>精度</strong>。CaboCha のモデルの精度は、ここでは測っていません。京大コーパスが手元に無く、UD Japanese-GSD での精度は、文節の 2 つの基準を比べることになるためです。</li>
 <li><strong>未検証</strong>: Linux（x86_64）の GCC 15.2 以外のコンパイラ・OS でビルドした CaboCha。</li>
@@ -3975,6 +4040,7 @@ assert_eq!(schema.positions(&amp;bunsetsu), Some((0, 2)));
 <li>主辞が機能語より後ろにあれば、機能語も主辞の位置にします。</li>
 </ol>
 <p>したがって、機能語のない文節は両方とも主辞の位置になり（本 だけの文節は <code>0/0</code>）、記号だけの文節は両方とも先頭の形態素になります。</p>
+<p>スキーマは、<code>findHead</code> のもう 1 つの形も持てます。CaboCha が JUMAN に使う形です（<code>Schema::head_rule</code> の <code>HeadRule::LastWords</code>）。機能語は、記号でない最後の形態素です。主辞は、記号でもなく「主辞にならないもの」の一覧にも無い、最後の形態素です。2 つは別々に決め、機能語のパターンは読まず、手順 3 は行いません。このクレートのスキーマは、この形を使いません。<a href="lindera-dependency/./cabocha_models.html">CaboCha の JUMAN のモデル</a>を変換したモデルが使います。そのスキーマは、特殊を記号に、助詞と接尾辞を「主辞にならないもの」にします。読んで / いる は <code>0/1</code> です。そこでは いる が接尾辞だからです。</p>
 <p>パターンは、品詞の階層の前方一致（動詞, 非自立）で、取りうる原形と、文節の中の直前の形態素のパターンを足せます。スキーマが挙げる列より素性の列が少ない形態素は、足りない列についてはどのパターンにも合いません。panic はしません。</p>
 <h2 id="句読点と括弧"><a class="header" href="#句読点と括弧">句読点と括弧</a></h2>
 <p>スキーマは、解析器の素性のために、記号も見分けます。</p>
@@ -11847,6 +11913,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>Lindera JUMAN 辞書（<code>lindera-jumandic</code>）は、mecab-jumandic 7.0-20130310 から作る日本語辞書クレートです。mecab-jumandic は、形態素解析器 <a href="https://nlp.ist.i.kyoto-u.ac.jp/?JUMAN">JUMAN</a> の辞書を MeCab の形式にしたものです。辞書の名前は <code>jumandic</code> です。</p>
 <p>品詞（名詞,普通名詞、動詞、判定詞、接尾辞、特殊,句点）と、活用型・活用形（子音動詞マ行、タ形）は JUMAN のものです。読みはひらがなで、7 番目のフィールドに JUMAN の意味情報（<code>代表表記:本/ほん 漢字読み:音 カテゴリ:人工物-その他;抽象物</code>）を持ちます。活用語は語尾まで含めて 1 語になります。IPADIC が 読ん と だ に分けるところが、読んだ の 1 語です。</p>
 <p>ソースは、MeCab のリポジトリ（<a href="https://github.com/taku910/mecab">taku910/mecab</a> の <code>mecab-jumandic/</code>）から取得します。ライセンスは 3 条項 BSD です。同じ版の公式の配布物と、ファイル単位で同じ辞書です。</p>
+<p>CaboCha が配布する JUMAN のモデルの辞書でもあります。<code>lindera-dependency</code> は、そのモデルを、文節の係り受け解析のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</p>
 <h2 id="目次-11"><a class="header" href="#目次-11">目次</a></h2>
 <ul>
 <li><a href="./lindera-jumandic/dictionary_format.html">辞書フォーマット</a> -- システム辞書およびユーザー辞書のフィールド定義</li>
@@ -16002,7 +16069,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <li>トークンは、ポインター 1 つ分だけ大きくなります。</li>
 <li><code>lindera</code> コマンドとバインディングは、既定のビルドに <code>dependency</code> feature を持ちます。トークンフィルター <code>japanese_dependency</code> がパッケージに入り、<code>lindera-dependency</code> クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。<code>default-features = false</code> で、入っていないビルドになります。ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は、feature を指定したときだけ持ちます。</li>
 <li>モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、<code>lindera download dependency-ipadic</code> で取得します。UniDic のモデルは、<code>dependency-unidic</code>・<code>dependency-unidic-cwj</code>・<code>dependency-unidic-csj</code> で取得します。</li>
-<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera download jumandic</code> で取得できます。係り受け解析のモデルは、この辞書にはありません。</li>
+<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera download jumandic</code> で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>
@@ -16858,13 +16925,13 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>区切りの重みは、32 ビットの浮動小数点の値にする</strong>。CaboCha が読むコンパイル済みのモデルで、CRF++ がそう持つためである。</li>
 <li><strong>測った結果</strong>（<code>cabocha_models.sh</code>）: UD Japanese-GSD と PUD の 9,066 文の Lindera の形態素で、文節、係り先、主辞と機能語が、すべての文で CaboCha 0.69 と同じ。点数も小数 6 桁まで同じ。残る対は 10,141,653 のうち 3,727,492、ファイルは 51.8 MB、変換は 3.6 秒。テキストからだと、形態素が MeCab と同じになる文は 91%〜98% で、残りは辞書に無いカタカナの語のところで違う。</li>
 <li><strong>CaboCha より遅い</strong>: 7,024 文で 3.03 秒（CaboCha は 0.92 秒）。CaboCha は、頻度の高い素性どうしの対を密な表で持つ。モデルファイルは、どの対も、素性ごとに整列した対の中から探す。</li>
-<li><strong>済んでいないこと</strong>: JUMAN（先に <a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）と UniDic のモデル。JUMAN には、機能語を主辞に合わせる補正の無い主辞の規則と、否定のパターンが要る。UniDic には、品詞の段数を 2 通り持つことが要る。</li>
+<li><strong>JUMAN のモデル</strong>には、<code>Schema</code> にもう 1 つ要った。主辞の規則の形を表す <code>HeadRule</code> である。CaboCha は、JUMAN の機能語を「特殊でない最後の形態素」として決め、主辞はそれとは別に決め、最後の補正をしない。<code>LastWords</code> がこの形で、このクレートのスキーマは、もう一方の形のままである。パターンに否定を足して補正の有無をフラグにする形ではなく、列挙にした。使う場所が 1 つなので、足すものを 1 つにした。この 1 バイトのために、モデルファイルの版を 3 にした。測った結果: 9,100 文の MeCab と mecab-jumandic の形態素で、すべてが CaboCha と同じで、点数も小数 6 桁まで同じ。残る対は 10,578,633 のうち 3,687,535、ファイルは 52.0 MB、変換は 4.0 秒。テキストからだと、Lindera の JUMAN 辞書の形態素が MeCab と同じになる文は、ファイルごとに 99.61%〜100%。</li>
+<li><strong>済んでいないこと</strong>: UniDic のモデル。品詞の段数を 2 通り持つことが要る。</li>
 </ul>
 <h2 id="これからの部分"><a class="header" href="#これからの部分">これからの部分</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>部分</th><th>メモ</th><th>Issue</th></tr></thead><tbody>
 <tr><td>IPADIC のモデル</td><td>完了。リリースのたびに、モデルを作り、測り、公開する。クレートも一緒に公開する。両方が入る最初のリリースは 7.1.0。</td><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td></tr>
-<tr><td>CaboCha の JUMAN と UniDic のモデル</td><td>IPA のモデルは変換できる。JUMAN には、辞書（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）と、主辞の規則をデータにすることが要る。UniDic は、先に Lindera の UniDic の形態素と合うかを確かめる。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
-<tr><td>JUMAN の辞書</td><td><code>mecab-jumandic</code> を Lindera の辞書にする。</td><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td></tr>
+<tr><td>CaboCha の UniDic のモデル</td><td>IPA と JUMAN のモデルは変換できる。UniDic は、先に Lindera の UniDic の形態素と合うかを確かめる。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
 <tr><td>J.DepP の区切り</td><td>条件付き確率場に対してどこで勝っているか、ここの区切りが同じだけ良くなるか。</td><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td></tr>
 </tbody></table>
 </div>
@@ -17032,8 +17099,8 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td><a href="https://github.com/lindera/lindera/issues/1439">#1439</a></td><td>コマンド</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1440">#1440</a></td><td>IPADIC のモデルと、クレートの公開</td><td>未着手</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1441">#1441</a></td><td>UniDic のスキーマとモデル</td><td>済み</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td><td>CaboCha のモデルの変換器</td><td>IPA のモデルは済み。JUMAN と UniDic は未着手</td></tr>
-<tr><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td><td>mecab-jumandic から作る JUMAN の辞書</td><td>未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td><td>CaboCha のモデルの変換器</td><td>IPA と JUMAN のモデルは済み。UniDic は未着手</td></tr>
+<tr><td><a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td><td>mecab-jumandic から作る JUMAN の辞書</td><td>済み</td></tr>
 <tr><td><a href="https://github.com/lindera/lindera/issues/1464">#1464</a></td><td>J.DepP の区切りがどこで勝っているか、ここの区切りが同じだけ良くなるか</td><td>未着手</td></tr>
 </tbody></table>
 </div>

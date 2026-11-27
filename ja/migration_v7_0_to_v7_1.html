@@ -243,7 +243,7 @@
 <li>トークンは、ポインター 1 つ分だけ大きくなります。</li>
 <li><code>lindera</code> コマンドとバインディングは、既定のビルドに <code>dependency</code> feature を持ちます。トークンフィルター <code>japanese_dependency</code> がパッケージに入り、<code>lindera-dependency</code> クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。<code>default-features = false</code> で、入っていないビルドになります。ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は、feature を指定したときだけ持ちます。</li>
 <li>モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、<code>lindera download dependency-ipadic</code> で取得します。UniDic のモデルは、<code>dependency-unidic</code>・<code>dependency-unidic-cwj</code>・<code>dependency-unidic-csj</code> で取得します。</li>
-<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera download jumandic</code> で取得できます。係り受け解析のモデルは、この辞書にはありません。</li>
+<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera download jumandic</code> で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</li>
 </ul>
 
                     </main>

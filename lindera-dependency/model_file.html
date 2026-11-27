@@ -358,18 +358,18 @@ archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  linde
 </div>
 <p>The chunker for UniDic reads four columns through a template of 36 lines, against three columns and 24 lines for IPADIC, and is slower by about a third. From text, most of the difference is the tokenizer: UniDic CWJ and UniDic CSJ are loaded from a directory of 1.3 GB.</p>
 <h2 id="the-format"><a class="header" href="#the-format">The format</a></h2>
-<p>Version 2. Every number is little endian. A string is its length in bytes as a <code>u32</code>, followed by its UTF-8.</p>
+<p>Version 3. Every number is little endian. A string is its length in bytes as a <code>u32</code>, followed by its UTF-8.</p>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
 <tr><td>Magic number</td><td>8 bytes</td><td><code>LDMODEL</code> and a zero byte</td></tr>
-<tr><td>Version</td><td><code>u32</code></td><td>2</td></tr>
+<tr><td>Version</td><td><code>u32</code></td><td>3</td></tr>
 <tr><td>Dictionary</td><td>string</td><td>The name of the dictionary, not empty</td></tr>
-<tr><td>Schema</td><td></td><td>The columns of the part of speech, of the conjugation and of the base form; the patterns of the function words, of what is not a head, of the particles and of the function words taken by their surface; the symbols, with one byte for how a surface is matched against their characters (0: every character of it is one of them; 1: it is one of them, and a mark by its surface is still a word); the normalization of the surface, as the number of its rules and for each two strings, what is replaced and by what, sorted</td></tr>
+<tr><td>Schema</td><td></td><td>The columns of the part of speech, of the conjugation and of the base form; the patterns of the function words, of what is not a head, of the particles and of the function words taken by their surface; the symbols, with one byte for how a surface is matched against their characters (0: every character of it is one of them; 1: it is one of them, and a mark by its surface is still a word); the normalization of the surface, as the number of its rules and for each two strings, what is replaced and by what, sorted; one byte for the rule of the head word (0: a function word is not the head, and the function word is moved to a head after it; 1: the last morpheme that is not a symbol is the function word, and the two are found apart)</td></tr>
 <tr><td>Number of parts</td><td><code>u32</code></td><td></td></tr>
 <tr><td>For each part</td><td><code>u32</code>, <code>u64</code>, <code>u64</code></td><td>Its kind, its offset from the first byte of the file, its length</td></tr>
 <tr><td>The parts</td><td></td><td>One after the other, in the order of the list, up to the end of the file</td></tr>
 </tbody></table>
 </div>
-<p>The kind of the chunker part is 1 and the kind of the parser part 2, in this order. A file with a part of another kind, with the same kind twice, with parts that are not one after the other, or with bytes after the last part is refused, and so is a file of another version. Version 1 had no rule for the surface of a mark and no normalization; it was never in a release.</p>
+<p>The kind of the chunker part is 1 and the kind of the parser part 2, in this order. A file with a part of another kind, with the same kind twice, with parts that are not one after the other, or with bytes after the last part is refused, and so is a file of another version. Version 1 had no rule for the surface of a mark and no normalization, and version 2 no rule of the head word; neither was in a release.</p>
 <h3 id="the-chunker-part"><a class="header" href="#the-chunker-part">The chunker part</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Content</th></tr></thead><tbody>
 <tr><td>Number of columns</td><td><code>u32</code></td><td></td></tr>
