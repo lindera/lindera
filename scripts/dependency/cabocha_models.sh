@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
 # The agreement of a converted model of CaboCha with CaboCha: a model that
-# CaboCha distributes, for IPA or for JUMAN, is converted with
+# CaboCha distributes, for IPA, for JUMAN or for UniDic, is converted with
 # `lindera-dependency convert-cabocha`, and the same input is given to
 # CaboCha, with that model as its own build compiled it, and to
 # `lindera-dependency parse` with the converted one. The numbers of
 # "CaboCha's models" in the documentation.
 #
-# Usage: cabocha_models.sh [--tools <tools directory>] [--posset <set>] [<data directory>]
+# Usage: cabocha_models.sh [--tools <tools directory>] [--posset <set>] [--dictionary <name>] [<data directory>]
 #   --tools   Where build_baselines.sh installed the tools, and left the
 #             source of CaboCha with its models in text. Defaults to
 #             <data directory>/tools.
-#   --posset  The part-of-speech set of the model: ipa (the default) or
-#             juman.
+#   --posset  The part-of-speech set of the model: ipa (the default),
+#             juman or unidic.
+#   --dictionary  For unidic, the dictionary the model is converted for
+#             and whose morphemes are read: unidic (the default),
+#             unidic-cwj or unidic-csj.
 #   <data directory> defaults to scripts/dependency/data. The converted
-#   models and the outputs go to <data directory>/cabocha for ipa, and to
-#   <data directory>/cabocha-juman for juman.
+#   models and the outputs go to <data directory>/cabocha for ipa, to
+#   <data directory>/cabocha-juman for juman, and to
+#   <data directory>/cabocha-<dictionary> for unidic.
 #
 # The input is the sentences of UD Japanese-GSD and of UD Japanese-PUD:
 #
@@ -22,7 +26,10 @@
 #   <data directory>/lattice (convert_corpora.sh);
 # - for juman, with the morphemes of MeCab with mecab-jumandic, which
 #   build_baselines.sh installed, for the text of the corpus files in
-#   <data directory>/gsd and <data directory>/pud (fetch_corpora.sh).
+#   <data directory>/gsd and <data directory>/pud (fetch_corpora.sh);
+# - for unidic, with the morphemes of Lindera with the dictionary, from
+#   <data directory>/<dictionary>/lattice
+#   (convert_corpora.sh --dictionary <dictionary>).
 #
 # The models of CaboCha are not under the license of CaboCha: its page
 # limits the use of the distributed models as they are to research and
@@ -41,7 +48,8 @@
 # - the agreement on the same text, where CaboCha tokenizes with MeCab and
 #   its dictionary, and Lindera with its own: `parse` with IPADIC for ipa,
 #   and `lindera tokenize` with the JUMAN dictionary, whose morphemes
-#   `parse` is given, for juman;
+#   `parse` is given, for juman. Not for unidic: build_baselines.sh
+#   builds no UniDic dictionary for MeCab, so CaboCha cannot read text;
 # - the time of `parse` and of CaboCha on the morphemes of the train file.
 #
 # The bunsetsu of the models are those of the Kyoto University Text Corpus,
@@ -54,6 +62,7 @@ here=$(dirname "$(readlink -f "$0")")
 root=$(readlink -f "$here/../..")
 tools=
 posset=ipa
+unidic=unidic
 data=$here/data
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -63,6 +72,10 @@ while [ $# -gt 0 ]; do
         ;;
     --posset)
         posset=$2
+        shift 2
+        ;;
+    --dictionary)
+        unidic=$2
         shift 2
         ;;
     -*)
@@ -86,27 +99,52 @@ juman)
     dictionary=jumandic
     columns=5
     ;;
+unidic)
+    set_name=UNIDIC
+    case "$unidic" in
+    unidic | unidic-cwj | unidic-csj) dictionary=$unidic ;;
+    *)
+        echo "unknown dictionary $unidic: expected unidic, unidic-cwj or unidic-csj" >&2
+        exit 2
+        ;;
+    esac
+    columns=8
+    ;;
 *)
-    echo "unknown part-of-speech set $posset: expected ipa or juman" >&2
+    echo "unknown part-of-speech set $posset: expected ipa, juman or unidic" >&2
     exit 2
     ;;
 esac
 data=$(readlink -f "$data")
 tools=$(readlink -f "${tools:-$data/tools}")
-lattice=$data/lattice
-if [ "$posset" = ipa ]; then
+case "$posset" in
+ipa)
+    lattice=$data/lattice
     work=$data/cabocha
-else
+    ;;
+juman)
+    lattice=
     work=$data/cabocha-$posset
-fi
+    ;;
+unidic)
+    lattice=$data/$dictionary/lattice
+    work=$data/cabocha-$dictionary
+    ;;
+esac
 files="ja_gsd-ud-dev ja_gsd-ud-test ja_pud-ud-test ja_gsd-ud-train"
 agreement=(python3 -I -B "$here/cabocha_agreement.py")
 text_models=$tools/build/cabocha/model
 compiled=$tools/lib/cabocha/model
-mecab_dictionary=$tools/lib/mecab/dic/$dictionary
-
-for file in "$tools/bin/cabocha" "$text_models/chunk.$posset.txt" "$text_models/dep.$posset.txt" \
-    "$compiled/chunk.$posset.model" "$compiled/dep.$posset.model" "$mecab_dictionary/sys.dic"; do
+# The dictionary MeCab has for the set: CaboCha tokenizes text with it.
+# There is none for unidic, and CaboCha is given morphemes only.
+mecab_dictionary=
+needed=("$tools/bin/cabocha" "$text_models/chunk.$posset.txt" "$text_models/dep.$posset.txt"
+    "$compiled/chunk.$posset.model" "$compiled/dep.$posset.model")
+if [ "$posset" != unidic ]; then
+    mecab_dictionary=$tools/lib/mecab/dic/$dictionary
+    needed+=("$mecab_dictionary/sys.dic")
+fi
+for file in "${needed[@]}"; do
     if [ ! -s "$file" ]; then
         echo "$file is not there; run build_baselines.sh" >&2
         exit 1
@@ -120,11 +158,11 @@ corpus() {
     esac
 }
 for name in $files; do
-    if [ "$posset" = ipa ] && [ ! -f "$lattice/$name.lattice" ]; then
+    if [ -n "$lattice" ] && [ ! -f "$lattice/$name.lattice" ]; then
         echo "$lattice/$name.lattice is not there; run convert_corpora.sh" >&2
         exit 1
     fi
-    if [ "$posset" != ipa ] && [ ! -f "$(corpus "$name")" ]; then
+    if [ "$posset" = juman ] && [ ! -f "$(corpus "$name")" ]; then
         echo "$(corpus "$name") is not there; run fetch_corpora.sh" >&2
         exit 1
     fi
@@ -133,7 +171,7 @@ done
 cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency \
     --features train,embed-ipadic
 command="$root/target/release/lindera-dependency"
-if [ "$posset" != ipa ]; then
+if [ "$posset" = juman ]; then
     # `lindera-dependency` embeds IPADIC alone: the text is tokenized by
     # the `lindera` command with the dictionary embedded.
     cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli \
@@ -146,8 +184,12 @@ mkdir -p "$work"
 # lattice format: <input layer> <input>. For text it tokenizes with MeCab
 # and the dictionary of the set.
 cabocha() {
+    local dictionary_option=()
+    if [ -n "$mecab_dictionary" ]; then
+        dictionary_option=(-d "$mecab_dictionary")
+    fi
     "$tools/bin/cabocha" -I "$1" -O 4 -f 1 -n 0 -P "$set_name" -t UTF-8 \
-        -d "$mecab_dictionary" \
+        "${dictionary_option[@]}" \
         -m "$compiled/dep.$posset.model" -M "$compiled/chunk.$posset.model" "$2"
 }
 
@@ -157,7 +199,8 @@ convert() {
     local output=$1
     shift
     "$command" convert-cabocha --chunker "$text_models/chunk.$posset.txt" \
-        --parser "$text_models/dep.$posset.txt" --output "$output" "$@" 2>&1 |
+        --parser "$text_models/dep.$posset.txt" --dictionary "$dictionary" \
+        --output "$output" "$@" 2>&1 |
         grep -v -e '^seconds: ' -e '^The models of CaboCha '
 }
 
@@ -168,7 +211,7 @@ convert "$work/cabocha-$posset.kernel.model" --sigma 0 --min-support 1
 
 echo "--- on the same morphemes"
 for name in $files; do
-    if [ "$posset" = ipa ]; then
+    if [ -n "$lattice" ]; then
         # The morphemes alone: the bunsetsu of the answer are those of UD
         # Japanese-GSD.
         grep -v -E '^\* [0-9]+ -?[0-9]+[A-Z] *$' "$lattice/$name.lattice" > "$work/$name.morphemes"
@@ -190,12 +233,15 @@ for name in $files; do
         "$work/$name.kernel.lattice" --differences "$work/$name.kernel.differences"
 done
 
-if [ "$posset" = ipa ]; then
-    echo "--- on the same text: MeCab with mecab-ipadic, and Lindera with IPADIC"
-else
-    echo "--- on the same text: MeCab with mecab-$dictionary, and Lindera with $dictionary"
-fi
+case "$posset" in
+ipa) echo "--- on the same text: MeCab with mecab-ipadic, and Lindera with IPADIC" ;;
+juman) echo "--- on the same text: MeCab with mecab-$dictionary, and Lindera with $dictionary" ;;
+unidic) echo "--- on the same text: not measured, there is no UniDic dictionary for MeCab here" ;;
+esac
 for name in $files; do
+    if [ "$posset" = unidic ]; then
+        break
+    fi
     if [ "$posset" = ipa ]; then
         "${agreement[@]}" sentences "$lattice/$name.lattice" "$work/$name.txt"
     fi

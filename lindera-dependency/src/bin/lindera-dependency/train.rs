@@ -793,18 +793,24 @@ pub(crate) struct ConvertCabochaArgs {
     /// The chunker model of CaboCha.
     #[clap(
         long = "chunker",
-        help = "Chunker model of CaboCha in text, as model/chunk.ipa.txt or model/chunk.juman.txt of its source"
+        help = "Chunker model of CaboCha in text, as model/chunk.ipa.txt, model/chunk.juman.txt or model/chunk.unidic.txt of its source"
     )]
     chunker: PathBuf,
     /// The parser model of CaboCha.
     #[clap(
         long = "parser",
-        help = "Parser model of CaboCha in text, for the same part-of-speech set as the chunker model: model/dep.ipa.txt or model/dep.juman.txt"
+        help = "Parser model of CaboCha in text, for the same part-of-speech set as the chunker model: model/dep.ipa.txt, model/dep.juman.txt or model/dep.unidic.txt"
     )]
     parser: PathBuf,
     /// The model.
     #[clap(short = 'o', long = "output", help = "Model file to write")]
     output: PathBuf,
+    /// The dictionary the model is for.
+    #[clap(
+        long = "dictionary",
+        help = "Name of the dictionary the model is for, when it is not the first one with the part-of-speech set of the model: unidic-cwj or unidic-csj for the model for UniDic (default: ipadic, jumandic or unidic)"
+    )]
+    dictionary: Option<String>,
     /// The threshold of the weight of a pair.
     #[clap(
         long = "sigma",
@@ -852,7 +858,11 @@ pub(crate) fn convert_cabocha(args: ConvertCabochaArgs) -> Result<(), CommandErr
     };
     let started = Instant::now();
     let converted = cabocha::convert(&chunker, &parser, &options)?;
-    let bytes = converted.to_bytes()?;
+    let dictionary = args
+        .dictionary
+        .as_deref()
+        .unwrap_or_else(|| converted.part_of_speech_set.dictionary());
+    let bytes = converted.to_bytes_for(dictionary)?;
     let seconds = started.elapsed().as_secs_f64();
     fs::write(&args.output, &bytes)
         .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
@@ -862,7 +872,7 @@ pub(crate) fn convert_cabocha(args: ConvertCabochaArgs) -> Result<(), CommandErr
     let _ = writeln!(
         io::stderr(),
         "dictionary: {}\nchunker feature strings: {}\nsupport vectors: {} ({} positive)\nparser feature strings: {}\npairs: {} of {} kept, {} with a weight\nunit: {:e}\nbytes: {}\nseconds: {seconds:.1}\nThe models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.",
-        converted.part_of_speech_set.dictionary(),
+        dictionary,
         report.chunker_features,
         report.support_vectors,
         report.positives,

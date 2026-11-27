@@ -285,16 +285,60 @@ fn converts_a_model_for_juman_into_one_for_jumandic() {
 }
 
 #[test]
+fn converts_a_model_for_unidic_into_one_for_the_dictionary_asked_for() {
+    let directory = tempfile::tempdir().unwrap();
+    let chunker = directory.path().join("chunk.unidic.txt");
+    let parser = directory.path().join("dep.unidic.txt");
+    let model = directory.path().join("cabocha.model");
+    fs::write(&chunker, CHUNKER).unwrap();
+    fs::write(&parser, PARSER.replace("posset: IPA", "posset: UNIDIC")).unwrap();
+    let paths = [
+        ("--chunker", chunker.as_path()),
+        ("--parser", parser.as_path()),
+        ("--output", model.as_path()),
+    ];
+
+    // Without the option the model is for `unidic`.
+    let summary = success(run(&["convert-cabocha"], &paths));
+    assert_eq!(value(&summary, "dictionary"), "unidic");
+    let read = Model::new(fs::read(&model).unwrap()).unwrap();
+    assert_eq!(read.dictionary(), "unidic");
+    assert_eq!(read.schema(), &schema(PartOfSpeechSet::Unidic));
+    // The parser reads two levels of the part of speech.
+    assert_eq!(
+        read.parser().unwrap().feature_set().to_string(),
+        "distance,source,target,left,right,children,gap,pos-levels=2"
+    );
+
+    // With it, for another dictionary of UniDic.
+    for dictionary in ["unidic-cwj", "unidic-csj", "unidic"] {
+        let summary = success(run(
+            &["convert-cabocha", "--dictionary", dictionary],
+            &paths,
+        ));
+        assert_eq!(value(&summary, "dictionary"), dictionary);
+        let read = Model::new(fs::read(&model).unwrap()).unwrap();
+        assert_eq!(read.dictionary(), dictionary);
+    }
+    // A dictionary of another set is refused.
+    assert!(
+        failure(run(&["convert-cabocha", "--dictionary", "ipadic"], &paths)).contains(
+            "the model is not one for the dictionary ipadic: its part-of-speech set is that of unidic, unidic-cwj, unidic-csj"
+        )
+    );
+}
+
+#[test]
 fn fails_with_the_cause() {
     let directory = tempfile::tempdir().unwrap();
     let chunker = directory.path().join("chunk.ipa.txt");
     let parser = directory.path().join("dep.ipa.txt");
-    let other = directory.path().join("dep.unidic.txt");
+    let other = directory.path().join("dep.penn.txt");
     let model = directory.path().join("cabocha.model");
     let missing = directory.path().join("missing.txt");
     fs::write(&chunker, CHUNKER).unwrap();
     fs::write(&parser, PARSER).unwrap();
-    fs::write(&other, PARSER.replace("posset: IPA", "posset: UNIDIC")).unwrap();
+    fs::write(&other, PARSER.replace("posset: IPA", "posset: PENN")).unwrap();
 
     let convert = |chunker: &Path, parser: &Path, arguments: &[&str]| {
         let mut all = vec!["convert-cabocha"];
@@ -311,7 +355,11 @@ fn fails_with_the_cause() {
     for (error, expected) in [
         (
             convert(&chunker, &other, &[]),
-            "the model is for the part-of-speech set UNIDIC, which is not supported",
+            "the model is for the part-of-speech set \"PENN\", which is not one of CaboCha",
+        ),
+        (
+            convert(&chunker, &parser, &["--dictionary", "unidic"]),
+            "the model is not one for the dictionary unidic: its part-of-speech set is that of ipadic",
         ),
         (
             convert(&parser, &chunker, &[]),

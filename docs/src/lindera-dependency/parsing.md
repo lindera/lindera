@@ -192,6 +192,8 @@ distance,source,target,left,right,children,gap,after
 
 `FeatureSet::cabocha()` is the same without `after`. A model file holds the feature set of its parser.
 
+A feature set can also limit the levels of the part of speech its features take, written after the groups as `pos-levels=2` (`FeatureSet::with_part_of_speech_levels`). The features of a morpheme (`HP0:名詞`, `HP1:普通名詞`) and the feature of a bunsetsu that ends in a word without a conjugation form (`A:名詞-普通名詞`) then stop at that many levels, though the schema has more and the chunker reads them all. Without it, the features take every level of the schema, which is what the models of this crate do. A model converted from [CaboCha's for UniDic](./cabocha_models.md) has two levels for its parser and four for its chunker.
+
 A classifier is trained on the features of one set and parses with the same set.
 
 ### Differences from CaboCha
