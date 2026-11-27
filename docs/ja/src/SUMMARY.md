@@ -48,6 +48,7 @@
 - [Lindera Dependency](./lindera-dependency.md)
     - [インストール](./lindera-dependency/installation.md)
     - [クイックスタート](./lindera-dependency/quickstart.md)
+    - [結果の読み方と使い方](./lindera-dependency/reading_the_result.md)
     - [アーキテクチャ](./lindera-dependency/architecture.md)
     - [文節の区切り](./lindera-dependency/chunking.md)
     - [係り受けの解析](./lindera-dependency/parsing.md)

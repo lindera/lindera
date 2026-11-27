@@ -48,6 +48,7 @@
 - [Lindera Dependency](./lindera-dependency.md)
     - [Installation](./lindera-dependency/installation.md)
     - [Quick Start](./lindera-dependency/quickstart.md)
+    - [Reading and Using the Result](./lindera-dependency/reading_the_result.md)
     - [Architecture](./lindera-dependency/architecture.md)
     - [Chunking](./lindera-dependency/chunking.md)
     - [Parsing](./lindera-dependency/parsing.md)

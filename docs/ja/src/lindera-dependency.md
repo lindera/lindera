@@ -13,7 +13,7 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 
 > このクレートは、Lindera 7.1.0 から crates.io にあります。Lindera のリリースが、一緒に **IPADIC と 3 つの UniDic の辞書のモデル**を公開します。形態素から係り受けまでの解析が一通りできます。学習データ、文節の区切り、解析器、モデルファイル、評価、テキストを受けるコマンドが揃っています。Lindera のトークンフィルターは、`lindera` コマンドとバインディングの既定のビルドに入っています。
 
-[インストール](./lindera-dependency/installation.md)と[クイックスタート](./lindera-dependency/quickstart.md)から始めてください。作業は [#1417](https://github.com/lindera/lindera/issues/1417) で追っています。
+[インストール](./lindera-dependency/installation.md)と[クイックスタート](./lindera-dependency/quickstart.md)から始めてください。文節と係り受けとは何か、出てきた結果をどう読むかは、[結果の読み方と使い方](./lindera-dependency/reading_the_result.md)にあります。作業は [#1417](https://github.com/lindera/lindera/issues/1417) で追っています。
 
 ## できること
 
@@ -34,6 +34,7 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 
 - [インストール](./lindera-dependency/installation.md) -- クレート、トークンフィルターの入ったビルド、モデルを手に入れる 3 つの方法
 - [クイックスタート](./lindera-dependency/quickstart.md) -- 公開しているモデルで 1 つの文を解析する。コマンドラインと Rust から
+- [結果の読み方と使い方](./lindera-dependency/reading_the_result.md) -- 文節と係り受けとは何か、いろいろな種類の文の結果、結果を使うプログラム、どこまで信じてよいか
 - [アーキテクチャ](./lindera-dependency/architecture.md) -- モジュール、型、ラティス形式、feature フラグ
 - [文節の区切り](./lindera-dependency/chunking.md) -- 形態素を文節に区切る、モデルを学習する
 - [係り受けの解析](./lindera-dependency/parsing.md) -- 文節の係り先を求める。ループ、素性、モデルの学習、精度
