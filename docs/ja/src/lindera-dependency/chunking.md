@@ -90,7 +90,7 @@ train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 261851
+bytes: 261857
 ```
 
 出力は、辞書 `ipadic` の[モデルファイル](./model_file.md)で、部分は区切りだけです。同じデータで学習し直すと、同じバイト列になります。重みは `f64` です。形式は、最初のリリースまでに変わることがあります。

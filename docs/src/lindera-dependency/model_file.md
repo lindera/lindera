@@ -119,7 +119,7 @@ The archive holds one directory, `lindera-dependency-ipadic`, with three files:
 | Dictionary | IPADIC (`ipadic`), as the `lindera-ipadic` crate builds it from mecab-ipadic 2.7.0 |
 | Training data | The train file of [UD Japanese-GSD](https://github.com/UniversalDependencies/UD_Japanese-GSD) at c662dc9, [converted](./training_data.md) with IPADIC: 7,024 sentences |
 | Settings | The defaults of [`train-chunker`](./chunking.md#training-a-model) and of [`train-parser`](./parsing.md#training-a-model) |
-| Size | 6,258,548 bytes |
+| Size | 6,258,554 bytes |
 | License | MIT, with a notice: see [License of the model](#license-of-the-model) |
 
 Only the train file is used. The dev and test files of UD Japanese-GSD and UD Japanese-PUD are not seen in training, and no setting was chosen on them, so the [accuracy](./parsing.md#accuracy) measured on them is the accuracy of the file itself.
@@ -169,9 +169,9 @@ corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
 training data: 5075c95f2518b6af791e6a9ea2bd5f9f63eeaa5b316f3801d8068d71436e5064  train.lattice
-chunker: 74762e9b4f23d1dd06a304238006480264e0fea70b7a3a5c9e647c176dad59c3  chunker.model
-model: 793b22e6ef2d92abf0fd91f282942acc6ebd568c22b930770ff2ff57573fbe46  lindera-dependency-ipadic/dependency.model (6258548 bytes)
-archive: f688c9077d58c3ecd9ad6d770d6074f326ea8ebaccc424319d8dd9886873e715  lindera-dependency-ipadic-7.0.0.zip
+chunker: 3de637c03f8d5d0a5cd4aebe3f9d5d1865f345404efbc636e29adf830b0ffa92  chunker.model
+model: 15219d04e8536e9eab5c2ad63fb3ff62203618bd9df7343afefe902619346655  lindera-dependency-ipadic/dependency.model (6258554 bytes)
+archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  lindera-dependency-ipadic-7.0.0.zip
 ```
 
 `--check <sha256>` makes the script fail when the file it built has another SHA-256. The script refuses a tree with uncommitted changes, so that the commit it names is what the file was built from.
@@ -216,7 +216,7 @@ A release of Lindera publishes a model for each of the three UniDic dictionaries
 | Building it again | [`build_model.sh --dictionary <name>`](#building-it-again), with `--dict` for the directory of the dictionary |
 | Training data | The train file of UD Japanese-GSD, [converted](./training_data.md) with that dictionary: 7,024 sentences |
 | Settings | The ones of [`train-chunker`](./chunking.md#with-unidic) for UniDic, and the defaults of `train-parser` |
-| Size | 6,257,148 bytes for `unidic`, 6,258,600 for `unidic-cwj`, 6,267,183 for `unidic-csj` |
+| Size | 6,257,154 bytes for `unidic`, 6,258,606 for `unidic-cwj`, 6,267,189 for `unidic-csj` |
 | License | MIT, with a notice that carries the notice of the dictionary. UniDic is under the GPL v2.0, the LGPL v2.1 or the BSD license, at the choice of the user |
 
 A model is for one dictionary. The three UniDic dictionaries do not segment and tag alike, and the model for `unidic-cwj` is [refused](#checking-the-dictionary) with the morphemes of `unidic`. UniDic CSJ is a dictionary for spoken language, and the training data is written language.
@@ -227,10 +227,10 @@ The four models, on the test file of UD Japanese-GSD converted with each diction
 
 | Dictionary | Size of the file (bytes) | Of which the chunker | Chunking | Parsing the bunsetsu of the answer | Chunking and parsing | From text, with the tokenizer | Loading the dictionary and the model | The token filter, microseconds per token |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| IPADIC | 6,258,548 | 261,851 | 20,500 | 17,500 | 8,900 | 7,000 | 5 ms | 5.3 |
-| `unidic` | 6,257,148 | 360,869 | 13,100 | 17,400 | 6,900 | 5,300 | 59 ms | 6.4 |
-| `unidic-cwj` | 6,258,600 | 360,019 | 13,400 | 16,400 | 6,900 | 4,500 | 388 ms | 6.9 |
-| `unidic-csj` | 6,267,183 | 365,215 | 11,900 | 15,000 | 6,500 | 4,100 | 389 ms | 7.2 |
+| IPADIC | 6,258,554 | 261,857 | 20,500 | 17,500 | 8,900 | 7,000 | 5 ms | 5.3 |
+| `unidic` | 6,257,154 | 360,875 | 13,100 | 17,400 | 6,900 | 5,300 | 59 ms | 6.4 |
+| `unidic-cwj` | 6,258,606 | 360,025 | 13,400 | 16,400 | 6,900 | 4,500 | 388 ms | 6.9 |
+| `unidic-csj` | 6,267,189 | 365,221 | 11,900 | 15,000 | 6,500 | 4,100 | 389 ms | 7.2 |
 
 The chunker for UniDic reads four columns through a template of 36 lines, against three columns and 24 lines for IPADIC, and is slower by about a third. From text, most of the difference is the tokenizer: UniDic CWJ and UniDic CSJ are loaded from a directory of 1.3 GB.
 
@@ -302,8 +302,8 @@ For the default model, the chunker and the parser trained on the train file of U
 
 | | |
 | --- | --- |
-| Size of the file, with both parts | 6,258,548 bytes |
-| Of which the chunker, in a file of its own | 261,851 bytes |
+| Size of the file, with both parts | 6,258,554 bytes |
+| Of which the chunker, in a file of its own | 261,857 bytes |
 | Time to read it (`Model::new`, with every check) | about 2.7 ms |
 | Chunking | about 20,400 sentences per second |
 | Parsing the bunsetsu of the answer | about 16,700 sentences per second |
@@ -315,16 +315,16 @@ How the weights of the pairs are kept decides the size and the speed, not the ac
 
 | Pairs | Weights | Size of the file | Parsing, sentences per second |
 | --- | --- | --- | --- |
-| Hashed into 2^22 weights | 1 byte | 6,258,548 bytes | about 16,700 |
-| Hashed into 2^22 weights | 4 bytes | 19,028,600 bytes | about 13,400 |
-| A weight for each pair | 1 byte | 24,514,588 bytes | about 2,700 |
-| A weight for each pair | 4 bytes | 38,162,161 bytes | about 2,700 |
+| Hashed into 2^22 weights | 1 byte | 6,258,554 bytes | about 16,700 |
+| Hashed into 2^22 weights | 4 bytes | 19,028,606 bytes | about 13,400 |
+| A weight for each pair | 1 byte | 24,514,594 bytes | about 2,700 |
+| A weight for each pair | 4 bytes | 38,162,167 bytes | about 2,700 |
 
 The chunker alone, trained on the same data (4,325 feature strings), on the 7,024 sentences of the train file:
 
 | | |
 | --- | --- |
-| Size of the file | 261,851 bytes |
+| Size of the file | 261,857 bytes |
 | Time to read it (`Model::new`, with every check) | about 0.2 ms |
 | Chunking with the chunker of the file | about 16,896 sentences per second |
 | Chunking with the same chunker in memory, in a hash table of the standard library | about 18,223 sentences per second |

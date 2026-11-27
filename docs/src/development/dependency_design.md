@@ -339,7 +339,7 @@ The README of the crate has the whole table of the cross-validation and the ten 
 | Models for UniDic, chunking F on dev, test, PUD | `unidic` 97.03, 97.24, 98.00; `unidic-cwj` 96.63, 97.02, 97.89; `unidic-csj` 96.60, 96.95, 97.78 | Script: `build_model.sh --dictionary <name>`, `model_accuracy.py` |
 | The same, level 1 | `unidic` 89.67%, 88.69%, 88.67%; `unidic-cwj` 89.35%, 88.91%, 88.58%; `unidic-csj` 89.75%, 88.90%, 88.59% | The same |
 | The same, end to end | `unidic` 85.06%, 84.88%, 85.93%; `unidic-cwj` 84.22%, 84.71%, 85.73%; `unidic-csj` 84.58%, 84.65%, 85.58% | The same |
-| Size of the models for UniDic | `unidic` 6,257,148 bytes, `unidic-cwj` 6,258,600, `unidic-csj` 6,267,183 | Script: `build_model.sh --dictionary <name>` |
+| Size of the models for UniDic | `unidic` 6,257,154 bytes, `unidic-cwj` 6,258,606, `unidic-csj` 6,267,189 | Script: `build_model.sh --dictionary <name>` |
 | `SYN_HEAD` of GSD against "last morpheme that is not a symbol" and "the morpheme after the head" | 87–88% and 81–82% | Prototype, lost |
 
 ### Parser
@@ -369,9 +369,9 @@ Level 1 is the share of the bunsetsu, but the last of each sentence, with the ri
 | The defaults: level 1 with the bunsetsu of the answer | dev 90.11% (3,281 / 3,641), test 88.53% (3,512 / 3,967), PUD 88.81% (7,859 / 8,849) | Script: `parser_experiments.sh final` |
 | The defaults: end to end | dev 85.39% (3,109 / 3,641), test 84.47% (3,351 / 3,967), PUD 86.19% (7,627 / 8,849) | Script: `parser_experiments.sh final` |
 | The defaults with CaboCha's feature set | With the bunsetsu of the answer: dev 89.15%, test 88.30%, PUD 88.33%. End to end: dev 84.45%, test 84.30%, PUD 85.59% | Script: `parser_experiments.sh final` |
-| The default model | 6,258,548 bytes with the chunker; 62,380 feature strings; 19 passes, 21,374 support vectors of 66,000 decisions; about 3 seconds; the same bytes when trained twice | Script: `parser_experiments.sh final` |
+| The default model | 6,258,554 bytes with the chunker; 62,380 feature strings; 19 passes, 21,374 support vectors of 66,000 decisions; about 3 seconds; the same bytes when trained twice | Script: `parser_experiments.sh final` |
 | The default model on the 542 sentences of test, one core of an AMD Ryzen AI Max+ 395 | Read in 2,732 microseconds; chunking 20,354, parsing 16,678, both 8,718 sentences per second | Script: `parser_experiments.sh speed` |
-| The same with the other tables of the pairs | Hashed, four bytes: 19,028,600 bytes, parsing 13,375. A weight for every pair, one byte: 24,514,588 bytes, 2,741; four bytes: 38,162,161 bytes, 2,679 | Script: `parser_experiments.sh speed` |
+| The same with the other tables of the pairs | Hashed, four bytes: 19,028,606 bytes, parsing 13,375. A weight for every pair, one byte: 24,514,594 bytes, 2,741; four bytes: 38,162,167 bytes, 2,679 | Script: `parser_experiments.sh speed` |
 | The command on the text of the 543 sentences of test, repeated 100 times, with the default model and the embedded IPADIC | About 6,600 sentences per second from the text to the lattice format; 5 ms to load the dictionary and the model | Script: `parse_speed.sh` |
 
 ### Model file
@@ -380,7 +380,7 @@ The default chunker model, on one core of an AMD Ryzen AI Max+ 395, with Rust 1.
 
 | Number | Value | From |
 | --- | --- | --- |
-| Model file with the default chunker | 261,851 bytes, 4,325 feature strings; the same bytes when trained twice; F unchanged: 96.85, 96.92, 98.04 | Script: `chunker_experiments.sh default` |
+| Model file with the default chunker | 261,857 bytes, 4,325 feature strings; the same bytes when trained twice; F unchanged: 96.85, 96.92, 98.04 | Script: `chunker_experiments.sh default` |
 | The chunker on a model file against the chunker-only file of before | The same lines in the outputs for dev, test and PUD | `chunk` before and after #1437, compared with `cmp`; not kept as a script |
 | Time to read the file, with every check | 228 microseconds | Script: `model_speed/` |
 | Chunking with the model in memory (a hash table of the standard library) | 18,223 sentences per second | Script: `model_speed/` |

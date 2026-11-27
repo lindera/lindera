@@ -49,7 +49,7 @@ support vectors: 107801 (54345 positive)
 parser feature strings: 122541
 pairs: 3727492 of 10141653 kept, 3713127 with a weight
 unit: 1.9819337637727585e-7
-bytes: 51809439
+bytes: 51809440
 seconds: 3.6
 The models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.
 ```

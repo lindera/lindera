@@ -279,7 +279,7 @@ ja_gsd-ud-train.lattice: 7024 sentences
 iterations: 126
 feature strings: 4325
 weights: 8656
-bytes: 261851
+bytes: 261857
 ```
 
 | | F | Precision | Recall | Sentences with every bunsetsu right |
@@ -756,7 +756,7 @@ passes: 19
 updates: 21374
 feature strings: 62380
 pair weights: 2762034
-bytes: 6258548
+bytes: 6258554
 ```
 
 A last line, `seconds:`, has the time of the training; it is left out here.
@@ -802,74 +802,74 @@ weights of 4 bytes:
 
 | Setting | Level 1 | Sentences with every head right | Seconds | Passes | Features | Pair weights | Bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dual coordinate descent, cost 0.0005 | 88.11% (43,500 / 49,372) | 3,783 | 5.7 | 12 | 54,688 | 3,135,018 | 26,886,481 |
-| Dual coordinate descent, cost 0.001 | 88.79% (43,836 / 49,372) | 3,899 | 6.0 | 15 | 56,725 | 3,297,056 | 28,231,766 |
-| Dual coordinate descent, cost 0.0015 | 88.96% (43,922 / 49,372) | 3,923 | 6.3 | 17 | 58,558 | 3,432,038 | 29,355,452 |
-| Dual coordinate descent, cost 0.002 | 89.01% (43,946 / 49,372) | 3,914 | 6.7 | 20 | 59,938 | 3,535,001 | 30,212,226 |
-| Dual coordinate descent, cost 0.003 | 88.91% (43,899 / 49,372) | 3,906 | 7.3 | 24 | 61,539 | 3,653,850 | 31,201,312 |
-| Dual coordinate descent, cost 0.005 | 88.76% (43,823 / 49,372) | 3,863 | 8.0 | 31 | 62,480 | 3,726,424 | 31,804,541 |
-| Dual coordinate descent, cost 0.01 | 88.72% (43,801 / 49,372) | 3,853 | 8.6 | 39 | 62,576 | 3,735,836 | 31,882,156 |
-| Passive-aggressive, cost 0.0005, 10 passes | 88.45% (43,668 / 49,372) | 3,809 | 5.6 | 10 | 53,582 | 3,104,648 | 26,617,796 |
-| Passive-aggressive, cost 0.0005, 10 passes, averaged | 88.82% (43,854 / 49,372) | 3,898 | 5.9 | 10 | 53,582 | 3,147,880 | 26,963,648 |
-| Passive-aggressive, cost 0.0005, 30 passes | 88.76% (43,824 / 49,372) | 3,874 | 7.9 | 30 | 55,121 | 3,227,054 | 27,633,847 |
-| Passive-aggressive, cost 0.0005, 30 passes, averaged | 88.88% (43,881 / 49,372) | 3,895 | 8.2 | 30 | 55,121 | 3,263,721 | 27,927,186 |
-| Passive-aggressive, cost 0.001, 10 passes | 88.28% (43,584 / 49,372) | 3,803 | 5.5 | 10 | 51,403 | 2,925,451 | 25,131,780 |
-| Passive-aggressive, cost 0.001, 10 passes, averaged | 88.84% (43,860 / 49,372) | 3,894 | 5.7 | 10 | 51,403 | 2,983,805 | 25,598,612 |
-| Passive-aggressive, cost 0.001, 30 passes | 88.70% (43,793 / 49,372) | 3,844 | 7.8 | 30 | 52,380 | 3,004,641 | 25,788,568 |
-| Passive-aggressive, cost 0.001, 30 passes, averaged | 88.81% (43,847 / 49,372) | 3,873 | 8.1 | 30 | 52,380 | 3,056,919 | 26,206,791 |
-| Passive-aggressive, cost 0.005, 10 passes | 88.16% (43,525 / 49,372) | 3,773 | 5.5 | 10 | 46,052 | 2,513,558 | 21,708,784 |
-| Passive-aggressive, cost 0.005, 10 passes, averaged | 88.79% (43,839 / 49,372) | 3,899 | 5.6 | 10 | 46,052 | 2,599,012 | 22,392,420 |
-| Passive-aggressive, cost 0.005, 30 passes | 88.33% (43,610 / 49,372) | 3,800 | 7.7 | 30 | 47,006 | 2,588,431 | 22,330,574 |
-| Passive-aggressive, cost 0.005, 30 passes, averaged | 88.83% (43,859 / 49,372) | 3,892 | 7.9 | 30 | 47,006 | 2,667,775 | 22,965,330 |
+| Dual coordinate descent, cost 0.0005 | 88.11% (43,500 / 49,372) | 3,783 | 5.7 | 12 | 54,688 | 3,135,018 | 26,886,487 |
+| Dual coordinate descent, cost 0.001 | 88.79% (43,836 / 49,372) | 3,899 | 6.0 | 15 | 56,725 | 3,297,056 | 28,231,772 |
+| Dual coordinate descent, cost 0.0015 | 88.96% (43,922 / 49,372) | 3,923 | 6.3 | 17 | 58,558 | 3,432,038 | 29,355,458 |
+| Dual coordinate descent, cost 0.002 | 89.01% (43,946 / 49,372) | 3,914 | 6.7 | 20 | 59,938 | 3,535,001 | 30,212,232 |
+| Dual coordinate descent, cost 0.003 | 88.91% (43,899 / 49,372) | 3,906 | 7.3 | 24 | 61,539 | 3,653,850 | 31,201,318 |
+| Dual coordinate descent, cost 0.005 | 88.76% (43,823 / 49,372) | 3,863 | 8.0 | 31 | 62,480 | 3,726,424 | 31,804,547 |
+| Dual coordinate descent, cost 0.01 | 88.72% (43,801 / 49,372) | 3,853 | 8.6 | 39 | 62,576 | 3,735,836 | 31,882,162 |
+| Passive-aggressive, cost 0.0005, 10 passes | 88.45% (43,668 / 49,372) | 3,809 | 5.6 | 10 | 53,582 | 3,104,648 | 26,617,802 |
+| Passive-aggressive, cost 0.0005, 10 passes, averaged | 88.82% (43,854 / 49,372) | 3,898 | 5.9 | 10 | 53,582 | 3,147,880 | 26,963,654 |
+| Passive-aggressive, cost 0.0005, 30 passes | 88.76% (43,824 / 49,372) | 3,874 | 7.9 | 30 | 55,121 | 3,227,054 | 27,633,853 |
+| Passive-aggressive, cost 0.0005, 30 passes, averaged | 88.88% (43,881 / 49,372) | 3,895 | 8.2 | 30 | 55,121 | 3,263,721 | 27,927,192 |
+| Passive-aggressive, cost 0.001, 10 passes | 88.28% (43,584 / 49,372) | 3,803 | 5.5 | 10 | 51,403 | 2,925,451 | 25,131,786 |
+| Passive-aggressive, cost 0.001, 10 passes, averaged | 88.84% (43,860 / 49,372) | 3,894 | 5.7 | 10 | 51,403 | 2,983,805 | 25,598,618 |
+| Passive-aggressive, cost 0.001, 30 passes | 88.70% (43,793 / 49,372) | 3,844 | 7.8 | 30 | 52,380 | 3,004,641 | 25,788,574 |
+| Passive-aggressive, cost 0.001, 30 passes, averaged | 88.81% (43,847 / 49,372) | 3,873 | 8.1 | 30 | 52,380 | 3,056,919 | 26,206,797 |
+| Passive-aggressive, cost 0.005, 10 passes | 88.16% (43,525 / 49,372) | 3,773 | 5.5 | 10 | 46,052 | 2,513,558 | 21,708,790 |
+| Passive-aggressive, cost 0.005, 10 passes, averaged | 88.79% (43,839 / 49,372) | 3,899 | 5.6 | 10 | 46,052 | 2,599,012 | 22,392,426 |
+| Passive-aggressive, cost 0.005, 30 passes | 88.33% (43,610 / 49,372) | 3,800 | 7.7 | 30 | 47,006 | 2,588,431 | 22,330,580 |
+| Passive-aggressive, cost 0.005, 30 passes, averaged | 88.83% (43,859 / 49,372) | 3,892 | 7.9 | 30 | 47,006 | 2,667,775 | 22,965,336 |
 
 **The feature set**, with dual coordinate descent and the cost 0.0015:
 
 | Setting | Level 1 | Sentences with every head right | Seconds | Passes | Features | Pair weights | Bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CaboCha's set | 88.96% (43,922 / 49,372) | 3,923 | 6.3 | 17 | 58,558 | 3,432,038 | 29,355,452 |
-| without `distance` | 88.94% (43,913 / 49,372) | 3,937 | 6.1 | 17 | 58,762 | 3,354,436 | 28,739,586 |
-| without `left` | 88.93% (43,908 / 49,372) | 3,931 | 6.0 | 16 | 56,697 | 3,216,520 | 27,588,583 |
-| without `right` | 88.53% (43,710 / 49,372) | 3,862 | 4.7 | 19 | 39,771 | 2,135,701 | 18,556,090 |
-| without `children` | 88.87% (43,875 / 49,372) | 3,919 | 5.9 | 17 | 57,724 | 3,201,095 | 27,487,690 |
-| without `gap` | 88.75% (43,816 / 49,372) | 3,892 | 5.9 | 16 | 58,241 | 3,254,439 | 27,926,979 |
-| with `after`: every group | 89.19% (44,036 / 49,372) | 3,971 | 8.8 | 19 | 59,558 | 4,168,732 | 35,272,777 |
-| every group but `children` | 89.19% (44,033 / 49,372) | 3,962 | 7.9 | 19 | 58,748 | 3,914,896 | 33,222,359 |
+| CaboCha's set | 88.96% (43,922 / 49,372) | 3,923 | 6.3 | 17 | 58,558 | 3,432,038 | 29,355,458 |
+| without `distance` | 88.94% (43,913 / 49,372) | 3,937 | 6.1 | 17 | 58,762 | 3,354,436 | 28,739,592 |
+| without `left` | 88.93% (43,908 / 49,372) | 3,931 | 6.0 | 16 | 56,697 | 3,216,520 | 27,588,589 |
+| without `right` | 88.53% (43,710 / 49,372) | 3,862 | 4.7 | 19 | 39,771 | 2,135,701 | 18,556,096 |
+| without `children` | 88.87% (43,875 / 49,372) | 3,919 | 5.9 | 17 | 57,724 | 3,201,095 | 27,487,696 |
+| without `gap` | 88.75% (43,816 / 49,372) | 3,892 | 5.9 | 16 | 58,241 | 3,254,439 | 27,926,985 |
+| with `after`: every group | 89.19% (44,036 / 49,372) | 3,971 | 8.8 | 19 | 59,558 | 4,168,732 | 35,272,783 |
+| every group but `children` | 89.19% (44,033 / 49,372) | 3,962 | 7.9 | 19 | 58,748 | 3,914,896 | 33,222,365 |
 
 **Which pairs get a weight**, with every group of features:
 
 | Setting | Level 1 | Sentences with every head right | Seconds | Passes | Features | Pair weights | Bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| A weight for every pair | 89.19% (44,036 / 49,372) | 3,971 | 8.8 | 19 | 59,558 | 4,168,732 | 35,272,777 |
-| Pairs in 2 decisions or more | 89.18% (44,030 / 49,372) | 3,969 | 6.5 | 22 | 56,801 | 2,146,806 | 19,030,939 |
-| Pairs in 3 decisions or more | 89.19% (44,033 / 49,372) | 3,983 | 5.4 | 24 | 55,372 | 1,310,821 | 12,308,881 |
-| Pairs in 5 decisions or more | 89.19% (44,037 / 49,372) | 3,968 | 4.5 | 27 | 54,191 | 693,778 | 7,344,380 |
-| Pairs in 10 decisions or more | 89.09% (43,986 / 49,372) | 3,952 | 4.1 | 29 | 53,171 | 322,354 | 4,348,554 |
-| Pairs with a weight of 0.0005 or more | 89.19% (44,036 / 49,372) | 3,968 | 8.7 | 19 | 58,556 | 2,867,684 | 24,840,466 |
-| Pairs with a weight of 0.001 or more | 89.17% (44,026 / 49,372) | 3,965 | 8.7 | 19 | 58,556 | 2,262,789 | 20,001,306 |
-| Pairs with a weight of 0.002 or more | 89.24% (44,058 / 49,372) | 3,968 | 8.5 | 19 | 58,556 | 1,385,094 | 12,979,746 |
-| Features in 2 decisions or more | 89.19% (44,034 / 49,372) | 3,981 | 7.7 | 20 | 46,441 | 3,628,293 | 30,629,600 |
-| Features in 3 decisions or more | 89.21% (44,047 / 49,372) | 3,988 | 7.0 | 22 | 32,930 | 2,990,849 | 25,153,259 |
-| Features in 5 decisions or more | 89.23% (44,055 / 49,372) | 3,978 | 6.0 | 25 | 19,470 | 2,230,914 | 18,548,709 |
+| A weight for every pair | 89.19% (44,036 / 49,372) | 3,971 | 8.8 | 19 | 59,558 | 4,168,732 | 35,272,783 |
+| Pairs in 2 decisions or more | 89.18% (44,030 / 49,372) | 3,969 | 6.5 | 22 | 56,801 | 2,146,806 | 19,030,945 |
+| Pairs in 3 decisions or more | 89.19% (44,033 / 49,372) | 3,983 | 5.4 | 24 | 55,372 | 1,310,821 | 12,308,887 |
+| Pairs in 5 decisions or more | 89.19% (44,037 / 49,372) | 3,968 | 4.5 | 27 | 54,191 | 693,778 | 7,344,386 |
+| Pairs in 10 decisions or more | 89.09% (43,986 / 49,372) | 3,952 | 4.1 | 29 | 53,171 | 322,354 | 4,348,560 |
+| Pairs with a weight of 0.0005 or more | 89.19% (44,036 / 49,372) | 3,968 | 8.7 | 19 | 58,556 | 2,867,684 | 24,840,472 |
+| Pairs with a weight of 0.001 or more | 89.17% (44,026 / 49,372) | 3,965 | 8.7 | 19 | 58,556 | 2,262,789 | 20,001,312 |
+| Pairs with a weight of 0.002 or more | 89.24% (44,058 / 49,372) | 3,968 | 8.5 | 19 | 58,556 | 1,385,094 | 12,979,752 |
+| Features in 2 decisions or more | 89.19% (44,034 / 49,372) | 3,981 | 7.7 | 20 | 46,441 | 3,628,293 | 30,629,606 |
+| Features in 3 decisions or more | 89.21% (44,047 / 49,372) | 3,988 | 7.0 | 22 | 32,930 | 2,990,849 | 25,153,265 |
+| Features in 5 decisions or more | 89.23% (44,055 / 49,372) | 3,978 | 6.0 | 25 | 19,470 | 2,230,914 | 18,548,715 |
 
 **A table the pairs are hashed into**, with every group of features:
 
 | Setting | Level 1 | Sentences with every head right | Seconds | Passes | Features | Pair weights | Bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Hashed into 2^16 weights | 88.81% (43,849 / 49,372) | 3,907 | 2.5 | 23 | 56,446 | 65,536 | 2,110,085 |
-| Hashed into 2^18 weights | 89.14% (44,012 / 49,372) | 3,962 | 2.5 | 20 | 57,762 | 262,144 | 2,928,046 |
-| Hashed into 2^20 weights | 89.15% (44,016 / 49,372) | 3,936 | 3.3 | 20 | 58,286 | 1,029,470 | 6,086,670 |
-| Hashed into 2^21 weights | 89.19% (44,035 / 49,372) | 3,958 | 4.0 | 19 | 58,433 | 1,812,151 | 10,284,534 |
-| Hashed into 2^22 weights | 89.21% (44,045 / 49,372) | 3,974 | 4.4 | 19 | 58,480 | 2,645,711 | 18,674,476 |
-| Hashed into 2^23 weights | 89.16% (44,020 / 49,372) | 3,965 | 4.8 | 20 | 58,492 | 3,288,365 | 35,451,774 |
-| Hashed into 2^24 weights | 89.22% (44,048 / 49,372) | 3,966 | 5.0 | 19 | 58,500 | 3,691,986 | 69,006,448 |
+| Hashed into 2^16 weights | 88.81% (43,849 / 49,372) | 3,907 | 2.5 | 23 | 56,446 | 65,536 | 2,110,091 |
+| Hashed into 2^18 weights | 89.14% (44,012 / 49,372) | 3,962 | 2.5 | 20 | 57,762 | 262,144 | 2,928,052 |
+| Hashed into 2^20 weights | 89.15% (44,016 / 49,372) | 3,936 | 3.3 | 20 | 58,286 | 1,029,470 | 6,086,676 |
+| Hashed into 2^21 weights | 89.19% (44,035 / 49,372) | 3,958 | 4.0 | 19 | 58,433 | 1,812,151 | 10,284,540 |
+| Hashed into 2^22 weights | 89.21% (44,045 / 49,372) | 3,974 | 4.4 | 19 | 58,480 | 2,645,711 | 18,674,482 |
+| Hashed into 2^23 weights | 89.16% (44,020 / 49,372) | 3,965 | 4.8 | 20 | 58,492 | 3,288,365 | 35,451,780 |
+| Hashed into 2^24 weights | 89.22% (44,048 / 49,372) | 3,966 | 5.0 | 19 | 58,500 | 3,691,986 | 69,006,454 |
 
 **The width of a weight**, with the pairs hashed into 2^22 weights:
 
 | Setting | Level 1 | Sentences with every head right | Seconds | Passes | Features | Pair weights | Bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2^22 weights of 4 bytes | 89.21% (44,045 / 49,372) | 3,974 | 4.4 | 19 | 58,480 | 2,645,711 | 18,674,476 |
-| 2^22 weights of 2 bytes | 89.21% (44,045 / 49,372) | 3,974 | 4.4 | 19 | 58,480 | 2,645,711 | 10,168,908 |
-| 2^22 weights of 1 byte | 89.21% (44,043 / 49,372) | 3,971 | 4.4 | 19 | 58,480 | 2,645,711 | 5,916,123 |
+| 2^22 weights of 4 bytes | 89.21% (44,045 / 49,372) | 3,974 | 4.4 | 19 | 58,480 | 2,645,711 | 18,674,482 |
+| 2^22 weights of 2 bytes | 89.21% (44,045 / 49,372) | 3,974 | 4.4 | 19 | 58,480 | 2,645,711 | 10,168,914 |
+| 2^22 weights of 1 byte | 89.21% (44,043 / 49,372) | 3,971 | 4.4 | 19 | 58,480 | 2,645,711 | 5,916,129 |
 
 **Pairs of settings**:
 
@@ -909,29 +909,29 @@ What follows from it:
 
 | Table | Level 1 on dev | From the morphemes | Bytes |
 | --- | --- | --- | --- |
-| 2^18 weights of 1 byte | 89.92% (3,274 / 3,641) | 85.28% (3,105 / 3,641) | 2,307,488 |
-| 2^20 weights of 1 byte | 89.81% (3,270 / 3,641) | 85.17% (3,101 / 3,641) | 3,106,593 |
-| 2^21 weights of 1 byte | 90.03% (3,278 / 3,641) | 85.33% (3,107 / 3,641) | 4,157,297 |
-| 2^22 weights of 1 byte | 90.11% (3,281 / 3,641) | 85.39% (3,109 / 3,641) | 6,258,548 |
+| 2^18 weights of 1 byte | 89.92% (3,274 / 3,641) | 85.28% (3,105 / 3,641) | 2,307,494 |
+| 2^20 weights of 1 byte | 89.81% (3,270 / 3,641) | 85.17% (3,101 / 3,641) | 3,106,599 |
+| 2^21 weights of 1 byte | 90.03% (3,278 / 3,641) | 85.33% (3,107 / 3,641) | 4,157,303 |
+| 2^22 weights of 1 byte | 90.11% (3,281 / 3,641) | 85.39% (3,109 / 3,641) | 6,258,554 |
 
 - Weights of 2 bytes give the same output as weights of 4 bytes, and weights
   of 1 byte do not differ:
 
 | Weights | Level 1 on dev | Level 1 on test | Bytes |
 | --- | --- | --- | --- |
-| 4 bytes (`f32`) | 90.06% (3,279 / 3,641) | 88.53% (3,512 / 3,967) | 19,028,600 |
-| 2 bytes (`i16`) | 90.06% (3,279 / 3,641) | 88.53% (3,512 / 3,967) | 10,515,232 |
-| 1 byte (`i8`) | 90.11% (3,281 / 3,641) | 88.53% (3,512 / 3,967) | 6,258,548 |
+| 4 bytes (`f32`) | 90.06% (3,279 / 3,641) | 88.53% (3,512 / 3,967) | 19,028,606 |
+| 2 bytes (`i16`) | 90.06% (3,279 / 3,641) | 88.53% (3,512 / 3,967) | 10,515,238 |
+| 1 byte (`i8`) | 90.11% (3,281 / 3,641) | 88.53% (3,512 / 3,967) | 6,258,554 |
 
 - The table decides the speed. On the 542 sentences of the test file, on one
   core (`scripts/dependency/parser_experiments.sh speed`):
 
 | Pairs | Weights | Bytes of the file | Reading, microseconds | Parsing, sentences per second | Chunking and parsing |
 | --- | --- | --- | --- | --- | --- |
-| Hashed into 2^22 weights (the default) | 1 byte | 6,258,548 | 2,732 | 16,678 | 8,718 |
-| Hashed into 2^22 weights | 4 bytes | 19,028,600 | 7,202 | 13,375 | 7,368 |
-| A weight for every pair | 1 byte | 24,514,588 | 5,314 | 2,741 | 2,426 |
-| A weight for every pair | 4 bytes | 38,162,161 | 9,952 | 2,679 | 2,314 |
+| Hashed into 2^22 weights (the default) | 1 byte | 6,258,554 | 2,732 | 16,678 | 8,718 |
+| Hashed into 2^22 weights | 4 bytes | 19,028,606 | 7,202 | 13,375 | 7,368 |
+| A weight for every pair | 1 byte | 24,514,594 | 5,314 | 2,741 | 2,426 |
+| A weight for every pair | 4 bytes | 38,162,167 | 9,952 | 2,679 | 2,314 |
 
 With CaboCha's feature set and the other defaults, the result is lower:
 
