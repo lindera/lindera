@@ -190,7 +190,7 @@
 <div class="table-wrapper"><table><thead><tr><th>CaboCha のモデル</th><th>ファイル</th><th></th></tr></thead><tbody>
 <tr><td>IPA</td><td><code>chunk.ipa.txt</code>、<code>dep.ipa.txt</code></td><td>変換できます。辞書 <code>ipadic</code> 用のモデルになります</td></tr>
 <tr><td>JUMAN</td><td><code>chunk.juman.txt</code>、<code>dep.juman.txt</code></td><td>変換できます。辞書 <code>jumandic</code>（<a href="../lindera-jumandic.html">JUMAN 辞書</a>）用のモデルになります</td></tr>
-<tr><td>UniDic</td><td><code>chunk.unidic.txt</code>、<code>dep.unidic.txt</code></td><td>断ります。列の読み方が別のもので、その素性が Lindera の UniDic の形態素と合うかは、まだ分かっていません（<a href="https://github.com/lindera/lindera/issues/1442">#1442</a>）</td></tr>
+<tr><td>UniDic</td><td><code>chunk.unidic.txt</code>、<code>dep.unidic.txt</code></td><td>変換できます。辞書 <code>unidic</code> 用のモデルになります。<code>--dictionary</code> で、<code>unidic-cwj</code> か <code>unidic-csj</code> 用にもできます</td></tr>
 <tr><td>固有表現</td><td><code>ne.*.txt</code></td><td>変換しません</td></tr>
 </tbody></table>
 </div>
@@ -286,6 +286,50 @@ The models of CaboCha are limited to research and personal use, and so is this f
 EOS
 </code></pre>
 <p>MeCab と mecab-jumandic を使う <code>cabocha -f1 -n0 -P JUMAN</code> は、この文に、同じ文節・係り先・位置・点数を書きます。判定をしないところには <code>-0.468695</code> を書きます。形態素の行は、助詞の最後の列が違います。Lindera が <code>*</code> のところが <code>連語</code> です。同じコストの 2 つのエントリから、別のほうを採るためです（<a href="../lindera-jumandic/examples.html#mecab-%E3%81%A8%E3%81%AE%E4%B8%80%E8%87%B4">使用例</a>）。この列を、モデルは読みません。</p>
+<h3 id="unidic-のモデル"><a class="header" href="#unidic-のモデル">UniDic のモデル</a></h3>
+<p>UniDic のモデルも、同じように変換します。</p>
+<pre><code class="language-sh">lindera-dependency convert-cabocha \
+    --chunker cabocha/model/chunk.unidic.txt \
+    --parser cabocha/model/dep.unidic.txt \
+    --output cabocha-unidic.model
+</code></pre>
+<pre><code class="language-text">dictionary: unidic
+chunker feature strings: 322586
+support vectors: 118666 (60095 positive)
+parser feature strings: 121120
+pairs: 3360320 of 8881051 kept, 3350964 with a weight
+unit: 2.2718941750099475e-7
+bytes: 47727972
+seconds: 3.0
+The models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.
+</code></pre>
+<p>できたファイルは <code>unidic</code>（unidic-mecab 2.1.2 から作った辞書）用のモデルです。Lindera には UniDic の辞書が 3 つあり、モデルが読む列の位置はどれも同じです。モデルファイルは、名前で 1 つの辞書に結び付きます。<code>--dictionary unidic-cwj</code> か <code>--dictionary unidic-csj</code> を付けると、そのうちの別の辞書用のモデルになります。CaboCha のページには、このモデルの学習に使った UniDic の版が書かれていません。<code>--dict</code> には、<code>lindera download unidic</code> で取得できる辞書のディレクトリを渡します。</p>
+<pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
+    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+</code></pre>
+<pre><code class="language-text">* 0 5D 0/1 0.000000
+太郎	名詞,固有名詞,人名,名,*,*,タロウ,タロウ,太郎,タロー,太郎,タロー,固,*,*,*,*
+は	助詞,係助詞,*,*,*,*,ハ,は,は,ワ,は,ワ,和,*,*,*,*
+* 1 2D 0/1 1.426111
+花子	名詞,固有名詞,人名,名,*,*,ハナコ,ハナコ,花子,ハナコ,花子,ハナコ,固,*,*,*,*
+が	助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+* 2 3D 2/2 1.388999
+読ん	動詞,一般,*,*,五段-マ行,連用形-撥音便,ヨム,読む,読ん,ヨン,読む,ヨム,和,*,*,*,*
+で	助詞,接続助詞,*,*,*,*,テ,て,で,デ,で,デ,和,*,*,*,*
+いる	動詞,非自立可能,*,*,上一段-ア行,連体形-一般,イル,居る,いる,イル,いる,イル,和,*,*,*,*
+* 3 5D 0/1 0.000000
+本	名詞,普通名詞,一般,*,*,*,ホン,本,本,ホン,本,ホン,漢,ホ濁,基本形,*,*
+を	助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+* 4 5D 0/1 0.000000
+次郎	名詞,固有名詞,人名,名,*,*,ジロウ,ジロウ,次郎,ジロー,次郎,ジロー,固,*,*,*,*
+に	助詞,格助詞,*,*,*,*,ニ,に,に,ニ,に,ニ,和,*,*,*,*
+* 5 -1D 0/1 0.000000
+渡し	動詞,一般,*,*,五段-サ行,連用形-一般,ワタス,渡す,渡し,ワタシ,渡す,ワタス,和,*,*,*,*
+た	助動詞,*,*,*,助動詞-タ,終止形-一般,タ,た,た,タ,た,タ,和,*,*,*,*
+。	補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+</code></pre>
+<p>CaboCha にこの形態素を渡すと（<code>cabocha -I1 -f1 -n0 -P UNIDIC</code>）、同じ文節・係り先・位置・点数を書きます。判定をしないところには <code>-0.882864</code> を書きます。読ん / で / いる は <code>2/2</code> です。いる は 動詞,非自立可能 で、CaboCha の UniDic の規則では主辞になります。</p>
 <h2 id="変換するもの"><a class="header" href="#変換するもの">変換するもの</a></h2>
 <p><strong>区切りのモデル</strong>は、CRF++ のテキスト形式のモデルです。テンプレート、素性の文字列、重みを、そのまま区切りの部分に入れます。重みは 32 ビットの浮動小数点に丸めます。CaboCha が読むコンパイル済みのモデルで、CRF++ がそう持つためです。</p>
 <p><strong>解析器のモデル</strong>は、2 次のカーネルの support vector です。判定の点数は、support vector についての和 <code>Σ α (1 + s)^2</code> で、<code>s</code> は support vector が判定と共有する素性の数です。これは、バイアス、素性ごとの重み、素性の対ごとの重みに、誤差なく展開できます。解析器の部分が持つのは、この形です。ただし、CaboCha はそのままでは解析しません。<code>cabocha-model-index</code> がテキストのモデルをコンパイルするときに近似します。変換は同じ手順を踏むので、判定で足し合わせる整数が CaboCha と同じになります。</p>
@@ -306,6 +350,8 @@ EOS
 <tr><td>IPA</td><td><code>--sigma 0 --min-support 1</code></td><td>10,141,653</td><td>9,988,000</td><td>102.0 MB</td><td>4.5 秒</td></tr>
 <tr><td>JUMAN</td><td>既定</td><td>10,578,633 のうち 3,687,535</td><td>3,676,410</td><td>52.0 MB</td><td>4.0 秒</td></tr>
 <tr><td>JUMAN</td><td><code>--sigma 0 --min-support 1</code></td><td>10,578,633</td><td>10,450,076</td><td>106.2 MB</td><td>4.9 秒</td></tr>
+<tr><td>UniDic</td><td>既定</td><td>8,881,051 のうち 3,360,320</td><td>3,350,964</td><td>47.7 MB</td><td>3.0 秒</td></tr>
+<tr><td>UniDic</td><td><code>--sigma 0 --min-support 1</code></td><td>8,881,051</td><td>8,782,456</td><td>91.2 MB</td><td>3.7 秒</td></tr>
 </tbody></table>
 </div>
 <p><strong>素性を作るもの</strong>は、モデルファイルのデータです。変換したモデルでは、CaboCha のものになります。</p>
@@ -313,10 +359,11 @@ EOS
 <li>表層は、素性にする前と、記号として照合する前に、CaboCha の表で正規化します。半角カナは全角に、全角の英字・数字・記号は ASCII になります（<code>ＡＢＣ</code> は <code>ABC</code>、<code>ｶﾞ</code> は <code>ガ</code>）。</li>
 <li>IPA では、機能語は、助詞、助動詞、動詞,非自立、動詞,接尾、形容詞,非自立、形容詞,接尾です。主辞は、そのどれでもなく記号でもない、最後の形態素です。このクレートの <code>ipadic</code> のスキーマとは違います。そちらはパターンが多く（<a href="./head_and_function_word.html">主辞と機能語</a>）、利用 / し / た の主辞は、ここでは し、そちらでは 利用 です。</li>
 <li>JUMAN では、機能語は、特殊でない最後の形態素です。主辞は、特殊・助詞・接尾辞のどれでもない最後の形態素です。2 つは別々に決めます。規則の形が IPA とは違い（<a href="./head_and_function_word.html#%E8%A6%8F%E5%89%87">主辞と機能語</a>）、名詞 1 語の文節では、その名詞が両方になります。品詞は 2 段で、活用形は 4 列目です。</li>
+<li>UniDic では、機能語は、助詞、助動詞、接尾辞,形容詞的、接尾辞,形状詞的、接尾辞,動詞的です。主辞は、そのどれでもなく、空白・補助記号・記号でもない、最後の形態素です。CaboCha は、品詞の段数を区切りと解析器で変えて読みます。区切りは 4 段で、解析器は 2 段と、その次の次の列を活用形として読みます。UniDic では、その列は品詞の 4 段目（モデルでは 一般・名・国・姓）で、活用形ではありません。モデルはこの読み方で学習されているので、同じ読み方をしたときだけ、CaboCha と同じ解析になります。そのため、スキーマは品詞を 4 段、活用形を 4 列目とし、解析器の素性の集合を 2 段に限ります（<code>pos-levels=2</code>。<a href="./parsing.html#%E7%B4%A0%E6%80%A7%E3%81%AE%E9%9B%86%E5%90%88">係り受け解析</a>を参照）。</li>
 <li>句読点は <code>。</code> と <code>、</code>、括弧は CaboCha のもので、どれも表層の全体で照合します。</li>
 </ul>
 <h2 id="cabocha-との一致"><a class="header" href="#cabocha-との一致">CaboCha との一致</a></h2>
-<p><code>scripts/dependency/cabocha_models.sh</code> は、IPA のモデル（<code>--posset juman</code> を付けると JUMAN のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。<code>scripts/dependency/build_baselines.sh</code> でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う <code>lindera-dependency parse</code> に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。</p>
+<p><code>scripts/dependency/cabocha_models.sh</code> は、IPA のモデル（<code>--posset juman</code> か <code>--posset unidic</code> を付けると、JUMAN か UniDic のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。<code>scripts/dependency/build_baselines.sh</code> でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う <code>lindera-dependency parse</code> に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。</p>
 <p>同じ形態素（Lindera と IPADIC のもの）を渡すと、すべてが一致します。</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>文節が同じ文</th><th>係り先が同じ文節</th><th>主辞と機能語が同じ文節</th></tr></thead><tbody>
 <tr><td>GSD dev</td><td>100%（506 / 506）</td><td>100%（3,740 / 3,740）</td><td>100%（4,246 / 4,246）</td></tr>
@@ -355,11 +402,30 @@ EOS
 </tbody></table>
 </div>
 <p>残りの 19 文は、形態素の切り方が違います。そのうち 17 文は、数字の間の <code>・</code> のところで、<code>lindera tokenize --disable-break-characters</code> なら MeCab と同じに読みます（<a href="../lindera-jumandic/examples.html#mecab-%E3%81%A8%E3%81%AE%E4%B8%80%E8%87%B4">使用例</a>）。</p>
+<h3 id="unidic-のモデルでの一致"><a class="header" href="#unidic-のモデルでの一致">UniDic のモデルでの一致</a></h3>
+<p>入力は、Lindera と UniDic の辞書の形態素の 9,066 文で、モデルはその辞書用に変換します。3 つの辞書のどれでも、すべてが一致します。</p>
+<div class="table-wrapper"><table><thead><tr><th>辞書</th><th>ファイル</th><th>文節が同じ文</th><th>係り先が同じ文節</th><th>主辞と機能語が同じ文節</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>GSD dev</td><td>100%（506 / 506）</td><td>100%（3,846 / 3,846）</td><td>100%（4,352 / 4,352）</td></tr>
+<tr><td><code>unidic</code></td><td>GSD test</td><td>100%（542 / 542）</td><td>100%（4,169 / 4,169）</td><td>100%（4,711 / 4,711）</td></tr>
+<tr><td><code>unidic</code></td><td>PUD</td><td>100%（994 / 994）</td><td>100%（9,333 / 9,333）</td><td>100%（10,327 / 10,327）</td></tr>
+<tr><td><code>unidic</code></td><td>GSD train</td><td>100%（7,024 / 7,024）</td><td>100%（52,300 / 52,300）</td><td>100%（59,324 / 59,324）</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD dev</td><td>100%（506 / 506）</td><td>100%（3,852 / 3,852）</td><td>100%（4,358 / 4,358）</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD test</td><td>100%（542 / 542）</td><td>100%（4,172 / 4,172）</td><td>100%（4,714 / 4,714）</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>PUD</td><td>100%（994 / 994）</td><td>100%（9,335 / 9,335）</td><td>100%（10,329 / 10,329）</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD train</td><td>100%（7,024 / 7,024）</td><td>100%（52,271 / 52,271）</td><td>100%（59,295 / 59,295）</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD dev</td><td>100%（506 / 506）</td><td>100%（3,850 / 3,850）</td><td>100%（4,356 / 4,356）</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD test</td><td>100%（542 / 542）</td><td>100%（4,176 / 4,176）</td><td>100%（4,718 / 4,718）</td></tr>
+<tr><td><code>unidic-csj</code></td><td>PUD</td><td>100%（994 / 994）</td><td>100%（9,336 / 9,336）</td><td>100%（10,330 / 10,330）</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD train</td><td>100%（7,024 / 7,024）</td><td>100%（52,244 / 52,244）</td><td>100%（59,268 / 59,268）</td></tr>
+</tbody></table>
+</div>
+<p>点数も小数 6 桁まで同じです。<code>--sigma 0 --min-support 1</code> と <code>unidic</code> では、文節は同じで、係り先は 99.45%〜99.71% が同じです（3,835 / 3,846、4,146 / 4,169、9,299 / 9,333、52,106 / 52,300）。係り先が変わるのは 266 個に 1 個です（69,648 のうち 262）。</p>
+<p>UniDic では、テキストからの一致は測っていません。CaboCha は MeCab でテキストを形態素にしますが、<code>build_baselines.sh</code> は MeCab 用の UniDic の辞書をビルドしません。</p>
 <h2 id="制限"><a class="header" href="#制限">制限</a></h2>
 <ul>
-<li><strong>速さ</strong>。GSD train の 7,024 文を形態素から解析するのに、<code>parse</code> は 3.03 秒、CaboCha は 0.92 秒かかります。JUMAN のモデルも、これより遅くはありません。ほかの処理が動いていて、この 2 つが 3.32 秒と 1.21 秒かかった状態で、7,050 文に 3.03 秒、CaboCha は 1.09 秒でした。変換したモデルは、対ごとに重みを持ちます。このクレートのモデルは、対を表にハッシュします。そちらの速さは<a href="./model_file.html">モデルファイル</a>を見てください。</li>
+<li><strong>速さ</strong>。GSD train の 7,024 文を形態素から解析するのに、<code>parse</code> は 3.03 秒、CaboCha は 0.92 秒かかります。ほかの 2 つのモデルも、これより遅くはありません。この 2 つが 2.98 秒と 0.87 秒かかった回に、JUMAN のモデルは 7,050 文に 2.60 秒（CaboCha は 0.77 秒）、UniDic のモデルは 7,024 文に 2.60 秒（CaboCha は 0.77 秒）でした。変換したモデルは、対ごとに重みを持ちます。このクレートのモデルは、対を表にハッシュします。そちらの速さは<a href="./model_file.html">モデルファイル</a>を見てください。</li>
 <li><strong>最後の文節への係りの点数</strong>は 0 です。このクレートのどのモデルでも同じです。</li>
-<li><strong>長い文節</strong>。CaboCha は、1 つの文節について、素性を 128 個、素性の文字列を 2,048 バイトまでしか持ちません。このクレートはすべて持ちます。上のテキストの 76,659 文節は、最大でも 40 個・882 バイトで、mecab-jumandic の形態素の 79,405 文節は、最大でも 42 個・818 バイトで、上限に届きません。上限を超える文節では、結果が違いえます。</li>
+<li><strong>長い文節</strong>。CaboCha は、1 つの文節について、素性を 128 個、素性の文字列を 2,048 バイトまでしか持ちません。このクレートはすべて持ちます。上のテキストの 76,659 文節は、最大でも 40 個・882 バイトで、mecab-jumandic の形態素の 79,405 文節は、最大でも 42 個・818 バイト、<code>unidic</code> の形態素の 78,714 文節は、最大でも 40 個・953 バイトで、上限に届きません。上限を超える文節では、結果が違いえます。</li>
 <li><strong>区切り</strong>。このクレートは、<code>B</code> で始まる最良の経路を探します。CaboCha は、最良の経路を取ってから、最初の形態素を文節の始まりにします。また、CRF++ は 1 つの形態素の重みを 32 ビットの浮動小数点で足し、このクレートは 64 ビットで足します。どちらも、上のテキストの文節を変えませんでした。</li>
 <li><strong>精度</strong>。CaboCha のモデルの精度は、ここでは測っていません。京大コーパスが手元に無く、UD Japanese-GSD での精度は、文節の 2 つの基準を比べることになるためです。</li>
 <li><strong>未検証</strong>: Linux（x86_64）の GCC 15.2 以外のコンパイラ・OS でビルドした CaboCha。</li>

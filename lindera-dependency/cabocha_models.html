@@ -190,7 +190,7 @@
 <div class="table-wrapper"><table><thead><tr><th>Model of CaboCha</th><th>Files</th><th></th></tr></thead><tbody>
 <tr><td>IPA</td><td><code>chunk.ipa.txt</code>, <code>dep.ipa.txt</code></td><td>Converted, for the dictionary <code>ipadic</code></td></tr>
 <tr><td>JUMAN</td><td><code>chunk.juman.txt</code>, <code>dep.juman.txt</code></td><td>Converted, for the dictionary <code>jumandic</code>, the <a href="../lindera-jumandic.html">JUMAN dictionary</a></td></tr>
-<tr><td>UniDic</td><td><code>chunk.unidic.txt</code>, <code>dep.unidic.txt</code></td><td>Refused: its columns are read in another way, and whether its features agree with the morphemes of Lindera's UniDic is not known yet (<a href="https://github.com/lindera/lindera/issues/1442">#1442</a>)</td></tr>
+<tr><td>UniDic</td><td><code>chunk.unidic.txt</code>, <code>dep.unidic.txt</code></td><td>Converted, for the dictionary <code>unidic</code>, or for <code>unidic-cwj</code> or <code>unidic-csj</code> with <code>--dictionary</code></td></tr>
 <tr><td>Named entities</td><td><code>ne.*.txt</code></td><td>Not converted</td></tr>
 </tbody></table>
 </div>
@@ -286,6 +286,50 @@ The models of CaboCha are limited to research and personal use, and so is this f
 EOS
 </code></pre>
 <p><code>cabocha -f1 -n0 -P JUMAN</code>, with MeCab and mecab-jumandic, writes the same bunsetsu, heads, positions and scores for this sentence, with <code>-0.468695</code> where no decision is made. Its lines differ in the last column of the particles, <code>連語</code> where Lindera has <code>*</code>: the two take another one of two entries of the same cost (<a href="../lindera-jumandic/examples.html#agreement-with-mecab">Examples</a>), in a column the model does not read.</p>
+<h3 id="the-model-for-unidic"><a class="header" href="#the-model-for-unidic">The model for UniDic</a></h3>
+<p>The model for UniDic is converted in the same way:</p>
+<pre><code class="language-sh">lindera-dependency convert-cabocha \
+    --chunker cabocha/model/chunk.unidic.txt \
+    --parser cabocha/model/dep.unidic.txt \
+    --output cabocha-unidic.model
+</code></pre>
+<pre><code class="language-text">dictionary: unidic
+chunker feature strings: 322586
+support vectors: 118666 (60095 positive)
+parser feature strings: 121120
+pairs: 3360320 of 8881051 kept, 3350964 with a weight
+unit: 2.2718941750099475e-7
+bytes: 47727972
+seconds: 3.0
+The models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.
+</code></pre>
+<p>The file is a model for <code>unidic</code>, the dictionary built from unidic-mecab 2.1.2. Lindera has three UniDic dictionaries, which have the columns a model reads at the same places, and a model file is for one dictionary by its name: <code>--dictionary unidic-cwj</code> or <code>--dictionary unidic-csj</code> makes the model one for another of them. CaboCha's page does not say which UniDic its model was trained with. <code>--dict</code> takes the directory of the dictionary, which <code>lindera download unidic</code> installs:</p>
+<pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
+    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+</code></pre>
+<pre><code class="language-text">* 0 5D 0/1 0.000000
+太郎	名詞,固有名詞,人名,名,*,*,タロウ,タロウ,太郎,タロー,太郎,タロー,固,*,*,*,*
+は	助詞,係助詞,*,*,*,*,ハ,は,は,ワ,は,ワ,和,*,*,*,*
+* 1 2D 0/1 1.426111
+花子	名詞,固有名詞,人名,名,*,*,ハナコ,ハナコ,花子,ハナコ,花子,ハナコ,固,*,*,*,*
+が	助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+* 2 3D 2/2 1.388999
+読ん	動詞,一般,*,*,五段-マ行,連用形-撥音便,ヨム,読む,読ん,ヨン,読む,ヨム,和,*,*,*,*
+で	助詞,接続助詞,*,*,*,*,テ,て,で,デ,で,デ,和,*,*,*,*
+いる	動詞,非自立可能,*,*,上一段-ア行,連体形-一般,イル,居る,いる,イル,いる,イル,和,*,*,*,*
+* 3 5D 0/1 0.000000
+本	名詞,普通名詞,一般,*,*,*,ホン,本,本,ホン,本,ホン,漢,ホ濁,基本形,*,*
+を	助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+* 4 5D 0/1 0.000000
+次郎	名詞,固有名詞,人名,名,*,*,ジロウ,ジロウ,次郎,ジロー,次郎,ジロー,固,*,*,*,*
+に	助詞,格助詞,*,*,*,*,ニ,に,に,ニ,に,ニ,和,*,*,*,*
+* 5 -1D 0/1 0.000000
+渡し	動詞,一般,*,*,五段-サ行,連用形-一般,ワタス,渡す,渡し,ワタシ,渡す,ワタス,和,*,*,*,*
+た	助動詞,*,*,*,助動詞-タ,終止形-一般,タ,た,た,タ,た,タ,和,*,*,*,*
+。	補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+</code></pre>
+<p>CaboCha, given these morphemes (<code>cabocha -I1 -f1 -n0 -P UNIDIC</code>), writes the same bunsetsu, heads, positions and scores, with <code>-0.882864</code> where no decision is made. 読ん / で / いる has <code>2/2</code>: いる is a 動詞,非自立可能, which CaboCha's rule for UniDic takes as the head word.</p>
 <h2 id="what-is-converted"><a class="header" href="#what-is-converted">What is converted</a></h2>
 <p><strong>The chunker</strong> is a CRF++ model in text. Its template, its feature strings and its weights go into the chunker part as they are, with the weights rounded to 32-bit floats, as CRF++ keeps them in the compiled model CaboCha reads.</p>
 <p><strong>The parser</strong> is the support vectors of a kernel of degree 2: the score of a decision is <code>Σ α (1 + s)^2</code> over the support vectors, where <code>s</code> is the number of features a support vector shares with the decision. It expands, without error, into a bias, a weight for each feature and a weight for each pair of features, which is what a parser part holds. CaboCha does not parse with that: <code>cabocha-model-index</code> compiles the text model and approximates, and the conversion does the same steps, so that a decision adds up the same whole numbers:</p>
@@ -306,6 +350,8 @@ EOS
 <tr><td>IPA</td><td><code>--sigma 0 --min-support 1</code></td><td>10,141,653</td><td>9,988,000</td><td>102.0 MB</td><td>4.5 s</td></tr>
 <tr><td>JUMAN</td><td>The defaults</td><td>3,687,535 of 10,578,633</td><td>3,676,410</td><td>52.0 MB</td><td>4.0 s</td></tr>
 <tr><td>JUMAN</td><td><code>--sigma 0 --min-support 1</code></td><td>10,578,633</td><td>10,450,076</td><td>106.2 MB</td><td>4.9 s</td></tr>
+<tr><td>UniDic</td><td>The defaults</td><td>3,360,320 of 8,881,051</td><td>3,350,964</td><td>47.7 MB</td><td>3.0 s</td></tr>
+<tr><td>UniDic</td><td><code>--sigma 0 --min-support 1</code></td><td>8,881,051</td><td>8,782,456</td><td>91.2 MB</td><td>3.7 s</td></tr>
 </tbody></table>
 </div>
 <p><strong>What makes the features</strong> is data of the model file, and CaboCha's for a converted model:</p>
@@ -313,10 +359,11 @@ EOS
 <li>the surface is normalized by CaboCha's table before it becomes a feature or is matched as a mark: the half-width katakana in full width, the full-width letters, digits and signs in ASCII (<code>ＡＢＣ</code> is <code>ABC</code>, <code>ｶﾞ</code> is <code>ガ</code>);</li>
 <li>for IPA, the function words are 助詞, 助動詞, 動詞,非自立, 動詞,接尾, 形容詞,非自立 and 形容詞,接尾, and the head is the last morpheme that is neither one of them nor a 記号. It is not the schema <code>ipadic</code> of this crate, which has more patterns (<a href="./head_and_function_word.html">Head and Function Word</a>): in 利用 / し / た the head is し here, and 利用 there;</li>
 <li>for JUMAN, the function word is the last morpheme that is not a 特殊, and the head the last that is not a 特殊, a 助詞 or a 接尾辞. The two are found apart, which is another form of the rule (<a href="./head_and_function_word.html#the-rule">Head and Function Word</a>): a bunsetsu of one noun has the noun as both. The part of speech has two levels, and the conjugation form is the fourth column;</li>
+<li>for UniDic, the function words are 助詞, 助動詞, 接尾辞,形容詞的, 接尾辞,形状詞的 and 接尾辞,動詞的, and the head is the last morpheme that is neither one of them nor a 空白, a 補助記号 or a 記号. CaboCha reads another number of levels of the part of speech in its chunker and in its parser: the chunker four, and the parser two, with the column after the next as the conjugation form. In UniDic that column is the fourth level of the part of speech (一般, 名, 国 and 姓 in the model), not a conjugation form; the model was trained with it, and gives CaboCha's analysis only when it is read in the same way. So the schema has four levels and the fourth column as the conjugation form, and the feature set of the parser is held to two levels (<code>pos-levels=2</code>, see <a href="./parsing.html#the-feature-set">Parsing</a>);</li>
 <li>the punctuation is <code>。</code> and <code>、</code>, and the brackets are those of CaboCha, each matched as the whole surface.</li>
 </ul>
 <h2 id="agreement-with-cabocha"><a class="header" href="#agreement-with-cabocha">Agreement with CaboCha</a></h2>
-<p><code>scripts/dependency/cabocha_models.sh</code> converts the model for IPA, or with <code>--posset juman</code> the one for JUMAN, and gives the same input to CaboCha 0.69 (96e100a, built by <code>scripts/dependency/build_baselines.sh</code>, with the model as its own build compiled it) and to <code>lindera-dependency parse</code> with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.</p>
+<p><code>scripts/dependency/cabocha_models.sh</code> converts the model for IPA, or with <code>--posset juman</code> or <code>--posset unidic</code> the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by <code>scripts/dependency/build_baselines.sh</code>, with the model as its own build compiled it) and to <code>lindera-dependency parse</code> with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.</p>
 <p>On the same morphemes, those of Lindera with IPADIC, everything is the same:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Sentences with the same bunsetsu</th><th>Bunsetsu with the same head</th><th>Bunsetsu with the same head word and function word</th></tr></thead><tbody>
 <tr><td>GSD dev</td><td>100% (506 / 506)</td><td>100% (3,740 / 3,740)</td><td>100% (4,246 / 4,246)</td></tr>
@@ -355,11 +402,30 @@ EOS
 </tbody></table>
 </div>
 <p>The 19 other sentences are tokenized differently, 17 of them at a <code>・</code> between digits, which <code>lindera tokenize --disable-break-characters</code> reads as MeCab does (<a href="../lindera-jumandic/examples.html#agreement-with-mecab">Examples</a>).</p>
+<h3 id="with-the-model-for-unidic"><a class="header" href="#with-the-model-for-unidic">With the model for UniDic</a></h3>
+<p>The input is the 9,066 sentences with the morphemes of Lindera and a UniDic dictionary, and the model is converted for that dictionary. Everything is the same, with each of the three:</p>
+<div class="table-wrapper"><table><thead><tr><th>Dictionary</th><th>File</th><th>Sentences with the same bunsetsu</th><th>Bunsetsu with the same head</th><th>Bunsetsu with the same head word and function word</th></tr></thead><tbody>
+<tr><td><code>unidic</code></td><td>GSD dev</td><td>100% (506 / 506)</td><td>100% (3,846 / 3,846)</td><td>100% (4,352 / 4,352)</td></tr>
+<tr><td><code>unidic</code></td><td>GSD test</td><td>100% (542 / 542)</td><td>100% (4,169 / 4,169)</td><td>100% (4,711 / 4,711)</td></tr>
+<tr><td><code>unidic</code></td><td>PUD</td><td>100% (994 / 994)</td><td>100% (9,333 / 9,333)</td><td>100% (10,327 / 10,327)</td></tr>
+<tr><td><code>unidic</code></td><td>GSD train</td><td>100% (7,024 / 7,024)</td><td>100% (52,300 / 52,300)</td><td>100% (59,324 / 59,324)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD dev</td><td>100% (506 / 506)</td><td>100% (3,852 / 3,852)</td><td>100% (4,358 / 4,358)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD test</td><td>100% (542 / 542)</td><td>100% (4,172 / 4,172)</td><td>100% (4,714 / 4,714)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>PUD</td><td>100% (994 / 994)</td><td>100% (9,335 / 9,335)</td><td>100% (10,329 / 10,329)</td></tr>
+<tr><td><code>unidic-cwj</code></td><td>GSD train</td><td>100% (7,024 / 7,024)</td><td>100% (52,271 / 52,271)</td><td>100% (59,295 / 59,295)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD dev</td><td>100% (506 / 506)</td><td>100% (3,850 / 3,850)</td><td>100% (4,356 / 4,356)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD test</td><td>100% (542 / 542)</td><td>100% (4,176 / 4,176)</td><td>100% (4,718 / 4,718)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>PUD</td><td>100% (994 / 994)</td><td>100% (9,336 / 9,336)</td><td>100% (10,330 / 10,330)</td></tr>
+<tr><td><code>unidic-csj</code></td><td>GSD train</td><td>100% (7,024 / 7,024)</td><td>100% (52,244 / 52,244)</td><td>100% (59,268 / 59,268)</td></tr>
+</tbody></table>
+</div>
+<p>The scores are the same to six decimals. With <code>--sigma 0 --min-support 1</code> and <code>unidic</code>, the bunsetsu are the same and 99.45% to 99.71% of the heads (3,835 / 3,846, 4,146 / 4,169, 9,299 / 9,333 and 52,106 / 52,300): one head in 266 (262 of 69,648).</p>
+<p>The agreement from text is not measured for UniDic: CaboCha tokenizes text with MeCab, and <code>build_baselines.sh</code> builds no UniDic dictionary for MeCab.</p>
 <h2 id="limits"><a class="header" href="#limits">Limits</a></h2>
 <ul>
-<li><strong>Speed.</strong> <code>parse</code> takes 3.03 s for the 7,024 sentences of GSD train from their morphemes, and CaboCha 0.92 s. The model for JUMAN is no slower: on a machine that was busy, where those two took 3.32 s and 1.21 s, it took 3.03 s and CaboCha 1.09 s for the 7,050 sentences. A converted model keeps each pair with a weight of its own, where the models of this crate hash the pairs into a table: see <a href="./model_file.html">Model File</a> for their speed.</li>
+<li><strong>Speed.</strong> <code>parse</code> takes 3.03 s for the 7,024 sentences of GSD train from their morphemes, and CaboCha 0.92 s. The other two models are no slower: in a run where those two took 2.98 s and 0.87 s, the model for JUMAN took 2.60 s and CaboCha 0.77 s for the 7,050 sentences, and the model for UniDic 2.60 s and CaboCha 0.77 s for the 7,024. A converted model keeps each pair with a weight of its own, where the models of this crate hash the pairs into a table: see <a href="./model_file.html">Model File</a> for their speed.</li>
 <li><strong>The score of an arc to the last bunsetsu</strong> is 0, as with every model of this crate.</li>
-<li><strong>A long bunsetsu.</strong> CaboCha keeps at most 128 features and 2,048 bytes of feature strings for a bunsetsu, and this crate all of them. The 76,659 bunsetsu of the text above have at most 40 features and 882 bytes, and the 79,405 of the morphemes of mecab-jumandic at most 42 and 818, so the limit is not met there; a bunsetsu beyond it would differ.</li>
+<li><strong>A long bunsetsu.</strong> CaboCha keeps at most 128 features and 2,048 bytes of feature strings for a bunsetsu, and this crate all of them. The 76,659 bunsetsu of the text above have at most 40 features and 882 bytes, the 79,405 of the morphemes of mecab-jumandic at most 42 and 818, and the 78,714 of those of <code>unidic</code> at most 40 and 953, so the limit is not met there; a bunsetsu beyond it would differ.</li>
 <li><strong>The chunker</strong> is asked for the best path that starts with <code>B</code>; CaboCha takes the best path and then makes the first morpheme start a bunsetsu. CRF++ adds the weights of a morpheme in a 32-bit float, and this crate in 64 bits. Neither changed a bunsetsu of the text above.</li>
 <li><strong>The accuracy</strong> of CaboCha's models is not measured here: the Kyoto corpus is not available, and an accuracy on UD Japanese-GSD would compare two standards of bunsetsu.</li>
 <li><strong>Not verified</strong>: CaboCha built with another compiler or system than GCC 15.2 on Linux (x86_64).</li>

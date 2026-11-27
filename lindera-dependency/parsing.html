@@ -340,6 +340,7 @@ EOS
 <pre><code class="language-text">distance,source,target,left,right,children,gap,after
 </code></pre>
 <p><code>FeatureSet::cabocha()</code> is the same without <code>after</code>. A model file holds the feature set of its parser.</p>
+<p>A feature set can also limit the levels of the part of speech its features take, written after the groups as <code>pos-levels=2</code> (<code>FeatureSet::with_part_of_speech_levels</code>). The features of a morpheme (<code>HP0:名詞</code>, <code>HP1:普通名詞</code>) and the feature of a bunsetsu that ends in a word without a conjugation form (<code>A:名詞-普通名詞</code>) then stop at that many levels, though the schema has more and the chunker reads them all. Without it, the features take every level of the schema, which is what the models of this crate do. A model converted from <a href="./cabocha_models.html">CaboCha's for UniDic</a> has two levels for its parser and four for its chunker.</p>
 <p>A classifier is trained on the features of one set and parses with the same set.</p>
 <h3 id="differences-from-cabocha"><a class="header" href="#differences-from-cabocha">Differences from CaboCha</a></h3>
 <div class="table-wrapper"><table><thead><tr><th></th><th>CaboCha</th><th>This crate</th><th>Why</th></tr></thead><tbody>
