@@ -25,6 +25,7 @@ Start with the [Installation](./lindera-dependency/installation.md) and the [Qui
 - **Give the head word and the function word of a bunsetsu**, and recognize punctuation and brackets, from a schema of the dictionary. IPADIC is the first schema.
 - **Read and write the lattice format** of CaboCha (`cabocha -f1`), and check that a sentence is the tree the parsers assume.
 - **Make training data** from a dependency corpus such as UD Japanese-GSD, on the morphemes of the dictionary the parser will run with.
+- **Convert the model CaboCha distributes for IPA** into a model file that analyzes as CaboCha does. Such a model is limited to research and personal use, as CaboCha's.
 - **Evaluate** chunking and dependency accuracy as CaboCha and J.DepP count them, and compare two outputs with a paired test.
 
 The default build has no dependency and builds for `wasm32-unknown-unknown`: it holds the types, the lattice format, the schema, the model file, the chunker and the parser. The command is behind the `cli` feature, and the training and the evaluation behind the `train` feature.
@@ -37,6 +38,7 @@ The default build has no dependency and builds for `wasm32-unknown-unknown`: it 
 - [Chunking](./lindera-dependency/chunking.md) -- Segmenting morphemes into bunsetsu, and training a model
 - [Parsing](./lindera-dependency/parsing.md) -- Finding the head of each bunsetsu: the loop, the features, training a model, and its accuracy
 - [Model File](./lindera-dependency/model_file.md) -- The file of a dictionary: reading it in place, checking the dictionary, and its format
+- [CaboCha's Models](./lindera-dependency/cabocha_models.md) -- Converting the models CaboCha distributes: their terms, the command, what is converted, and the agreement with CaboCha
 - [Command Line](./lindera-dependency/command_line.md) -- Parsing plain text with the `lindera-dependency` command: the options, the input layers, the speed
 - [Token Filter](./lindera-dependency/token_filter.md) -- The filter `japanese_dependency` of the Lindera tokenizer: the build, what is written on a token, the sentences, the order of the filters, the speed
 - [Head and Function Word](./lindera-dependency/head_and_function_word.md) -- The schema of a dictionary and the two words of a bunsetsu

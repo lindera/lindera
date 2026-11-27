@@ -219,6 +219,9 @@ pub struct ParserModel {
     feature_set: FeatureSet,
     /// The bias.
     bias: f64,
+    /// What the sum of the weights is multiplied by: 1 unless the weights
+    /// are in another unit.
+    unit: f64,
     /// The feature strings, sorted: the number of a feature is its index.
     names: Vec<String>,
     /// The weight of each feature.
@@ -323,6 +326,7 @@ impl ParserModel {
             schema,
             feature_set,
             bias,
+            unit: 1.0,
             names,
             weights,
             pairs,
@@ -330,6 +334,33 @@ impl ParserModel {
             keys,
             exact,
         })
+    }
+
+    /// Gives the weights a unit: what their sum is multiplied by before the
+    /// bias is added. The bias is not in the unit.
+    ///
+    /// The unit of a model is 1, and training gives such a model. A unit is
+    /// for weights that come as whole numbers of a step: a model converted
+    /// from CaboCha keeps the whole numbers CaboCha adds up, so that a
+    /// score has the sign CaboCha gives it, and has CaboCha's step as its
+    /// unit.
+    ///
+    /// # Arguments
+    ///
+    /// * `unit` - The unit, greater than 0.
+    ///
+    /// # Returns
+    ///
+    /// The model, or [`Error::Parser`] for a unit that is not a finite
+    /// number greater than 0.
+    pub fn with_unit(mut self, unit: f64) -> Result<Self> {
+        if !unit.is_finite() || unit <= 0.0 {
+            return Err(Error::Parser(format!(
+                "the unit of the weights is {unit}, and has to be greater than 0"
+            )));
+        }
+        self.unit = unit;
+        Ok(self)
     }
 
     /// The model without what has no weight: the pairs of an exact table
@@ -390,9 +421,12 @@ impl ParserModel {
             hashed => hashed,
         };
         // What was valid stays valid: the order of the features and of the
-        // pairs is kept.
-        Self::new(self.schema, self.feature_set, self.bias, features, pairs)
-            .expect("a model without what has no weight is a model")
+        // pairs is kept, and the unit was checked when it was given.
+        let unit = self.unit;
+        let mut model = Self::new(self.schema, self.feature_set, self.bias, features, pairs)
+            .expect("a model without what has no weight is a model");
+        model.unit = unit;
+        model
     }
 
     /// The schema of the dictionary the model is for.
@@ -420,6 +454,16 @@ impl ParserModel {
     /// The bias.
     pub fn bias(&self) -> f64 {
         self.bias
+    }
+
+    /// The unit of the weights: what their sum is multiplied by before the
+    /// bias is added. See [`ParserModel::with_unit`].
+    ///
+    /// # Returns
+    ///
+    /// The unit; 1 unless one was given.
+    pub fn unit(&self) -> f64 {
+        self.unit
     }
 
     /// The number of features of the model.
@@ -455,8 +499,9 @@ impl ParserModel {
         }
     }
 
-    /// The scale of a quantization: what a whole number is multiplied by
-    /// to give a weight.
+    /// The step of a quantization: what a whole number is multiplied by
+    /// to give a weight. In a model file the scale of the weights is this
+    /// step times the unit of the model.
     fn scale(&self, quantization: Quantization) -> f64 {
         let Some(largest) = quantization.largest() else {
             return 1.0;
@@ -491,6 +536,9 @@ impl ParserModel {
     /// * `quantization` - How the weights are written.
     pub(crate) fn write_part(&self, bytes: &mut Vec<u8>, quantization: Quantization) {
         let scale = self.scale(quantization);
+        // What a written weight is multiplied by: the step of the
+        // quantization, and the unit of the model.
+        let written_scale = scale * self.unit;
         push_string(bytes, &self.feature_set.to_string());
         bytes.push(quantization.code());
         bytes.push(match self.pairs {
@@ -498,7 +546,7 @@ impl ParserModel {
             PairWeights::Hashed { .. } => PAIRS_HASHED,
         });
         bytes.extend_from_slice(&self.bias.to_le_bytes());
-        bytes.extend_from_slice(&scale.to_le_bytes());
+        bytes.extend_from_slice(&written_scale.to_le_bytes());
 
         // The value of a feature: its weight, and with hashed pairs its
         // key, so that a pair is hashed without reading a string.
@@ -597,7 +645,7 @@ impl Classifier for ParserModel {
                 }
             }
         }
-        self.bias + sum
+        self.bias + self.unit * sum
     }
 }
 
@@ -1357,6 +1405,84 @@ pub(crate) mod tests {
                 .pair_count(),
             16
         );
+    }
+
+    #[test]
+    fn the_weights_of_a_model_with_a_unit_are_multiplied_by_it() {
+        // Whole numbers, and a unit that is not a power of two.
+        let whole = ParserModel::new(
+            Schema::ipadic(),
+            FeatureSet::cabocha(),
+            -3.0 * 0.3,
+            NAMES
+                .iter()
+                .zip([2.0, -5.0, 8.0, 0.0])
+                .map(|(name, weight)| (name.to_string(), weight))
+                .collect(),
+            PairWeights::Exact(vec![((0, 2), 6.0), ((1, 3), -3.0), ((2, 3), 1.0)]),
+        )
+        .unwrap();
+        assert_eq!(whole.unit(), 1.0);
+        let model = whole.clone().with_unit(0.3).unwrap();
+        assert_eq!(model.unit(), 0.3);
+        assert_ne!(model, whole);
+        // The bias is not in the unit: -0.9 + 0.3 × (2 + 8 + 6).
+        assert_eq!(model.score(&[0, 2]), -3.0 * 0.3 + 0.3 * 16.0);
+        assert_eq!(model.score(&[]), -3.0 * 0.3);
+        // A sum of whole numbers that is the bias in units gives 0, and
+        // not a rounding error: the two are multiplied by the same unit.
+        let three = ParserModel::new(
+            Schema::ipadic(),
+            FeatureSet::cabocha(),
+            -3.0 * 0.3,
+            vec![("a".to_string(), 3.0)],
+            PairWeights::Exact(Vec::new()),
+        )
+        .unwrap()
+        .with_unit(0.3)
+        .unwrap();
+        assert_eq!(three.score(&[0]), 0.0);
+
+        // The part of a file scores the same, to the last bit, and its
+        // scale is the unit.
+        let bytes = part(&model, Quantization::F32);
+        let layout = ParserLayout::read(&bytes, 0).unwrap();
+        assert_eq!(layout.scale, 0.3);
+        let read = layout.part(&bytes);
+        for features in subsets() {
+            assert_eq!(
+                read.score(&features).to_bits(),
+                model.score(&features).to_bits(),
+                "{features:?}"
+            );
+        }
+        // Quantized, the scale is the step of the whole numbers times the
+        // unit: the largest weight, 8, is 127.
+        let bytes = part(&model, Quantization::I8);
+        let layout = ParserLayout::read(&bytes, 0).unwrap();
+        assert_eq!(layout.scale, 8.0 / 127.0 * 0.3);
+        let read = layout.part(&bytes);
+        assert!((read.score(&[0, 2]) - model.score(&[0, 2])).abs() < 0.3 * 8.0 / 127.0 * 2.0);
+
+        // The unit stays when what has no weight is dropped.
+        let compact = model.clone().compact();
+        assert_eq!(compact.unit(), 0.3);
+        assert_eq!(compact.feature_count(), 4);
+        // A model without a unit has the bytes it had before there was one.
+        let bytes = part(&whole, Quantization::F32);
+        assert_eq!(ParserLayout::read(&bytes, 0).unwrap().scale, 1.0);
+    }
+
+    #[test]
+    fn refuses_a_unit_that_is_not_one() {
+        for unit in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            let error = exact().with_unit(unit).unwrap_err();
+            assert!(matches!(error, Error::Parser(_)), "{error:?}");
+            assert!(
+                error.to_string().contains("has to be greater than 0"),
+                "{error}"
+            );
+        }
     }
 
     #[test]

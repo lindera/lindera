@@ -11,7 +11,8 @@ lindera-dependency/src/
 ├── schema.rs             # Schema: columns, head word and function word
 ├── schema/
 │   ├── pattern.rs        # Pattern over the morphemes of a bunsetsu
-│   └── symbols.rs        # Marks, Symbols: punctuation and brackets
+│   ├── symbols.rs        # Marks, Symbols, SurfaceRule: punctuation and brackets
+│   └── normalization.rs  # Normalization: a table that replaces parts of a surface
 ├── chunker.rs            # Chunker
 ├── chunker/
 │   ├── columns.rs        # Column: what a template reads from a morpheme
@@ -36,6 +37,11 @@ lindera-dependency/src/
 │   ├── convert.rs        # Word dependencies to bunsetsu dependencies
 │   └── project.rs        # Bunsetsu onto the morphemes of a dictionary
 ├── evaluation.rs         # Chunking and dependency accuracy (train)
+├── cabocha.rs            # Converting the models of CaboCha (train)
+├── cabocha/
+│   ├── crfpp.rs          # Reading a CRF++ model in text
+│   ├── svm.rs            # Reading the support vectors, and expanding them
+│   └── normalizer.rule   # CaboCha's table for the normalization of a surface
 ├── error.rs              # Error types
 ├── bytes.rs              # Helpers for the bytes of a model
 └── bin/
@@ -162,6 +168,7 @@ assert_eq!(output, text.as_bytes());
 | `train-chunker` | `train` | 文節の区切りを学習し、モデルファイルを書く | [文節の区切り](./chunking.md) |
 | `instances` | `train` | 解析器の学習事例を書き出す | [係り受けの解析](./parsing.md) |
 | `train-parser` | `train` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](./parsing.md) |
+| `convert-cabocha` | `train` | CaboCha の区切りと解析器のモデルを、モデルファイルに変換する | [CaboCha のモデル](./cabocha_models.md) |
 
 コマンドは `lindera-cli` ではなく、このクレートにあります。ラティス形式を書き出し、学習を持つコマンドで、トークナイザーを使うだけの人には要らないためです。`lindera-cli` は、解析器を[トークンフィルター](./token_filter.md)として動かします。
 

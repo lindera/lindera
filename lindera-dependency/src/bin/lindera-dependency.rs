@@ -89,6 +89,9 @@ enum Command {
     /// Trains the parser and writes a model file.
     #[cfg(feature = "train")]
     TrainParser(train::TrainParserArgs),
+    /// Converts a model of CaboCha into a model file.
+    #[cfg(feature = "train")]
+    ConvertCabocha(train::ConvertCabochaArgs),
 }
 
 /// What the input of `parse` holds already.
@@ -451,6 +454,8 @@ fn main() -> ExitCode {
         Command::Instances(args) => train::instances(args),
         #[cfg(feature = "train")]
         Command::TrainParser(args) => train::train_parser(args),
+        #[cfg(feature = "train")]
+        Command::ConvertCabocha(args) => train::convert_cabocha(args),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

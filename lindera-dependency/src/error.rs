@@ -42,6 +42,13 @@ pub enum Error {
     /// The parser was given something it cannot use: a feature set that
     /// cannot be read, or weights that are not finite.
     Parser(String),
+    /// A schema was given something it cannot hold: rules of
+    /// normalization that are not a table.
+    Schema(String),
+    /// A model of CaboCha cannot be converted: a file is not a text model
+    /// of CaboCha, or it is a model this crate has no schema for.
+    #[cfg(feature = "train")]
+    Cabocha(String),
     /// The input is not a CoNLL-U file the corpus conversion can read.
     #[cfg(feature = "train")]
     Conllu {
@@ -107,6 +114,9 @@ impl fmt::Display for Error {
             Error::Dictionary(message) => write!(f, "{message}"),
             Error::Embedded(message) => write!(f, "{message}"),
             Error::Parser(message) => write!(f, "{message}"),
+            Error::Schema(message) => write!(f, "{message}"),
+            #[cfg(feature = "train")]
+            Error::Cabocha(message) => write!(f, "{message}"),
             #[cfg(feature = "train")]
             Error::Conllu { line, message } => write!(f, "line {line}: {message}"),
             #[cfg(feature = "train")]

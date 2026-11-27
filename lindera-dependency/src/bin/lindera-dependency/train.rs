@@ -9,6 +9,7 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use lindera_dependency::cabocha;
 use lindera_dependency::chunker::{self, Regularization, Template, TrainOptions};
 use lindera_dependency::corpus::{self, TokenizerError};
 use lindera_dependency::evaluation::{self, Comparison, Count, Evaluation, Pairs};
@@ -778,6 +779,98 @@ pub(crate) fn train_parser(args: TrainParserArgs) -> Result<(), CommandError> {
         trained.updates,
         trained.model.feature_count(),
         trained.model.pair_count(),
+        bytes.len()
+    );
+    Ok(())
+}
+
+/// The arguments of `convert-cabocha`.
+#[derive(Debug, clap::Args)]
+#[clap(
+    about = "Convert the chunker and parser models of CaboCha, in text, into a model file. The models of CaboCha are limited to research and personal use, and so is a converted model: do not distribute it"
+)]
+pub(crate) struct ConvertCabochaArgs {
+    /// The chunker model of CaboCha.
+    #[clap(
+        long = "chunker",
+        help = "Chunker model of CaboCha in text, as model/chunk.ipa.txt of its source"
+    )]
+    chunker: PathBuf,
+    /// The parser model of CaboCha.
+    #[clap(
+        long = "parser",
+        help = "Parser model of CaboCha in text, as model/dep.ipa.txt of its source"
+    )]
+    parser: PathBuf,
+    /// The model.
+    #[clap(short = 'o', long = "output", help = "Model file to write")]
+    output: PathBuf,
+    /// The threshold of the weight of a pair.
+    #[clap(
+        long = "sigma",
+        default_value_t = cabocha::Options::default().sigma,
+        help = "A pair of features that is not of two frequent ones is kept when its weight is sigma times the share of the positive support vectors or more, or minus sigma times the share of the negative ones or less: -s of cabocha-model-index. 0 with --min-support 1 keeps every pair"
+    )]
+    sigma: f64,
+    /// The number of support vectors a pair has to be in.
+    #[clap(
+        long = "min-support",
+        default_value_t = cabocha::Options::default().min_support,
+        help = "A pair of features that is not of two frequent ones is kept when it is in this many support vectors or more: -n of cabocha-model-index"
+    )]
+    min_support: usize,
+    /// The number of frequent features.
+    #[clap(
+        long = "frequent-features",
+        default_value_t = cabocha::Options::default().frequent_features,
+        help = "The pairs of two of this many most frequent features are all kept: -F of cabocha-model-index"
+    )]
+    frequent_features: usize,
+}
+
+/// Runs `convert-cabocha`.
+///
+/// # Arguments
+///
+/// * `args` - The arguments.
+///
+/// # Returns
+///
+/// `Ok(())` once the model and the report are written, or the first error:
+/// a file that cannot be read or written, files that are not the two text
+/// models of CaboCha, or a model that is not supported.
+pub(crate) fn convert_cabocha(args: ConvertCabochaArgs) -> Result<(), CommandError> {
+    let read = |path: &PathBuf| {
+        fs::read_to_string(path).map_err(|error| format!("cannot read {}: {error}", path.display()))
+    };
+    let chunker = read(&args.chunker)?;
+    let parser = read(&args.parser)?;
+    let options = cabocha::Options {
+        sigma: args.sigma,
+        min_support: args.min_support,
+        frequent_features: args.frequent_features,
+    };
+    let started = Instant::now();
+    let converted = cabocha::convert(&chunker, &parser, &options)?;
+    let bytes = converted.to_bytes()?;
+    let seconds = started.elapsed().as_secs_f64();
+    fs::write(&args.output, &bytes)
+        .map_err(|error| format!("cannot write {}: {error}", args.output.display()))?;
+
+    // A failure to write the summary is ignored: the model is complete.
+    let report = &converted.report;
+    let _ = writeln!(
+        io::stderr(),
+        "dictionary: {}\nchunker feature strings: {}\nsupport vectors: {} ({} positive)\nparser feature strings: {}\npairs: {} of {} kept, {} with a weight\nunit: {:e}\nbytes: {}\nseconds: {seconds:.1}\nThe models of CaboCha are limited to research and personal use, and so is this file: do not distribute it.",
+        converted.part_of_speech_set.dictionary(),
+        report.chunker_features,
+        report.support_vectors,
+        report.positives,
+        report.parser_features,
+        report.kept_pairs,
+        report.all_pairs,
+        report.pairs,
+        report.unit,
         bytes.len()
     );
     Ok(())

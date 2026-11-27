@@ -459,6 +459,7 @@ fn the_command_of_a_user_does_not_train() {
         "evaluate",
         "split",
         "instances",
+        "convert-cabocha",
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"))
             .arg(subcommand)

@@ -236,19 +236,19 @@ The chunker for UniDic reads four columns through a template of 36 lines, agains
 
 ## The format
 
-Version 1. Every number is little endian. A string is its length in bytes as a `u32`, followed by its UTF-8.
+Version 2. Every number is little endian. A string is its length in bytes as a `u32`, followed by its UTF-8.
 
 | Field | Type | Content |
 | --- | --- | --- |
 | Magic number | 8 bytes | `LDMODEL` and a zero byte |
-| Version | `u32` | 1 |
+| Version | `u32` | 2 |
 | Dictionary | string | The name of the dictionary, not empty |
-| Schema | | The columns of the part of speech, of the conjugation and of the base form; the patterns of the function words, of what is not a head, of the particles and of the function words taken by their surface; the symbols |
+| Schema | | The columns of the part of speech, of the conjugation and of the base form; the patterns of the function words, of what is not a head, of the particles and of the function words taken by their surface; the symbols, with one byte for how a surface is matched against their characters (0: every character of it is one of them; 1: it is one of them, and a mark by its surface is still a word); the normalization of the surface, as the number of its rules and for each two strings, what is replaced and by what, sorted |
 | Number of parts | `u32` | |
 | For each part | `u32`, `u64`, `u64` | Its kind, its offset from the first byte of the file, its length |
 | The parts | | One after the other, in the order of the list, up to the end of the file |
 
-The kind of the chunker part is 1 and the kind of the parser part 2, in this order. A file with a part of another kind, with the same kind twice, with parts that are not one after the other, or with bytes after the last part is refused, and so is a file of another version.
+The kind of the chunker part is 1 and the kind of the parser part 2, in this order. A file with a part of another kind, with the same kind twice, with parts that are not one after the other, or with bytes after the last part is refused, and so is a file of another version. Version 1 had no rule for the surface of a mark and no normalization; it was never in a release.
 
 ### The chunker part
 

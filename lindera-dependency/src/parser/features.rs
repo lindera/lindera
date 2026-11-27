@@ -10,6 +10,7 @@
 //! the particles, the symbols. Nothing here names a part of speech or a
 //! column.
 
+use std::borrow::Cow;
 use std::fmt;
 use std::ops::Range;
 
@@ -467,7 +468,7 @@ impl Strings {
         let mut opens = false;
         let mut closes = false;
         for (index, morpheme) in morphemes.iter().enumerate() {
-            let surface = morpheme.surface();
+            let surface = schema.surface_of(morpheme);
             if schema.is_comma(morpheme) || schema.is_period(morpheme) {
                 gap.push(format!("GPUNC:{surface}"));
                 statics.push(format!("PUNC:{surface}"));
@@ -510,7 +511,7 @@ impl Strings {
         let surface = |index: usize| {
             morphemes
                 .get(index)
-                .map_or("", |morpheme| morpheme.surface())
+                .map_or(Cow::Borrowed(""), |morpheme| schema.surface_of(morpheme))
         };
         let left = vec![format!("LF:{}", surface(function))];
         let right = vec![
@@ -586,7 +587,7 @@ fn push_morpheme<M: Morpheme>(
     morpheme: &M,
     features: &mut Vec<String>,
 ) {
-    features.push(format!("{role}S:{}", morpheme.surface()));
+    features.push(format!("{role}S:{}", schema.surface_of(morpheme)));
     for (level, index) in schema.part_of_speech.clone().enumerate() {
         match morpheme.feature(index) {
             Some(value) if value != EMPTY => features.push(format!("{role}P{level}:{value}")),
@@ -653,6 +654,111 @@ mod tests {
             Group::Children => feature.starts_with("a:") || feature.starts_with("A:"),
             Group::Gap => feature.starts_with('G'),
             Group::AfterHead => feature.starts_with("SN") || feature.starts_with("DN"),
+        }
+    }
+
+    #[test]
+    fn the_surfaces_of_the_features_are_the_normalized_ones_of_the_schema() {
+        // Ａ ｦ / Ｂ （ ｦ / Ｃ ｦ / Ｄ ｦ / 本: every surface of a feature, and
+        // the bracket.
+        let noun = "名詞,一般,*,*,*,*,*";
+        let particle = "助詞,格助詞,一般,*,*,*,を,ヲ,ヲ";
+        let morphemes = vec![
+            LatticeMorpheme::new("Ａ", noun),
+            LatticeMorpheme::new("ｦ", particle),
+            LatticeMorpheme::new("Ｂ", noun),
+            LatticeMorpheme::new("（", "名詞,サ変接続,*,*,*,*,*"),
+            LatticeMorpheme::new("ｦ", particle),
+            LatticeMorpheme::new("Ｃ", noun),
+            LatticeMorpheme::new("ｦ", particle),
+            LatticeMorpheme::new("Ｄ", noun),
+            LatticeMorpheme::new("ｦ", particle),
+            LatticeMorpheme::new("本", "名詞,一般,*,*,*,*,本,ホン,ホン"),
+        ];
+        let ranges = vec![0..2, 2..5, 5..7, 7..9, 9..10];
+        // The first bunsetsu is attached to the second.
+        let mut children = no_children(5);
+        children[1].push(0);
+        let features = |schema: &Schema, source: usize, target: usize| -> Vec<String> {
+            let prepared = Prepared::new(
+                schema,
+                &FeatureSet::cabocha(),
+                &morphemes,
+                &ranges,
+                |feature| Some(feature.to_string()),
+            );
+            decision(&prepared, source, target, &children)
+        };
+        let schema = Schema {
+            normalization: crate::schema::Normalization::new(&[
+                ("Ａ", "A"),
+                ("Ｂ", "B"),
+                ("Ｃ", "C"),
+                ("Ｄ", "D"),
+                ("（", "("),
+                ("ｦ", "ヲ"),
+            ])
+            .unwrap(),
+            ..Schema::ipadic()
+        };
+        // Ｂ （ ｦ -> Ｄ ｦ, over Ｃ ｦ, with Ａ ｦ before and 本 after.
+        let normalized = features(&schema, 1, 3);
+        for feature in [
+            // The source and the target.
+            "SHS:B",
+            "SLS:B",
+            "SFS:ヲ",
+            "SRS:ヲ",
+            "SOB:(",
+            "SOB:1",
+            "SCASE:ヲ",
+            "DHS:D",
+            "DCASE:ヲ",
+            // The bunsetsu before the source, and the one attached to it.
+            "LF:ヲ",
+            "a:ヲ",
+            // The bunsetsu in between.
+            "GCASE:ヲ",
+        ] {
+            assert!(
+                normalized.iter().any(|one| one == feature),
+                "{feature}: {normalized:?}"
+            );
+        }
+        // Ａ ｦ -> Ｂ （ ｦ, with Ｃ ｦ after, and the bracket in between for
+        // Ａ ｦ -> Ｃ ｦ.
+        let first = features(&schema, 0, 1);
+        for feature in ["RL:C", "RH:C", "RF:ヲ", "DOB:("] {
+            assert!(
+                first.iter().any(|one| one == feature),
+                "{feature}: {first:?}"
+            );
+        }
+        let over = features(&schema, 0, 2);
+        assert!(over.iter().any(|one| one == "GOB:("), "{over:?}");
+        for all in [&normalized, &first, &over] {
+            assert!(
+                !all.iter()
+                    .any(|one| "ＡＢＣＤ（ｦ".chars().any(|wide| one.contains(wide))),
+                "{all:?}"
+            );
+        }
+        // Without a normalization the surfaces are as they are.
+        let plain = features(&Schema::ipadic(), 1, 3);
+        for feature in [
+            "SHS:Ｂ",
+            "SFS:ｦ",
+            "SOB:（",
+            "SCASE:ｦ",
+            "DHS:Ｄ",
+            "LF:ｦ",
+            "a:ｦ",
+            "GCASE:ｦ",
+        ] {
+            assert!(
+                plain.iter().any(|one| one == feature),
+                "{feature}: {plain:?}"
+            );
         }
     }
 

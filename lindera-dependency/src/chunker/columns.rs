@@ -115,7 +115,7 @@ impl Column {
                 .to_string()
         };
         match self {
-            Column::Surface => morpheme.surface().to_string(),
+            Column::Surface => schema.surface_of(morpheme).into_owned(),
             Column::PartOfSpeech => schema.part_of_speech_of(morpheme),
             Column::ConjugationType => feature(schema.conjugation_type),
             Column::ConjugationForm => feature(schema.conjugation_form),
@@ -226,6 +226,25 @@ mod tests {
         assert_eq!(
             rows(&schema, &columns, &[morpheme]),
             [["動詞-自立", "*", "読む"]]
+        );
+    }
+
+    #[test]
+    fn the_surface_is_the_normalized_one_of_the_schema() {
+        let schema = Schema {
+            normalization: crate::schema::Normalization::new(&[("１", "1"), ("ｶﾞ", "ガ")]).unwrap(),
+            ..Schema::ipadic()
+        };
+        let morpheme = LatticeMorpheme::new("１ｶﾞ", "名詞,数,*,*,*,*,*");
+        let columns = [Column::Surface, Column::PartOfSpeech];
+        assert_eq!(
+            rows(&schema, &columns, std::slice::from_ref(&morpheme)),
+            [["1ガ", "名詞-数"]]
+        );
+        // The schemas of this crate do not normalize.
+        assert_eq!(
+            rows(&Schema::ipadic(), &columns, &[morpheme]),
+            [["１ｶﾞ", "名詞-数"]]
         );
     }
 

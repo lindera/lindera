@@ -38,13 +38,16 @@
 //! assert!(schema.is_period(&bunsetsu[3]));
 //! ```
 
+mod normalization;
 mod pattern;
 mod symbols;
 
+use std::borrow::Cow;
 use std::ops::Range;
 
+pub use normalization::Normalization;
 pub use pattern::Pattern;
-pub use symbols::{Marks, Symbols};
+pub use symbols::{Marks, SurfaceRule, Symbols};
 
 use crate::bytes::{Reader, push_u32};
 use crate::error::{Error, Result};
@@ -115,6 +118,10 @@ pub struct Schema {
     pub lexicalized: Vec<Pattern>,
     /// How symbols, punctuation and brackets are recognized.
     pub symbols: Symbols,
+    /// What a surface is replaced by before it becomes a feature or is
+    /// matched as a mark: empty for the schemas of this crate, the table
+    /// of CaboCha for a model converted from CaboCha.
+    pub normalization: Normalization,
 }
 
 impl Schema {
@@ -187,7 +194,9 @@ impl Schema {
                 periods: Marks::new(&[&["記号", "句点"]], PERIODS),
                 open_brackets: Marks::new(&[&["記号", "括弧開"]], OPEN_BRACKETS),
                 close_brackets: Marks::new(&[&["記号", "括弧閉"]], CLOSE_BRACKETS),
+                surface: SurfaceRule::EveryCharacter,
             },
+            normalization: Normalization::default(),
         }
     }
 
@@ -278,7 +287,9 @@ impl Schema {
                 periods: Marks::new(&[&["補助記号", "句点"]], PERIODS),
                 open_brackets: Marks::new(&[&["補助記号", "括弧開"]], OPEN_BRACKETS),
                 close_brackets: Marks::new(&[&["補助記号", "括弧閉"]], CLOSE_BRACKETS),
+                surface: SurfaceRule::EveryCharacter,
             },
+            normalization: Normalization::default(),
         }
     }
 
@@ -353,6 +364,21 @@ impl Schema {
             function = head;
         }
         Some((head, function))
+    }
+
+    /// The surface of a morpheme as the chunker and the parser use it:
+    /// with [`Schema::normalization`] applied.
+    ///
+    /// # Arguments
+    ///
+    /// * `morpheme` - The morpheme.
+    ///
+    /// # Returns
+    ///
+    /// The normalized surface; the surface itself when the schema does not
+    /// normalize, or when no rule matches in it.
+    pub fn surface_of<'a, M: Morpheme>(&self, morpheme: &'a M) -> Cow<'a, str> {
+        self.normalization.apply(morpheme.surface())
     }
 
     /// Whether a morpheme of a bunsetsu is a particle: it matches one of
@@ -544,7 +570,7 @@ impl Schema {
     ///
     /// The columns, then the function word patterns, the patterns of what
     /// is not a head, the particles, the function words taken by their
-    /// surface, and the symbols.
+    /// surface, the symbols, and the normalization.
     ///
     /// # Arguments
     ///
@@ -568,6 +594,7 @@ impl Schema {
             }
         }
         self.symbols.write(bytes);
+        self.normalization.write(bytes);
     }
 
     /// Reads a schema from the bytes of a model.
@@ -611,6 +638,7 @@ impl Schema {
             particles,
             lexicalized,
             symbols: Symbols::read(reader)?,
+            normalization: Normalization::read(reader)?,
         })
     }
 }
