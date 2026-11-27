@@ -20,6 +20,13 @@
 //!    symbol becomes the head.
 //! 3. A head after the function word becomes the function word too.
 //!
+//! That is [`HeadRule::FunctionWordsApart`], the rule of the schemas of this
+//! crate and of CaboCha for IPA. A model converted from CaboCha's for JUMAN
+//! has [`HeadRule::LastWords`] in [`Schema::head_rule`]: the function word
+//! is the last morpheme that is not a symbol, and the head the last one
+//! that is neither a symbol nor one of [`Schema::not_heads`]. One morpheme
+//! can be both, and nothing is moved afterwards.
+//!
 //! # Examples
 //!
 //! ```
@@ -86,6 +93,51 @@ const OTHER_SYMBOLS: &str = concat!(
     "・…‥―—–‐〜※♪★☆○●◎◇◆□■△▲▽▼→←↑↓≠",
 );
 
+/// How [`Schema::positions`] finds the head word and the function word of
+/// a bunsetsu: the two forms `findHead` of CaboCha has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HeadRule {
+    /// A morpheme that matches one of [`Schema::function_words`] is the
+    /// function word, and is not the head; a morpheme that matches none of
+    /// them, none of [`Schema::not_heads`], and is not a symbol is the
+    /// head. The last of each is taken, and a head after the function word
+    /// becomes the function word too. The rule of the schemas of this
+    /// crate, and CaboCha's for IPA and for UniDic.
+    #[default]
+    FunctionWordsApart,
+    /// The function word is the last morpheme that is not a symbol, and the
+    /// head the last morpheme that is neither a symbol nor one of
+    /// [`Schema::not_heads`]. The two are found apart: one morpheme can be
+    /// both, as the noun of a bunsetsu of one noun, and nothing is moved
+    /// afterwards. [`Schema::function_words`] is not read. CaboCha's rule
+    /// for JUMAN, whose function word is the last morpheme that is not a
+    /// 特殊, and whose head is the last that is not a 特殊, a 助詞 or a
+    /// 接尾辞.
+    LastWords,
+}
+
+impl HeadRule {
+    /// The two rules with their codes in a model file.
+    const ALL: [(HeadRule, u8); 2] = [(HeadRule::FunctionWordsApart, 0), (HeadRule::LastWords, 1)];
+
+    /// The code of the rule in the bytes of a model.
+    fn code(self) -> u8 {
+        Self::ALL
+            .iter()
+            .find(|(rule, _)| *rule == self)
+            .map_or(0, |(_, code)| *code)
+    }
+
+    /// The rule of a code, or the error of a code that is not one.
+    fn from_code(code: u8) -> Result<Self> {
+        Self::ALL
+            .iter()
+            .find(|(_, one)| *one == code)
+            .map(|(rule, _)| *rule)
+            .ok_or_else(|| Error::Schema(format!("{code} is not the code of a rule of the head")))
+    }
+}
+
 /// What is known about a dictionary: which feature columns hold the part of
 /// speech, the conjugation and the base form, which morphemes are function
 /// words, which are not heads, and which are symbols.
@@ -122,6 +174,8 @@ pub struct Schema {
     /// matched as a mark: empty for the schemas of this crate, the table
     /// of CaboCha for a model converted from CaboCha.
     pub normalization: Normalization,
+    /// How the head word and the function word of a bunsetsu are found.
+    pub head_rule: HeadRule,
 }
 
 impl Schema {
@@ -197,6 +251,7 @@ impl Schema {
                 surface: SurfaceRule::EveryCharacter,
             },
             normalization: Normalization::default(),
+            head_rule: HeadRule::FunctionWordsApart,
         }
     }
 
@@ -290,6 +345,7 @@ impl Schema {
                 surface: SurfaceRule::EveryCharacter,
             },
             normalization: Normalization::default(),
+            head_rule: HeadRule::FunctionWordsApart,
         }
     }
 
@@ -354,12 +410,26 @@ impl Schema {
                     .iter()
                     .any(|one| one.matches(self, bunsetsu, index))
             };
-            if matches(&self.function_words) {
-                function = index;
-            } else if !matches(&self.not_heads) && !self.is_symbol(morpheme) {
-                head = index;
+            match self.head_rule {
+                HeadRule::FunctionWordsApart => {
+                    if matches(&self.function_words) {
+                        function = index;
+                    } else if !matches(&self.not_heads) && !self.is_symbol(morpheme) {
+                        head = index;
+                    }
+                }
+                HeadRule::LastWords => {
+                    if !self.is_symbol(morpheme) {
+                        function = index;
+                        if !matches(&self.not_heads) {
+                            head = index;
+                        }
+                    }
+                }
             }
         }
+        // With `LastWords` a head is never after the function word: the
+        // morpheme that becomes the head has just become the function word.
         if head > function {
             function = head;
         }
@@ -570,7 +640,7 @@ impl Schema {
     ///
     /// The columns, then the function word patterns, the patterns of what
     /// is not a head, the particles, the function words taken by their
-    /// surface, the symbols, and the normalization.
+    /// surface, the symbols, the normalization, and the rule of the head.
     ///
     /// # Arguments
     ///
@@ -595,6 +665,7 @@ impl Schema {
         }
         self.symbols.write(bytes);
         self.normalization.write(bytes);
+        bytes.push(self.head_rule.code());
     }
 
     /// Reads a schema from the bytes of a model.
@@ -639,6 +710,7 @@ impl Schema {
             lexicalized,
             symbols: Symbols::read(reader)?,
             normalization: Normalization::read(reader)?,
+            head_rule: HeadRule::from_code(reader.u8()?)?,
         })
     }
 }
@@ -1136,6 +1208,103 @@ mod tests {
         for name in ["", "IPADIC", "ipadic-neologd", "ko-dic", "unidic-"] {
             assert_eq!(Schema::for_dictionary(name), None, "{name}");
         }
+    }
+
+    /// A schema with the rule of the last words: two levels of the part
+    /// of speech, 特殊 as the symbols, and 助詞 and 接尾辞 as what is not a
+    /// head. The rule CaboCha has for JUMAN.
+    fn last_words() -> Schema {
+        Schema {
+            part_of_speech: 0..2,
+            not_heads: vec![Pattern::new(&["助詞"]), Pattern::new(&["接尾辞"])],
+            symbols: Symbols {
+                others: Marks::new(&[&["特殊"]], ""),
+                surface: SurfaceRule::OneCharacter,
+                ..Symbols::default()
+            },
+            head_rule: HeadRule::LastWords,
+            ..Schema::default()
+        }
+    }
+
+    #[test]
+    fn with_the_rule_of_the_last_words_the_two_positions_are_found_apart() {
+        const NOUN: (&str, &str) = ("本", "名詞,普通名詞,*,*,本,ほん,*");
+        const PARTICLE: (&str, &str) = ("を", "助詞,格助詞,*,*,を,を,*");
+        const VERB: (&str, &str) = ("読んで", "動詞,*,子音動詞マ行,タ系連用テ形,読む,よんで,*");
+        const SUFFIX: (&str, &str) = ("いる", "接尾辞,動詞性接尾辞,母音動詞,基本形,いる,いる,*");
+        const PERIOD: (&str, &str) = ("。", "特殊,句点,*,*,。,。,*");
+        const BRACKET: (&str, &str) = ("「", "特殊,括弧始,*,*,「,「,*");
+        let schema = last_words();
+        let positions = |pairs: &[(&str, &str)]| schema.positions(&morphemes(pairs)).unwrap();
+        // One word is the head and the function word.
+        assert_eq!(positions(&[NOUN]), (0, 0));
+        // A particle and a suffix are function words, and not heads.
+        assert_eq!(positions(&[NOUN, PARTICLE]), (0, 1));
+        assert_eq!(positions(&[VERB, SUFFIX]), (0, 1));
+        assert_eq!(positions(&[VERB, SUFFIX, PARTICLE]), (0, 2));
+        // The last word that is not a symbol is the function word, a head
+        // or not: nothing is moved to it, and it is moved to nothing.
+        assert_eq!(positions(&[NOUN, PARTICLE, NOUN]), (2, 2));
+        assert_eq!(positions(&[SUFFIX, NOUN, PARTICLE, PARTICLE]), (1, 3));
+        // A symbol is neither.
+        assert_eq!(positions(&[VERB, SUFFIX, PERIOD]), (0, 1));
+        assert_eq!(positions(&[BRACKET, NOUN, PERIOD]), (1, 1));
+        // Without a word that can be one, each stays at the first morpheme.
+        assert_eq!(positions(&[PERIOD]), (0, 0));
+        assert_eq!(positions(&[BRACKET, PERIOD]), (0, 0));
+        assert_eq!(positions(&[PARTICLE]), (0, 0));
+        assert_eq!(positions(&[BRACKET, PARTICLE]), (0, 1));
+        assert_eq!(schema.positions::<LatticeMorpheme>(&[]), None);
+
+        // The patterns of the function words are not read by this rule.
+        let with_patterns = Schema {
+            function_words: vec![Pattern::new(&["名詞"])],
+            ..last_words()
+        };
+        assert_eq!(
+            with_patterns.positions(&morphemes(&[NOUN, PARTICLE])),
+            Some((0, 1))
+        );
+        // The other rule, with the same patterns, has no function word
+        // here: both positions are at the head.
+        let apart = Schema {
+            head_rule: HeadRule::FunctionWordsApart,
+            ..last_words()
+        };
+        assert_eq!(apart.positions(&morphemes(&[NOUN, PARTICLE])), Some((0, 0)));
+        assert_eq!(apart.positions(&morphemes(&[VERB, SUFFIX])), Some((0, 0)));
+    }
+
+    #[test]
+    fn the_rule_of_the_head_comes_back_from_the_bytes() {
+        assert_eq!(Schema::default().head_rule, HeadRule::FunctionWordsApart);
+        assert_eq!(Schema::ipadic().head_rule, HeadRule::FunctionWordsApart);
+        assert_eq!(Schema::unidic().head_rule, HeadRule::FunctionWordsApart);
+        for (rule, code) in HeadRule::ALL {
+            assert_eq!(rule.code(), code);
+            assert_eq!(HeadRule::from_code(code).unwrap(), rule);
+            let schema = Schema {
+                head_rule: rule,
+                ..last_words()
+            };
+            let mut bytes = Vec::new();
+            schema.write(&mut bytes);
+            // The rule is the last byte of a schema.
+            assert_eq!(bytes.last(), Some(&code));
+            let mut reader = Reader::new(&bytes, "test bytes", Error::Chunker);
+            assert_eq!(Schema::read(&mut reader).unwrap(), schema);
+            assert_eq!(reader.remaining(), 0);
+        }
+        // A byte that is not a rule is refused.
+        let mut bytes = Vec::new();
+        last_words().write(&mut bytes);
+        *bytes.last_mut().unwrap() = 2;
+        let mut reader = Reader::new(&bytes, "test bytes", Error::Chunker);
+        assert_eq!(
+            Schema::read(&mut reader).unwrap_err().to_string(),
+            "2 is not the code of a rule of the head"
+        );
     }
 
     #[test]

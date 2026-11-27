@@ -6,6 +6,8 @@ It has JUMAN's parts of speech (名詞,普通名詞; 動詞; 判定詞; 接尾�
 
 The source is taken from the repository of MeCab ([taku910/mecab](https://github.com/taku910/mecab), `mecab-jumandic/`), under a 3-clause BSD license. It is the dictionary the released archive of that version holds, file for file.
 
+It is also the dictionary of the model CaboCha distributes for JUMAN, which `lindera-dependency` [converts](./lindera-dependency/cabocha_models.md) into a model for bunsetsu dependency analysis.
+
 ## Contents
 
 - [Dictionary Format](./lindera-jumandic/dictionary_format.md) -- Field definitions for system and user dictionaries

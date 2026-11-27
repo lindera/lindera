@@ -25,9 +25,13 @@
 //!
 //! # Which models
 //!
-//! The models for the part-of-speech set of IPA, in UTF-8. The models for
-//! JUMAN and for UniDic are refused: their rule for the head of a bunsetsu
-//! and their columns are other ones.
+//! The models for the part-of-speech sets of IPA and of JUMAN, in UTF-8:
+//! `chunk.ipa.txt` with `dep.ipa.txt`, for the morphemes of IPADIC, and
+//! `chunk.juman.txt` with `dep.juman.txt`, for those of the JUMAN
+//! dictionary (`jumandic`). The set is read in the header of the parser
+//! model; the chunker model does not say which it is for, so the two files
+//! have to be given as a pair. The models for UniDic are refused: their
+//! columns are other ones.
 //!
 //! # Examples
 //!
@@ -52,7 +56,7 @@ use crate::chunker::{ChunkerModel, Column, Template};
 use crate::error::{Error, Result};
 use crate::model::ModelBuilder;
 use crate::parser::{FeatureSet, PairWeights, ParserModel, Quantization};
-use crate::schema::{Marks, Normalization, Pattern, Schema, SurfaceRule, Symbols};
+use crate::schema::{HeadRule, Marks, Normalization, Pattern, Schema, SurfaceRule, Symbols};
 
 /// The table of `src/normalizer.rule` of CaboCha: a line is what is
 /// replaced, a tab, and what it is replaced by.
@@ -65,6 +69,8 @@ const NORMALIZER_RULE: &str = include_str!("cabocha/normalizer.rule");
 pub enum PartOfSpeechSet {
     /// The set of IPADIC: `IPA`.
     Ipa,
+    /// The set of the JUMAN dictionary: `JUMAN`.
+    Juman,
 }
 
 impl PartOfSpeechSet {
@@ -72,17 +78,18 @@ impl PartOfSpeechSet {
     ///
     /// # Arguments
     ///
-    /// * `name` - The value of `posset`: `IPA`.
+    /// * `name` - The value of `posset`: `IPA` or `JUMAN`.
     ///
     /// # Returns
     ///
-    /// The set, or [`Error::Cabocha`] for `JUMAN` and `UNIDIC`, which are
-    /// not supported, and for any other name.
+    /// The set, or [`Error::Cabocha`] for `UNIDIC`, which is not
+    /// supported, and for any other name.
     pub fn from_name(name: &str) -> Result<Self> {
         match name {
             "IPA" => Ok(PartOfSpeechSet::Ipa),
-            "JUMAN" | "UNIDIC" => Err(Error::Cabocha(format!(
-                "the model is for the part-of-speech set {name}, which is not supported: only the models for IPA are converted"
+            "JUMAN" => Ok(PartOfSpeechSet::Juman),
+            "UNIDIC" => Err(Error::Cabocha(format!(
+                "the model is for the part-of-speech set {name}, which is not supported: only the models for IPA and for JUMAN are converted"
             ))),
             other => Err(Error::Cabocha(format!(
                 "the model is for the part-of-speech set {other:?}, which is not one of CaboCha"
@@ -95,10 +102,12 @@ impl PartOfSpeechSet {
     ///
     /// # Returns
     ///
-    /// `ipadic` for [`PartOfSpeechSet::Ipa`].
+    /// `ipadic` for [`PartOfSpeechSet::Ipa`], and `jumandic` for
+    /// [`PartOfSpeechSet::Juman`].
     pub fn dictionary(self) -> &'static str {
         match self {
             PartOfSpeechSet::Ipa => "ipadic",
+            PartOfSpeechSet::Juman => "jumandic",
         }
     }
 }
@@ -216,6 +225,13 @@ pub fn normalization() -> Normalization {
 /// [`Schema::ipadic`], which has more patterns, for the bunsetsu of UD
 /// Japanese-GSD.
 ///
+/// For JUMAN: two levels of the part of speech, then the conjugation type,
+/// the conjugation form and the base form, as mecab-jumandic has them. The
+/// function word is the last morpheme that is not a 特殊, and the head the
+/// last that is not a 特殊, a 助詞 or a 接尾辞
+/// ([`HeadRule::LastWords`]); the punctuation, the brackets and the
+/// normalization are those of IPA.
+///
 /// # Arguments
 ///
 /// * `part_of_speech_set` - The set.
@@ -255,6 +271,32 @@ pub fn schema(part_of_speech_set: PartOfSpeechSet) -> Schema {
                 surface: SurfaceRule::OneCharacter,
             },
             normalization: normalization(),
+            head_rule: HeadRule::FunctionWordsApart,
+        },
+        PartOfSpeechSet::Juman => Schema {
+            part_of_speech: 0..2,
+            conjugation_type: Some(2),
+            conjugation_form: Some(3),
+            base_form: Some(4),
+            function_words: Vec::new(),
+            not_heads: vec![Pattern::new(&["助詞"]), Pattern::new(&["接尾辞"])],
+            particles: vec![Pattern::new(&["助詞"])],
+            lexicalized: vec![
+                Pattern::new(&["助詞"]),
+                Pattern::new(&["副詞"]),
+                Pattern::new(&["連体詞"]),
+                Pattern::new(&["接続詞"]),
+            ],
+            symbols: Symbols {
+                others: Marks::new(&[&["特殊"]], ""),
+                commas: Marks::new(&[], "、"),
+                periods: Marks::new(&[], "。"),
+                open_brackets: Marks::new(&[], "(（‘“《「『［〈｛"),
+                close_brackets: Marks::new(&[], ")）’”》」』］〉｝"),
+                surface: SurfaceRule::OneCharacter,
+            },
+            normalization: normalization(),
+            head_rule: HeadRule::LastWords,
         },
     }
 }
@@ -290,7 +332,7 @@ fn check_header(model: &svm::SvmModel, key: &str, accepted: &[&str]) -> Result<(
 /// # Returns
 ///
 /// The converted model, or [`Error::Cabocha`] for files that are not the
-/// two text models of CaboCha, for a model that is not for IPA in UTF-8
+/// two text models of CaboCha, for a model that is not for IPA or JUMAN in UTF-8
 /// with a kernel of degree 2, or for options that are not ones: a `sigma`
 /// that is not a finite number of 0 or more.
 pub fn convert(chunker: &str, parser: &str, options: &Options) -> Result<Converted> {
@@ -581,7 +623,65 @@ mod tests {
     }
 
     #[test]
-    fn refuses_what_is_not_a_model_for_ipa() {
+    fn a_model_for_juman_is_converted_with_the_schema_of_juman() {
+        // The chunker starts a bunsetsu at a verb or a noun after a
+        // particle, and at a noun after a suffix: its second column is the
+        // two levels of the part of speech of JUMAN, and the one level of
+        // a verb, whose second is `*`.
+        let chunker = "version: 100\ncost-factor: 1\nmaxid: 10\nxsize: 2\n\nB\nI\n\nU00:%x[0,0]\nU01:%x[-1,1]/%x[0,1]\nB\n\n0 B\n4 U01:助詞-格助詞/動詞\n6 U01:助詞-格助詞/名詞-普通名詞\n8 U01:接尾辞-動詞性接尾辞/名詞-普通名詞\n\n-1\n1\n-1\n1\n5\n-5\n5\n-5\n5\n-5\n";
+        // The parser knows the conjugation form of the function word of
+        // the source: a bunsetsu whose function word is in 基本形 depends
+        // on the next one.
+        let parser = "degree: 2\nbias: 0.000000\ncharset: UTF8\nposset: JUMAN\n\n0 SFF:基本形\n1 DIST:1\n\n1 0\n-0.25 1\n";
+        let converted = convert(chunker, parser, &svm::tests::unpruned()).unwrap();
+        assert_eq!(converted.part_of_speech_set, PartOfSpeechSet::Juman);
+        let juman = schema(PartOfSpeechSet::Juman);
+        assert_eq!(juman.part_of_speech, 0..2);
+        assert_eq!(juman.conjugation_form, Some(3));
+        assert_eq!(juman.head_rule, HeadRule::LastWords);
+        assert_eq!(converted.parser.schema(), &juman);
+        assert_ne!(juman, schema(PartOfSpeechSet::Ipa));
+
+        let model = Model::new(converted.to_bytes().unwrap()).unwrap();
+        assert_eq!(model.dictionary(), "jumandic");
+        assert_eq!(model.schema(), &juman);
+        // 彼 が / 読んで いる / 本 を / 買う 。 with the lines of
+        // mecab-jumandic.
+        let sentence = vec![
+            LatticeMorpheme::new("彼", "名詞,普通名詞,*,*,彼,かれ,*"),
+            LatticeMorpheme::new("が", "助詞,格助詞,*,*,が,が,*"),
+            LatticeMorpheme::new("読んで", "動詞,*,子音動詞マ行,タ系連用テ形,読む,よんで,*"),
+            LatticeMorpheme::new("いる", "接尾辞,動詞性接尾辞,母音動詞,基本形,いる,いる,*"),
+            LatticeMorpheme::new("本", "名詞,普通名詞,*,*,本,ほん,*"),
+            LatticeMorpheme::new("を", "助詞,格助詞,*,*,を,を,*"),
+            LatticeMorpheme::new("買う", "動詞,*,子音動詞ワ行,基本形,買う,かう,*"),
+            LatticeMorpheme::new("。", "特殊,句点,*,*,。,。,*"),
+        ];
+        let bunsetsu = model.analyze(&sentence).unwrap();
+        let ranges: Vec<_> = bunsetsu.iter().map(|one| one.morphemes.clone()).collect();
+        assert_eq!(ranges, [0..2, 2..4, 4..6, 6..8]);
+        // The suffix is the function word of 読んで いる, and the verb its
+        // head; the period is neither of 買う 。.
+        let positions: Vec<_> = bunsetsu.iter().map(|one| one.positions).collect();
+        assert_eq!(
+            positions,
+            [Some((0, 1)), Some((0, 1)), Some((0, 1)), Some((0, 0))]
+        );
+        // 読んで いる ends in 基本形, the fourth column of its function
+        // word, and depends on the next bunsetsu, 本 を: without that
+        // feature the score of the decision is 0, and it would not. 彼 が
+        // then depends on 本 を too: a decision at a distance the model
+        // does not know has the score of no feature, 0.75.
+        let heads: Vec<Option<usize>> = bunsetsu.iter().map(|one| one.head).collect();
+        assert_eq!(heads, [Some(2), Some(2), Some(3), None]);
+        // (1 + 1)^2 for the vector with the form, and -0.25 (1 + 1)^2 for
+        // the one with the distance.
+        let score = bunsetsu[1].score.unwrap();
+        assert!((score - 3.0).abs() < 1e-6, "{score}");
+    }
+
+    #[test]
+    fn refuses_what_is_not_a_model_it_converts() {
         let chunker = crfpp::tests::MODEL;
         let parser = svm::tests::MODEL;
         let message = |chunker: &str, parser: &str, options: &Options| {
@@ -589,10 +689,6 @@ mod tests {
         };
         let options = Options::default();
         for (parser, expected) in [
-            (
-                parser.replace("posset: IPA", "posset: JUMAN"),
-                "the part-of-speech set JUMAN, which is not supported",
-            ),
             (
                 parser.replace("posset: IPA", "posset: UNIDIC"),
                 "the part-of-speech set UNIDIC, which is not supported",
@@ -647,5 +743,6 @@ mod tests {
             }
         );
         assert_eq!(PartOfSpeechSet::Ipa.dictionary(), "ipadic");
+        assert_eq!(PartOfSpeechSet::Juman.dictionary(), "jumandic");
     }
 }

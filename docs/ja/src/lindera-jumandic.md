@@ -6,6 +6,8 @@ Lindera JUMAN 辞書（`lindera-jumandic`）は、mecab-jumandic 7.0-20130310 �
 
 ソースは、MeCab のリポジトリ（[taku910/mecab](https://github.com/taku910/mecab) の `mecab-jumandic/`）から取得します。ライセンスは 3 条項 BSD です。同じ版の公式の配布物と、ファイル単位で同じ辞書です。
 
+CaboCha が配布する JUMAN のモデルの辞書でもあります。`lindera-dependency` は、そのモデルを、文節の係り受け解析のモデルに[変換できます](./lindera-dependency/cabocha_models.md)。
+
 ## 目次
 
 - [辞書フォーマット](./lindera-jumandic/dictionary_format.md) -- システム辞書およびユーザー辞書のフィールド定義

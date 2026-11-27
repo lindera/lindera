@@ -195,15 +195,15 @@
 - **区切りの重みは、32 ビットの浮動小数点の値にする**。CaboCha が読むコンパイル済みのモデルで、CRF++ がそう持つためである。
 - **測った結果**（`cabocha_models.sh`）: UD Japanese-GSD と PUD の 9,066 文の Lindera の形態素で、文節、係り先、主辞と機能語が、すべての文で CaboCha 0.69 と同じ。点数も小数 6 桁まで同じ。残る対は 10,141,653 のうち 3,727,492、ファイルは 51.8 MB、変換は 3.6 秒。テキストからだと、形態素が MeCab と同じになる文は 91%〜98% で、残りは辞書に無いカタカナの語のところで違う。
 - **CaboCha より遅い**: 7,024 文で 3.03 秒（CaboCha は 0.92 秒）。CaboCha は、頻度の高い素性どうしの対を密な表で持つ。モデルファイルは、どの対も、素性ごとに整列した対の中から探す。
-- **済んでいないこと**: JUMAN（先に [#1466](https://github.com/lindera/lindera/issues/1466)）と UniDic のモデル。JUMAN には、機能語を主辞に合わせる補正の無い主辞の規則と、否定のパターンが要る。UniDic には、品詞の段数を 2 通り持つことが要る。
+- **JUMAN のモデル**には、`Schema` にもう 1 つ要った。主辞の規則の形を表す `HeadRule` である。CaboCha は、JUMAN の機能語を「特殊でない最後の形態素」として決め、主辞はそれとは別に決め、最後の補正をしない。`LastWords` がこの形で、このクレートのスキーマは、もう一方の形のままである。パターンに否定を足して補正の有無をフラグにする形ではなく、列挙にした。使う場所が 1 つなので、足すものを 1 つにした。この 1 バイトのために、モデルファイルの版を 3 にした。測った結果: 9,100 文の MeCab と mecab-jumandic の形態素で、すべてが CaboCha と同じで、点数も小数 6 桁まで同じ。残る対は 10,578,633 のうち 3,687,535、ファイルは 52.0 MB、変換は 4.0 秒。テキストからだと、Lindera の JUMAN 辞書の形態素が MeCab と同じになる文は、ファイルごとに 99.61%〜100%。
+- **済んでいないこと**: UniDic のモデル。品詞の段数を 2 通り持つことが要る。
 
 ## これからの部分
 
 | 部分 | メモ | Issue |
 | --- | --- | --- |
 | IPADIC のモデル | 完了。リリースのたびに、モデルを作り、測り、公開する。クレートも一緒に公開する。両方が入る最初のリリースは 7.1.0。 | [#1440](https://github.com/lindera/lindera/issues/1440) |
-| CaboCha の JUMAN と UniDic のモデル | IPA のモデルは変換できる。JUMAN には、辞書（[#1466](https://github.com/lindera/lindera/issues/1466)）と、主辞の規則をデータにすることが要る。UniDic は、先に Lindera の UniDic の形態素と合うかを確かめる。 | [#1442](https://github.com/lindera/lindera/issues/1442) |
-| JUMAN の辞書 | `mecab-jumandic` を Lindera の辞書にする。 | [#1466](https://github.com/lindera/lindera/issues/1466) |
+| CaboCha の UniDic のモデル | IPA と JUMAN のモデルは変換できる。UniDic は、先に Lindera の UniDic の形態素と合うかを確かめる。 | [#1442](https://github.com/lindera/lindera/issues/1442) |
 | J.DepP の区切り | 条件付き確率場に対してどこで勝っているか、ここの区切りが同じだけ良くなるか。 | [#1464](https://github.com/lindera/lindera/issues/1464) |
 
 ### 未決の問い
@@ -394,8 +394,8 @@ level 1 は、各文の最後を除く文節のうち、係り先が正しいも
 | [#1439](https://github.com/lindera/lindera/issues/1439) | コマンド | 済み |
 | [#1440](https://github.com/lindera/lindera/issues/1440) | IPADIC のモデルと、クレートの公開 | 未着手 |
 | [#1441](https://github.com/lindera/lindera/issues/1441) | UniDic のスキーマとモデル | 済み |
-| [#1442](https://github.com/lindera/lindera/issues/1442) | CaboCha のモデルの変換器 | IPA のモデルは済み。JUMAN と UniDic は未着手 |
-| [#1466](https://github.com/lindera/lindera/issues/1466) | mecab-jumandic から作る JUMAN の辞書 | 未着手 |
+| [#1442](https://github.com/lindera/lindera/issues/1442) | CaboCha のモデルの変換器 | IPA と JUMAN のモデルは済み。UniDic は未着手 |
+| [#1466](https://github.com/lindera/lindera/issues/1466) | mecab-jumandic から作る JUMAN の辞書 | 済み |
 | [#1464](https://github.com/lindera/lindera/issues/1464) | J.DepP の区切りがどこで勝っているか、ここの区切りが同じだけ良くなるか | 未着手 |
 
 ## 参考
