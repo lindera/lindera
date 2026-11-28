@@ -104,7 +104,7 @@ assert_eq!(model.dictionary(), "ipadic");
 
 このプロジェクトは、IPADIC のモデルを学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが [`build_model.sh`](#作り直す) でモデルを作り、その版のページに、辞書と並べて置きます。`v<version>` の `lindera-dependency-ipadic-<version>.zip` です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。
 
-[`lindera download dependency-ipadic`](../lindera-cli/commands.md#係り受け解析のモデルのダウンロード) が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。
+[`lindera dependency download ipadic`](../lindera-cli/commands.md#係り受け解析のモデルのダウンロード) が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。
 
 アーカイブには、ディレクトリ `lindera-dependency-ipadic` が 1 つ入っていて、中にファイルが 3 つあります。
 
@@ -210,7 +210,7 @@ Lindera のリリースは、7.1.0 から、3 つの UniDic の辞書のモデ�
 | | |
 | --- | --- |
 | アーカイブ | `lindera-dependency-unidic-<version>.zip`、`lindera-dependency-unidic-cwj-<version>.zip`、`lindera-dependency-unidic-csj-<version>.zip`。どれも、同じ 3 つのファイルを持つディレクトリが 1 つ入っている |
-| ダウンロード | `lindera download dependency-unidic`、`dependency-unidic-cwj`、`dependency-unidic-csj` |
+| ダウンロード | `lindera dependency download unidic`、`unidic-cwj`、`unidic-csj` |
 | 埋め込み | `lindera-dependency` の `embed-model-unidic`、`embed-model-unidic-cwj`、`embed-model-unidic-csj`。`embed-dependency-unidic` などとして転送される。モデルは `embedded://unidic`、`embedded://unidic-cwj`、`embedded://unidic-csj` で指す |
 | リポジトリからのビルドで使うファイル | [`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file)、`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE`、`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE` |
 | 作り直す | [`build_model.sh --dictionary <name>`](#作り直す)。辞書のディレクトリは `--dict` で渡す |

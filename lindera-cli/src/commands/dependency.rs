@@ -34,6 +34,7 @@
 //! The command was the binary of the `lindera-dependency` crate before
 //! 7.1.0 was released (#1482); the crate is a library only.
 
+mod models;
 mod parse;
 #[cfg(feature = "train")]
 mod train;
@@ -71,6 +72,10 @@ enum Command {
     Parse(parse::ParseArgs),
     /// Segments the morphemes of a file into bunsetsu with a model.
     Chunk(parse::ChunkArgs),
+    /// Downloads the model for a dictionary.
+    Download(models::DownloadArgs),
+    /// Lists the models in place and those embedded in the binary.
+    List(models::ListArgs),
     /// Makes training data in the lattice format from a dependency corpus.
     #[cfg(feature = "train")]
     Convert(train::ConvertArgs),
@@ -176,6 +181,10 @@ fn read_model(model: &str) -> Result<Cow<'static, [u8]>, CommandError> {
 /// `Ok(())` once the subcommand has written its output, or its first error.
 pub fn dependency(args: DependencyArgs) -> LinderaResult<()> {
     let result = match args.command {
+        // The two that share their code with `lindera download` and
+        // `lindera list` return a `LinderaError` already.
+        Command::Download(args) => return models::download(args),
+        Command::List(args) => return models::list(args),
         Command::Parse(args) => parse::parse(args),
         Command::Chunk(args) => parse::chunk(args),
         #[cfg(feature = "train")]

@@ -27,7 +27,7 @@ Lindera CLI は7つのメインコマンドを提供します：
 
 - `tokenize`・`list`・`download` は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。`tokenize` は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。
 - `train`・`export` は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。
-- `dependency parse` と `dependency evaluate` は結果を標準出力に書き、`tokenize` と同じく、読み手のいない最初の書き込みで止まります。`dependency` のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。
+- `dependency parse`・`dependency evaluate`・`dependency list`・`dependency download` は結果を標準出力に書き、`tokenize` と同じく、読み手のいない最初の書き込みで止まります。`dependency` のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。
 
 標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（`download` の進捗や通知、`list` の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。
 
@@ -61,23 +61,9 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 - `STATUS` は `ok`、必要なファイルが欠けている場合は `incomplete`（`lindera download <name> --force` で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では `other version`（ダウンロードできる辞書なら `lindera download <name>` で置き換わります）になります。
 - `DICT` は `--dict` に渡す値です。
 
+同じディレクトリにインストールされる係り受け解析のモデルは、この表には出ません。[`lindera dependency list`](#係り受け解析のモデル) が表示します。
+
 メッセージは標準エラー出力に出ます。上の例の `6.2.0/`（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように `metadata.json` も `model.json` もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、`lindera download` の案内を出します。名前が `.` で始まる項目は、メッセージなしで飛ばします。
-
-### 係り受け解析のモデル
-
-[係り受け解析](../lindera-dependency/token_filter.md)のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ `embed-dependency-ipadic` と、`embed-dependency-unidic`・`embed-dependency-unidic-cwj`・`embed-dependency-unidic-csj`）と、`lindera download dependency-ipadic` などがインストールしたモデル（`model.json` のあるサブディレクトリ）です。
-
-```text
-NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-
-NAME               VERSION  STATUS  MODEL
-dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-```
-
-- `VERSION` は、そのモデルをビルドした Lindera のバージョン（`model.json` の `lindera_version`）です。埋め込みのモデルはバージョンの記録を持たないので、`unknown` になります。
-- `STATUS` は辞書と同じで、`ok`、`incomplete`、`other version` のどれかです。`other version` のモデルは、`lindera download dependency-ipadic` で置き換わります。
-- `MODEL` は、トークンフィルター `japanese_dependency` の `model` に渡す値です。モデルファイルか、`embedded://ipadic` になります。
 
 ## tokenize
 
@@ -929,12 +915,12 @@ UTF-8 以外の文字コードでは、その文字コードの文字になら�
 
 ## download
 
-CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。同じコマンドで、リリースが辞書と並べて公開する、係り受け解析のモデルも取得できます。[係り受け解析のモデルのダウンロード](#係り受け解析のモデルのダウンロード)を見てください。
+CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。リリースが辞書と並べて公開する、係り受け解析のモデルは、`lindera dependency download` で取得します。[係り受け解析のモデルのダウンロード](#係り受け解析のモデルのダウンロード)を見てください。
 
 ### download パラメータ
 
-- 名前（必須）: 辞書なら `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか。係り受け解析のモデルなら `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj` のいずれか。その名前の辞書用のモデル
-- `--force`: CLI のバージョンがビルドした辞書やモデルでも、再ダウンロードして置き換える
+- 名前（必須）: 辞書の名前。`ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
+- `--force`: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える
 
 ### 保存場所
 
@@ -966,36 +952,6 @@ Downloaded dictionary 'ipadic'
 - アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。
 - 整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。
 - 最大の辞書（`ipadic-neologd`）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。
-
-### 係り受け解析のモデルのダウンロード
-
-`lindera download dependency-ipadic` は、トークンフィルター `japanese_dependency` の [IPADIC のモデル](../lindera-dependency/model_file.md#ipadic-のモデル)を取得します。CLI のバージョンのリリースのページにある `lindera-dependency-ipadic-<version>.zip` で、7.1.0 以降のリリースにあります。辞書と並べて `<辞書ディレクトリ>/dependency-ipadic/` にインストールし、その中のモデルファイルのパスを表示します。フィルターの `model` に渡す値です。`dependency-unidic`・`dependency-unidic-cwj`・`dependency-unidic-csj` は、同じやり方で [UniDic のモデル](../lindera-dependency/model_file.md#unidic-のモデル)を取得します。
-
-```shell
-% MODEL=$(lindera download dependency-ipadic)
-% DICT_DIR=$(lindera download ipadic)
-% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
-    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
-```
-
-ディレクトリには、`dependency.model`、`model.json`、モデルのライセンスを書いた `NOTICE.txt` が入ります。すでに置いてあるモデルは、`model.json` の `lindera_version` が CLI のバージョンと同じならそのまま使い、違えば置き換えます。辞書と同じ扱いです。モデルがすでにある場合は、次のようになります。
-
-```shell
-% lindera download dependency-ipadic
-```
-
-```text
-Model 'dependency-ipadic' is already downloaded; use --force to re-download it
-/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-```
-
-リリースが無いバージョンや、7.1.0 より前のリリースには、ダウンロードできるモデルがありません。
-
-```text
-Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
-```
-
-フィルターを使うには、`dependency` feature を付けてビルドした CLI が必要です。モデルは IPADIC 用なので、IPADIC と一緒に使います。
 
 ## train
 
@@ -1208,6 +1164,8 @@ lindera dependency <SUBCOMMAND>
 | --- | --- | --- |
 | `parse` | テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く | [コマンドライン](../lindera-dependency/command_line.md) |
 | `chunk` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](../lindera-dependency/chunking.md) |
+| `download` | 辞書に合ったモデルをダウンロードする | [下の節](#係り受け解析のモデルのダウンロード) |
+| `list` | インストール済みのモデルと、バイナリに埋め込んだモデルを一覧にする | [下の節](#係り受け解析のモデル) |
 | `convert` | 文節のラベルを持つ CoNLL-U のファイルから、学習データを作る | [学習データ](../lindera-dependency/training_data.md) |
 | `evaluate` | 出力を正解と比べる | [評価](../lindera-dependency/evaluation.md) |
 | `split` | 交差検証の分割を書き出す | [評価](../lindera-dependency/evaluation.md) |
@@ -1216,18 +1174,69 @@ lindera dependency <SUBCOMMAND>
 | `train-parser` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](../lindera-dependency/parsing.md) |
 | `convert-cabocha` | CaboCha の区切りと解析器のモデルを、モデルファイルに変換する | [CaboCha のモデル](../lindera-dependency/cabocha_models.md) |
 
-`parse` と `chunk` は `dependency` feature のあるビルドに、ほかの 7 つは、さらに `train` もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。
+`parse`・`chunk`・`download`・`list` は `dependency` feature のあるビルドに、ほかの 7 つは、さらに `train` もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。
 
 ### dependency の使用例
 
-`parse` には、分かち書きに使う辞書に合ったモデルが要ります。モデルは `download` で取得します。
+`parse` には、分かち書きに使う辞書に合ったモデルが要ります。モデルは `dependency download` で取得します。
 
 ```bash
 DICT=$(lindera download ipadic)
-MODEL=$(lindera download dependency-ipadic)
+MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
 
 各文の文節とその係り受けを、ラティス形式で書き出します。`cabocha -f1` が書く形式です。出力は[クイックスタート](../lindera-dependency/quickstart.md)に、読み方は[結果の読み方と使い方](../lindera-dependency/reading_the_result.md)にあります。
 
 `tokenize` は、トークンフィルター `japanese_dependency` で、同じ解析の結果を出力のトークンに書きます。[トークンフィルター](../lindera-dependency/token_filter.md)を参照してください。
+
+### 係り受け解析のモデルのダウンロード
+
+`lindera dependency download ipadic` は、トークンフィルター `japanese_dependency` の [IPADIC のモデル](../lindera-dependency/model_file.md#ipadic-のモデル)を取得します。CLI のバージョンのリリースのページにある `lindera-dependency-ipadic-<version>.zip` で、7.1.0 以降のリリースにあります。辞書と並べて `<辞書ディレクトリ>/dependency-ipadic/` にインストールし、その中のモデルファイルのパスを表示します。`lindera dependency parse` の `--model` と、フィルターの `model` に渡す値です。`unidic`・`unidic-cwj`・`unidic-csj` は、同じやり方で [UniDic のモデル](../lindera-dependency/model_file.md#unidic-のモデル)を取得します。
+
+```shell
+% MODEL=$(lindera dependency download ipadic)
+% DICT_DIR=$(lindera download ipadic)
+% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
+    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
+```
+
+ディレクトリには、`dependency.model`、`model.json`、モデルのライセンスを書いた `NOTICE.txt` が入ります。すでに置いてあるモデルは、`model.json` の `lindera_version` が CLI のバージョンと同じならそのまま使い、違えば置き換えます。辞書と同じ扱いです。モデルがすでにある場合は、次のようになります。
+
+```shell
+% lindera dependency download ipadic
+```
+
+```text
+Model 'ipadic' is already downloaded; use --force to re-download it
+/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+リリースが無いバージョンや、7.1.0 より前のリリースには、ダウンロードできるモデルがありません。
+
+```text
+Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
+```
+
+フィルターを使うには、`dependency` feature を付けてビルドした CLI が必要です。モデルは IPADIC 用なので、IPADIC と一緒に使います。
+
+### 係り受け解析のモデル
+
+`lindera dependency list` は、[係り受け解析](../lindera-dependency/token_filter.md)のモデルの表を書き出します。バイナリに埋め込んだモデル（feature フラグ `embed-dependency-ipadic` と、`embed-dependency-unidic`・`embed-dependency-unidic-cwj`・`embed-dependency-unidic-csj`）と、`lindera dependency download ipadic` などがインストールしたモデル（`model.json` のあるサブディレクトリ）です。
+
+```shell
+% lindera dependency list
+```
+
+```text
+DICTIONARY  VERSION  STATUS  MODEL
+ipadic      7.1.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+- `DICTIONARY` は、そのモデルが対応する辞書です。`lindera dependency download` に渡す名前です。
+
+- `VERSION` は、そのモデルをビルドした Lindera のバージョン（`model.json` の `lindera_version`）です。埋め込みのモデルはバージョンの記録を持たないので、`unknown` になります。
+- `STATUS` は辞書と同じで、`ok`、`incomplete`、`other version` のどれかです。`other version` のモデルは、`lindera dependency download ipadic` で置き換わります。
+- `MODEL` は、`lindera dependency parse` の `--model` と、トークンフィルター `japanese_dependency` の `model` に渡す値です。モデルファイルか、`embedded://ipadic` になります。
+
+モデルが 1 つもないときは、表は見出しだけになり、ダウンロードの方法を標準エラー出力に 1 行で案内します。

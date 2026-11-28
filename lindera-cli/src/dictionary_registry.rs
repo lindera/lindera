@@ -27,10 +27,14 @@ pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 10] = [
     "jieba",
 ];
 
-/// Model names accepted by `lindera download`: the models of the dependency
-/// parser (`lindera-dependency`), which a release publishes next to the
-/// dictionaries, one per dictionary (#1440, #1441): `dependency-` and the
-/// name of the dictionary.
+/// The names of the models of the dependency parser (`lindera-dependency`),
+/// which a release publishes next to the dictionaries, one per dictionary
+/// (#1440, #1441): `dependency-` and the name of the dictionary. A model is
+/// installed in a directory of this name, next to the dictionaries, and its
+/// archive is `lindera-<name>-<version>.zip`.
+///
+/// `lindera dependency download` takes the name of the dictionary
+/// ([`MODEL_DICTIONARIES`]), not this name (#1482).
 pub(crate) const DOWNLOADABLE_MODELS: [&str; 4] = [
     "dependency-ipadic",
     "dependency-unidic",
@@ -38,23 +42,15 @@ pub(crate) const DOWNLOADABLE_MODELS: [&str; 4] = [
     "dependency-unidic-csj",
 ];
 
-/// Every name `lindera download` accepts: the dictionaries, then the models.
-pub(crate) const DOWNLOADABLE_NAMES: [&str; 14] = [
-    "ipadic",
-    "ipadic-neologd",
-    "unidic",
-    "unidic-cwj",
-    "unidic-csj",
-    "sudachidict",
-    "jumandic",
-    "ko-dic",
-    "cc-cedict",
-    "jieba",
-    "dependency-ipadic",
-    "dependency-unidic",
-    "dependency-unidic-cwj",
-    "dependency-unidic-csj",
-];
+/// What the name of a model starts with, before the name of its dictionary.
+#[cfg(feature = "dependency")]
+pub(crate) const MODEL_NAME_PREFIX: &str = "dependency-";
+
+/// The dictionaries a release publishes a model of the dependency parser
+/// for: the names `lindera dependency download` accepts, in the order of
+/// [`DOWNLOADABLE_MODELS`].
+#[cfg(feature = "dependency")]
+pub(crate) const MODEL_DICTIONARIES: [&str; 4] = ["ipadic", "unidic", "unidic-cwj", "unidic-csj"];
 
 /// The model file of a downloaded model, in its directory.
 pub(crate) const MODEL_FILE: &str = "dependency.model";
@@ -242,25 +238,27 @@ pub(crate) fn dictionary_dir(dictionaries_dir: &Path, name: &str) -> PathBuf {
     dictionaries_dir.join(name)
 }
 
-/// What `lindera download` installs under a name: a dictionary, or a model of
-/// the dependency parser. Both are archives on the page of a release, with
+/// What is downloaded and installed under a name: a dictionary, by `lindera
+/// download`, or a model of the dependency parser, by `lindera dependency
+/// download`. Both are archives on the page of a release, with
 /// one directory, and both go to `<dictionaries directory>/<name>`; they
 /// differ in the files they hold and in what a user passes on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Downloadable {
     /// A pre-built dictionary: its directory is what `--dict` takes.
     Dictionary,
-    /// A model of the dependency parser: its model file is what the token
-    /// filter `japanese_dependency` takes as `model`.
+    /// A model of the dependency parser: its model file is what `lindera
+    /// dependency parse` takes as `--model` and the token filter
+    /// `japanese_dependency` as `model`.
     DependencyModel,
 }
 
 impl Downloadable {
-    /// What a name of `lindera download` is.
+    /// What a name is: of a dictionary, or of a model.
     ///
     /// # Arguments
     ///
-    /// * `name` - A name the command accepts.
+    /// * `name` - The name of a dictionary, or `dependency-<dictionary>`.
     ///
     /// # Returns
     ///
@@ -346,7 +344,7 @@ impl Downloadable {
     ///
     /// # Arguments
     ///
-    /// * `dir` - The directory `lindera download` installed into.
+    /// * `dir` - The directory the download installed into.
     ///
     /// # Returns
     ///
@@ -502,6 +500,16 @@ mod tests {
             download_url("ipadic", "5.1.0"),
             "https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip"
         );
+    }
+
+    #[cfg(feature = "dependency")]
+    #[test]
+    fn the_model_of_a_dictionary_has_its_name_after_the_prefix() {
+        let names: Vec<String> = MODEL_DICTIONARIES
+            .iter()
+            .map(|dictionary| format!("{MODEL_NAME_PREFIX}{dictionary}"))
+            .collect();
+        assert_eq!(names, DOWNLOADABLE_MODELS);
     }
 
     #[test]

@@ -376,7 +376,7 @@ echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
 
 トークンの文節と、その文節の係り先です。トークンフィルター `japanese_dependency` を使うと、各トークンの `dependency` に入ります。フィルター、モデル、テキストの文への分け方は、[トークンフィルター](../lindera-dependency/token_filter.md)を見てください。
 
-7.1.0 から、配布しているパッケージにフィルターが入っています。`dependency` feature が既定のビルドに入ったためです。モデルは入っていません。フィルターにはモデルファイルのパスを渡します。Lindera が公開している IPADIC のモデルは、各[リリース](https://github.com/lindera/lindera/releases)のページの `lindera-dependency-ipadic-<version>.zip` にある `dependency.model` で、`lindera download dependency-ipadic` でもインストールできます（[インストール](../lindera-dependency/installation.md#モデル)）。`unidic`・`unidic-cwj`・`unidic-csj` のモデルもあり、`ipadic` のところが辞書の名前になります。
+7.1.0 から、配布しているパッケージにフィルターが入っています。`dependency` feature が既定のビルドに入ったためです。モデルは入っていません。フィルターにはモデルファイルのパスを渡します。Lindera が公開している IPADIC のモデルは、各[リリース](https://github.com/lindera/lindera/releases)のページの `lindera-dependency-ipadic-<version>.zip` にある `dependency.model` で、`lindera dependency download ipadic` でもインストールできます（[インストール](../lindera-dependency/installation.md#モデル)）。`unidic`・`unidic-cwj`・`unidic-csj` のモデルもあり、`ipadic` のところが辞書の名前になります。
 
 | プロパティ | 型 | 説明 |
 | --- | --- | --- |

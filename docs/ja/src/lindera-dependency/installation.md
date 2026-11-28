@@ -38,7 +38,7 @@ cargo install lindera-cli
 
 解析には、トークナイザーの辞書に合った[モデルファイル](./model_file.md)が必要です。Lindera は、リリースのたびに、モデルを 4 つ公開します。IPADIC 用が 1 つ（[IPADIC のモデル](./model_file.md#ipadic-のモデル)）と、`unidic`・`unidic-cwj`・`unidic-csj` 用が 1 つずつです（[UniDic のモデル](./model_file.md#unidic-のモデル)）。モデルは、辞書と同じく、パッケージにもクレートにも入っていません。手に入れる方法は 3 つあります。ここでは IPADIC の場合を示します。UniDic の辞書では、`ipadic` のところが辞書の名前になります。
 
-- `lindera download dependency-ipadic` は、コマンドのバージョンのモデルをインストールし、モデルファイルのパスを表示します（[`download`](../lindera-cli/commands.md#係り受け解析のモデルのダウンロード)）。
+- `lindera dependency download ipadic` は、コマンドのバージョンのモデルをインストールし、モデルファイルのパスを表示します（[`download`](../lindera-cli/commands.md#係り受け解析のモデルのダウンロード)）。
 - [リリース](https://github.com/lindera/lindera/releases)のページにある `lindera-dependency-ipadic-<version>.zip` に、モデルファイル `dependency.model` と、その `NOTICE.txt` が入っています。
 - `lindera`、コマンド、バインディングの feature `embed-dependency-ipadic`（`lindera-dependency` では `embed-model-ipadic`）で、ビルドに埋め込みます（[埋め込む](./model_file.md#埋め込む)）。
 

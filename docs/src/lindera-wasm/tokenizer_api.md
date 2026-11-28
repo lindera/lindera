@@ -320,7 +320,7 @@ console.log(JSON.stringify(token, null, 2));
 
 The bunsetsu of a token and the bunsetsu it depends on. The token filter `japanese_dependency` puts it in the `dependency` of every token; see [Token Filter](../lindera-dependency/token_filter.md) for the filter, its model, and how a text is cut into sentences.
 
-The distributed packages have the filter, from 7.1.0 on: the `dependency` feature is in the default build. They have no model. The filter takes the bytes of a model file: the one Lindera releases for IPADIC is `dependency.model` in `lindera-dependency-ipadic-<version>.zip`, on the page of each [release](https://github.com/lindera/lindera/releases), which `lindera download dependency-ipadic` also installs ([Installation](../lindera-dependency/installation.md#the-model)). There is one for each of `unidic`, `unidic-cwj` and `unidic-csj` too, with the name of the dictionary in place of `ipadic`.
+The distributed packages have the filter, from 7.1.0 on: the `dependency` feature is in the default build. They have no model. The filter takes the bytes of a model file: the one Lindera releases for IPADIC is `dependency.model` in `lindera-dependency-ipadic-<version>.zip`, on the page of each [release](https://github.com/lindera/lindera/releases), which `lindera dependency download ipadic` also installs ([Installation](../lindera-dependency/installation.md#the-model)). There is one for each of `unidic`, `unidic-cwj` and `unidic-csj` too, with the name of the dictionary in place of `ipadic`.
 
 | Property | Type | Description |
 | --- | --- | --- |

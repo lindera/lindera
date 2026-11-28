@@ -9,7 +9,7 @@ IPADIC のモデルは、IPADIC の辞書と一緒に使います。`lindera dow
 ```shell
 % lindera download ipadic
 /home/user/.local/share/lindera/dictionaries/ipadic
-% lindera download dependency-ipadic
+% lindera dependency download ipadic
 /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
 ```
 
@@ -21,7 +21,7 @@ IPADIC のモデルは、IPADIC の辞書と一緒に使います。`lindera dow
 
 ```shell
 % DICT=$(lindera download ipadic)
-% MODEL=$(lindera download dependency-ipadic)
+% MODEL=$(lindera dependency download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 ```
@@ -86,7 +86,7 @@ use lindera::segmenter::Segmenter;
 
 fn main() -> lindera::LinderaResult<()> {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");

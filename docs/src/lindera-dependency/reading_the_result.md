@@ -2,7 +2,7 @@
 
 This page is for a reader who has run the [Quick Start](./quickstart.md) and wants to know what the result says: what a bunsetsu and a dependency are, how to read the result of several kinds of sentence, how to use it in a program, and how far to trust it.
 
-Every output on this page was made with the model a release of Lindera builds for IPADIC and the IPADIC dictionary, the two that `lindera download dependency-ipadic` and `lindera download ipadic` install. In the commands, `$MODEL` and `$DICT` are the two paths those commands print, as in the Quick Start.
+Every output on this page was made with the model a release of Lindera builds for IPADIC and the IPADIC dictionary, the two that `lindera dependency download ipadic` and `lindera download ipadic` install. In the commands, `$MODEL` and `$DICT` are the two paths those commands print, as in the Quick Start.
 
 ## Bunsetsu and dependencies
 
@@ -260,7 +260,7 @@ fn print_dependents(bunsetsu: &[Bunsetsu], parts_of_speech: &[&str]) {
 
 fn main() -> lindera::LinderaResult<()> {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");
