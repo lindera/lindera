@@ -1,0 +1,53 @@
+name: WASM test exit (#1486)
+
+# A temporary workflow of the investigation of #1486, on its branch only:
+# the Node.js tests of lindera-wasm are run many times on the runners where
+# the process that runs them has stayed after its tests, and a run that
+# stays is described (its threads and their stacks) and killed. It is taken
+# out of the branch before the pull request is opened.
+
+on:
+  push:
+    branches:
+      - fix/wasm-test-runner-exit
+
+jobs:
+  watch:
+    name: Watch (${{ matrix.variant }}, ${{ matrix.index }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [baseline]
+        index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Restore the built dictionaries
+        uses: ./.github/actions/dictionary-cache
+        with:
+          dictionaries: ipadic
+          mode: restore
+
+      - name: Install gdb
+        run: |
+          command -v gdb > /dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq gdb)
+          gdb --version | head -1
+
+      # The step of regression.yml that did not end runs `cargo test` first:
+      # the same here, so that the machine is in the state it was in.
+      - name: Run the tests of the host
+        run: cargo test -p lindera-wasm --lib
+
+      - name: Run the Node.js tests five times
+        run: scripts/wasm_test_watch.sh --runs 5 --grace 120
