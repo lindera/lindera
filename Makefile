@@ -23,14 +23,29 @@ WASM_FEATURES = embed-ipadic,dependency
 # switch the addon to a different build.
 NODEJS_TEST_FEATURES = embed-ipadic,embed-ko-dic,test-hooks,dependency
 
+# ── Node.js that exits ──────────────────────────────────────────────────────
+# What a Node.js process that ends with process.exit() is run with, here:
+# the tests of lindera-wasm, where wasm-bindgen-test-runner ends that way,
+# and the memcheck scripts. process.exit() joins the worker threads of V8
+# without a garbage collection, and a worker that compiles baseline code
+# (concurrent Sparkplug, which Node.js 24 has on by default) can be waiting
+# for the main thread to collect garbage: the process then never exits
+# (nodejs/node#64274, #67596). In the CI it happened in 2 of 7 runs of
+# `Test lindera-wasm`, after the tests had passed (#1486). Without the
+# compiler in the background, no worker waits there. The fix in Node.js is
+# nodejs/node#66171, which no release of Node.js 24 has yet (24.22.3 does
+# not): take this out when the Node.js of the runners has it.
+NODE_EXIT_OPTIONS = --no-concurrent-sparkplug
+
 # ── memcheck ────────────────────────────────────────────────────────────────
 # How the memcheck targets run node: with --expose-gc, so the scripts can
 # force a GC between iterations, and with MallocLargeCache=0, which macOS's
 # malloc reads. Without it, macOS keeps freed large blocks resident, RSS
 # counts them, and the Node.js check fails with no leak (#1355). glibc does
 # not read the variable. scripts/benchmarks/memcheck_common.mjs refuses to
-# measure on macOS without it.
-MEMCHECK_NODE = MallocLargeCache=0 node --expose-gc
+# measure on macOS without it. NODE_EXIT_OPTIONS, because the scripts end
+# with process.exit().
+MEMCHECK_NODE = MallocLargeCache=0 node --expose-gc $(NODE_EXIT_OPTIONS)
 
 # Run a cargo command with RbConfig values exported, as the Ruby binding build
 # expects (used by lint, test and check-docs for lindera-ruby).
@@ -446,7 +461,7 @@ stubs-lindera-php: ## Regenerate lindera-php/stubs/lindera.stubs.php from the bu
 
 test-lindera-wasm: ## Build-test lindera-wasm (wasm32 target)
 	cargo test -p lindera-wasm --lib
-	cd lindera-wasm && wasm-pack test --node --features=$(WASM_FEATURES)
+	cd lindera-wasm && NODE_ARGS=$(NODE_EXIT_OPTIONS) wasm-pack test --node --features=$(WASM_FEATURES)
 
 test: ## Test all crates
 	$(foreach c,$(ALL_CRATES),make test-$(c) &&) true
