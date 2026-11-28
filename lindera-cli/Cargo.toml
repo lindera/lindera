@@ -50,8 +50,13 @@ embed-cjk4 = [
 ] # Embed CJK dictionaries (SudachiDict, ko-dic, Jieba) in the binary
 
 mmap = ["lindera/mmap"]     # Use memory-mapped file
-train = ["lindera/train"]   # Enable training functionality
-dependency = ["lindera/dependency"] # The token filter `japanese_dependency`
+# Training: `lindera train` and `lindera export`, and with `dependency` the
+# subcommands of `lindera dependency` that make training data, train and
+# evaluate (`?`: only when lindera-dependency is in the build).
+train = ["lindera/train", "lindera-dependency?/train"]
+# The dependency analysis: the token filter `japanese_dependency`, and the
+# subcommands of `lindera dependency` (#1482).
+dependency = ["lindera/dependency", "dep:lindera-dependency"]
 embed-dependency-ipadic = [
     "dependency",
     "lindera/embed-dependency-ipadic",
@@ -69,7 +74,8 @@ embed-dependency-unidic-csj = [
     "lindera/embed-dependency-unidic-csj",
 ] # Embed the model of the token filter `japanese_dependency` for UniDic CSJ
 # `dependency` is in the default build since 7.1.0 (#1440): the code of the
-# token filter japanese_dependency, without a model, which a user downloads.
+# token filter japanese_dependency and of `lindera dependency`, without a
+# model, which a user downloads.
 default = ["mmap", "train", "dependency"]
 
 [dependencies]
@@ -92,6 +98,9 @@ lindera = { workspace = true, features = ["analysis"] }
 # The writer that never panics on a full or closed standard stream, for the
 # CLI's own messages on stderr (#1338, #1329), also without `train`.
 lindera-crf = { workspace = true, features = ["console"] }
+# The library `lindera dependency` runs: the chunker, the parser, the lattice
+# format and, with `train`, the training and the evaluation (#1482).
+lindera-dependency = { workspace = true, optional = true }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }
 # Same configuration as lindera-dictionary's build-time dependency: blocking

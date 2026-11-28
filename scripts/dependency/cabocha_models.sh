@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The agreement of a converted model of CaboCha with CaboCha: a model that
 # CaboCha distributes, for IPA, for JUMAN or for UniDic, is converted with
-# `lindera-dependency convert-cabocha`, and the same input is given to
+# `lindera dependency convert-cabocha`, and the same input is given to
 # CaboCha, with that model as its own build compiled it, and to
-# `lindera-dependency parse` with the converted one. The numbers of
+# `lindera dependency parse` with the converted one. The numbers of
 # "CaboCha's models" in the documentation.
 #
 # Usage: cabocha_models.sh [--tools <tools directory>] [--posset <set>] [--dictionary <name>] [<data directory>]
@@ -168,15 +168,16 @@ for name in $files; do
     fi
 done
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency \
-    --features train,embed-ipadic
-command="$root/target/release/lindera-dependency"
+# The `lindera` command, with IPADIC embedded for `dependency parse` on
+# text, and for the JUMAN set the dictionary of the set as well, which
+# `lindera tokenize` tokenizes the text with.
+features=embed-ipadic
 if [ "$posset" = juman ]; then
-    # `lindera-dependency` embeds IPADIC alone: the text is tokenized by
-    # the `lindera` command with the dictionary embedded.
-    cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli \
-        --features "embed-$dictionary"
+    features="$features,embed-$dictionary"
 fi
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli \
+    --features "$features"
+command="$root/target/release/lindera"
 rm -rf "${work:?}"
 mkdir -p "$work"
 
@@ -198,7 +199,7 @@ cabocha() {
 convert() {
     local output=$1
     shift
-    "$command" convert-cabocha --chunker "$text_models/chunk.$posset.txt" \
+    "$command" dependency convert-cabocha --chunker "$text_models/chunk.$posset.txt" \
         --parser "$text_models/dep.$posset.txt" --dictionary "$dictionary" \
         --output "$output" "$@" 2>&1 |
         grep -v -e '^seconds: ' -e '^The models of CaboCha '
@@ -220,14 +221,14 @@ for name in $files; do
         "$tools/bin/mecab" -d "$mecab_dictionary" "$work/$name.txt" > "$work/$name.morphemes"
     fi
     cabocha 1 "$work/$name.morphemes" > "$work/$name.cabocha.lattice"
-    "$command" parse --input-layer morphemes --model "$work/cabocha-$posset.model" \
+    "$command" dependency parse --input-layer morphemes --model "$work/cabocha-$posset.model" \
         --input "$work/$name.morphemes" --output "$work/$name.parse.lattice"
     "${agreement[@]}" outputs "$name" "$work/$name.cabocha.lattice" \
         "$work/$name.parse.lattice" --differences "$work/$name.differences"
 done
 echo "--- on the same morphemes, the kernel itself against CaboCha"
 for name in $files; do
-    "$command" parse --input-layer morphemes --model "$work/cabocha-$posset.kernel.model" \
+    "$command" dependency parse --input-layer morphemes --model "$work/cabocha-$posset.kernel.model" \
         --input "$work/$name.morphemes" --output "$work/$name.kernel.lattice"
     "${agreement[@]}" outputs "$name" "$work/$name.cabocha.lattice" \
         "$work/$name.kernel.lattice" --differences "$work/$name.kernel.differences"
@@ -247,13 +248,13 @@ for name in $files; do
     fi
     cabocha 0 "$work/$name.txt" > "$work/$name.cabocha.text.lattice"
     if [ "$posset" = ipa ]; then
-        "$command" parse --input-layer text --dict embedded://ipadic \
+        "$command" dependency parse --input-layer text --dict embedded://ipadic \
             --model "$work/cabocha-$posset.model" --input "$work/$name.txt" \
             --output "$work/$name.parse.text.lattice"
     else
-        "$root/target/release/lindera" tokenize --dict "embedded://$dictionary" \
+        "$command" tokenize --dict "embedded://$dictionary" \
             "$work/$name.txt" > "$work/$name.lindera.morphemes"
-        "$command" parse --input-layer morphemes --model "$work/cabocha-$posset.model" \
+        "$command" dependency parse --input-layer morphemes --model "$work/cabocha-$posset.model" \
             --input "$work/$name.lindera.morphemes" --output "$work/$name.parse.text.lattice"
     fi
     "${agreement[@]}" text "$name" "$work/$name.cabocha.text.lattice" \
@@ -275,6 +276,6 @@ seconds() {
     done
     printf '%.2f' "$best"
 }
-echo "parse: $(seconds "$command" parse --input-layer morphemes \
+echo "parse: $(seconds "$command" dependency parse --input-layer morphemes \
     --model "$work/cabocha-$posset.model" --input "$work/$name.morphemes")"
 echo "cabocha: $(seconds cabocha 1 "$work/$name.morphemes")"

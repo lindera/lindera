@@ -1,11 +1,11 @@
 # Training Data
 
-The chunker is trained on bunsetsu, and the parser will be trained on bunsetsu dependencies, both on the morphemes of the dictionary they run with. `lindera-dependency convert`, behind the `train` feature, makes such data from a corpus that has word dependencies and bunsetsu boundaries: a CoNLL-U file with `BunsetuBILabel` in its last column, as UD Japanese-GSD and UD Japanese-PUD have it.
+The chunker is trained on bunsetsu, and the parser will be trained on bunsetsu dependencies, both on the morphemes of the dictionary they run with. `lindera dependency convert`, behind the `train` feature, makes such data from a corpus that has word dependencies and bunsetsu boundaries: a CoNLL-U file with `BunsetuBILabel` in its last column, as UD Japanese-GSD and UD Japanese-PUD have it.
 
 ## Converting a corpus
 
 ```shell
-cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -17,7 +17,7 @@ The [schema](./head_and_function_word.md) is the one of the dictionary: `convert
 
 ```shell
 dictionary=$(lindera download unidic-cwj)
-cargo run --release -p lindera-dependency --features train -- convert \
+cargo run --release -p lindera-cli -- dependency convert \
     --dict "$dictionary" \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -26,7 +26,7 @@ cargo run --release -p lindera-dependency --features train -- convert \
 A dictionary without a schema is refused:
 
 ```text
-Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+Error: LinderaError { kind: Content, source: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj }
 ```
 
 The commands that train do not read a dictionary. [`train-chunker`](./chunking.md#training-a-model), [`train-parser`](./parsing.md#training-a-model) and `instances` take its name with `--dictionary-name`, and `ipadic` when it is left out.

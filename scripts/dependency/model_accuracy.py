@@ -5,13 +5,14 @@ Converts the dev and test files of UD Japanese-GSD and the test file of UD
 Japanese-PUD with the dictionary of the model, parses each with the model,
 from the
 bunsetsu of the answer and from the morphemes, and counts with
-`lindera-dependency evaluate`: the dependency accuracy with the bunsetsu of
+`lindera dependency evaluate`: the dependency accuracy with the bunsetsu of
 the answer (level 1), the dependency accuracy from the morphemes (end to
 end), and the F of the chunking.
 
     python3 -I -B model_accuracy.py <command> <model> <corpora directory> <work directory> [--dict <URI or path>] [--expect <file>]
 
-`<command>` is `lindera-dependency` built with `train,embed-ipadic`,
+`<command>` is `lindera` built with `embed-ipadic` (the default build has
+`train` and `dependency`),
 `<corpora directory>` holds `gsd/` and `pud/` (fetch_corpora.sh), and the
 lattice files go to `<work directory>`. `--dict` is the dictionary the
 files are tokenized with, which has to be the one of the model: the
@@ -44,6 +45,7 @@ def parsed(command, layer, model, gold, output):
     run(
         [
             command,
+            "dependency",
             "parse",
             "--input-layer",
             layer,
@@ -55,7 +57,18 @@ def parsed(command, layer, model, gold, output):
             output,
         ]
     )
-    result = run([command, "evaluate", "--gold", gold, "--system", output, "--json"])
+    result = run(
+        [
+            command,
+            "dependency",
+            "evaluate",
+            "--gold",
+            gold,
+            "--system",
+            output,
+            "--json",
+        ]
+    )
     return json.loads(result.stdout)
 
 
@@ -68,6 +81,7 @@ def measure(command, model, corpora, work, dictionary):
         run(
             [
                 command,
+                "dependency",
                 "convert",
                 "--dict",
                 dictionary,

@@ -1,6 +1,6 @@
 # CaboCha のモデル
 
-[CaboCha](https://taku910.github.io/cabocha/) には、京都大学テキストコーパス 4.0 で学習したモデルが付属しています。コーパスが無いと学習し直せません。また、文節の基準は京大コーパスのもので、このクレートのモデルが従う UD Japanese-GSD のものとは違います。`lindera-dependency convert-cabocha` は、そのモデルを[モデルファイル](./model_file.md)に変換します。変換したモデルでの解析は、CaboCha の解析と同じ結果になります。
+[CaboCha](https://taku910.github.io/cabocha/) には、京都大学テキストコーパス 4.0 で学習したモデルが付属しています。コーパスが無いと学習し直せません。また、文節の基準は京大コーパスのもので、このクレートのモデルが従う UD Japanese-GSD のものとは違います。`lindera dependency convert-cabocha` は、そのモデルを[モデルファイル](./model_file.md)に変換します。変換したモデルでの解析は、CaboCha の解析と同じ結果になります。
 
 ## モデルの利用条件
 
@@ -29,14 +29,14 @@ CaboCha のライセンス（LGPL または BSD ライセンス）は、モデ�
 
 ## 変換
 
-コマンドは、`train` の feature を付けたビルドにあります。
+コマンドは、`lindera` の既定のビルドにあります（既定のビルドは `train` の feature を持ちます）。
 
 ```sh
-cargo install lindera-dependency --features train,embed-ipadic
+cargo install lindera-cli --features embed-ipadic
 ```
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.ipa.txt \
     --parser cabocha/model/dep.ipa.txt \
     --output cabocha-ipa.model
@@ -58,7 +58,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 
 ```sh
 echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict embedded://ipadic --model cabocha-ipa.model
+    | lindera dependency parse --dict embedded://ipadic --model cabocha-ipa.model
 ```
 
 ```text
@@ -95,7 +95,7 @@ Rust からは、`lindera_dependency::cabocha::convert` に 2 つのファイル
 JUMAN のモデルは、CaboCha のページで精度が最も高いとされているモデルです。京大コーパスをそのまま使って学習されています。ほかの 2 つは、コーパスを形態素解析し直して学習されています。変換のしかたは同じです。
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.juman.txt \
     --parser cabocha/model/dep.juman.txt \
     --output cabocha-juman.model
@@ -117,7 +117,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 
 ```sh
 echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+    | lindera dependency parse --dict jumandic --model cabocha-juman.model
 ```
 
 ```text
@@ -149,7 +149,7 @@ MeCab と mecab-jumandic を使う `cabocha -f1 -n0 -P JUMAN` は、この文に
 UniDic のモデルも、同じように変換します。
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.unidic.txt \
     --parser cabocha/model/dep.unidic.txt \
     --output cabocha-unidic.model
@@ -171,7 +171,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 
 ```sh
 echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+    | lindera dependency parse --dict unidic --model cabocha-unidic.model
 ```
 
 ```text
@@ -237,7 +237,7 @@ CaboCha にこの形態素を渡すと（`cabocha -I1 -f1 -n0 -P UNIDIC`）、�
 
 ## CaboCha との一致
 
-`scripts/dependency/cabocha_models.sh` は、IPA のモデル（`--posset juman` か `--posset unidic` を付けると、JUMAN か UniDic のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。`scripts/dependency/build_baselines.sh` でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う `lindera-dependency parse` に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。
+`scripts/dependency/cabocha_models.sh` は、IPA のモデル（`--posset juman` か `--posset unidic` を付けると、JUMAN か UniDic のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。`scripts/dependency/build_baselines.sh` でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う `lindera dependency parse` に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。
 
 同じ形態素（Lindera と IPADIC のもの）を渡すと、すべてが一致します。
 

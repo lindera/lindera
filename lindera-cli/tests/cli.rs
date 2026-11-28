@@ -1180,6 +1180,48 @@ fn tokenize_rejects_zero_threads() {
     assert!(stderr.contains("--max-threads"), "got: {stderr}");
 }
 
+/// `lindera dependency parse` stops at the first write without a reader, and
+/// reads no more input: its input is kept open, so reading on would wait for
+/// more. The lattice output of the lines is larger than the buffer of the
+/// command, so a write fails while it parses.
+#[cfg(all(feature = "dependency", feature = "embed-ipadic"))]
+#[test]
+fn dependency_parse_stops_without_a_stdout_reader() {
+    let mut command = lindera_process();
+    command.args([
+        "dependency",
+        "parse",
+        "--dict",
+        "embedded://ipadic",
+        "--model",
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../resources/dependency/test_model_ipadic.bin"
+        ),
+    ]);
+    run_without_stdout_reader(command, Input::KeptOpen("彼は本を読んだ。\n".repeat(1000)));
+}
+
+/// `lindera dependency evaluate` writes its counts to stdout.
+#[cfg(all(feature = "dependency", feature = "train"))]
+#[test]
+fn dependency_evaluate_ends_quietly_without_a_stdout_reader() {
+    let lattice = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../lindera-dependency/tests/data/dependency.lattice"
+    );
+    let mut command = lindera_process();
+    command.args([
+        "dependency",
+        "evaluate",
+        "--gold",
+        lattice,
+        "--system",
+        lattice,
+    ]);
+    run_without_stdout_reader(command, Input::Null);
+}
+
 // The commands with a stderr that has no reader: their own messages there are
 // dropped, and they write their result and end with exit code 0 (#1338).
 

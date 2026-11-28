@@ -153,7 +153,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "unidic" | "unidic-cwj" | "unidic-csj" => unidic_variants(),
         name => return Err(format!("{uri}: there are no variants for the dictionary {name}").into()),
     };
-    // The default settings, as `lindera-dependency convert` has them.
+    // The default settings, as `lindera dependency convert` has them.
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenize = |text: &str| -> Result<Vec<DictionaryMorpheme>, TokenizerError> {
         let mut tokens = segmenter.segment(Cow::Borrowed(text))?;

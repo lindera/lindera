@@ -47,10 +47,10 @@ work=$data/baselines/chunker-cost
 libexec=$tools/libexec/cabocha
 mkdir -p "$work"
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train
-evaluate="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli
+evaluate="$root/target/release/lindera"
 if [ ! -d "$work/folds" ]; then
-    "$evaluate" split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
+    "$evaluate" dependency split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
         --output-dir "$work/folds" > /dev/null
 fi
 
@@ -63,7 +63,7 @@ chunked() {
 
 # f_score <gold> <output>: the F of the chunking, with its counts.
 f_score() {
-    "$evaluate" evaluate --gold "$1" --system "$2" --json |
+    "$evaluate" dependency evaluate --gold "$1" --system "$2" --json |
         python3 -I -B -c 'import json, sys
 c = json.load(sys.stdin)["chunking"]
 print("%.2f (P %d/%d, R %d/%d)" % (100 * c["f_score"], c["correct"], c["system"], c["correct"], c["gold"]))'

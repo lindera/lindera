@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the training instances of the parser for UD Japanese-GSD (train,
-# dev, test) and UD Japanese-PUD with `lindera-dependency instances`, and
+# dev, test) and UD Japanese-PUD with `lindera dependency instances`, and
 # shows the report of each file: the sentences, the bunsetsu and the
 # instances. The command stops at a sentence whose tree does not come back
 # when its answer decides, so a report for every file says that every tree
@@ -23,15 +23,15 @@ root=$(readlink -f "$here/../..")
 parse_dictionary_arguments "$@"
 data=$(readlink -f "${rest[0]:-$here/data}")
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train,embed-ipadic
-bin="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli --features embed-ipadic
+bin="$root/target/release/lindera"
 
 directory=$(dictionary_directory "$data")
 mkdir -p "$directory/instances"
 for name in ja_gsd-ud-train ja_gsd-ud-dev ja_gsd-ud-test ja_pud-ud-test; do
     # From the directory of the lattice files, so that the report names the
     # file without a path.
-    env -C "$directory/lattice" "$bin" instances --dictionary-name "$dictionary" \
+    env -C "$directory/lattice" "$bin" dependency instances --dictionary-name "$dictionary" \
         --input "$name.lattice" \
         --output "$directory/instances/$name.instances" \
         2> "$directory/instances/$name.report"

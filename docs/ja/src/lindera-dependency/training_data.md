@@ -1,11 +1,11 @@
 # 学習データ
 
-文節の区切りは文節で学習し、解析器は文節の係り受けで学習します。どちらも、動かすときに使う辞書の形態素の上で学習します。`train` feature の裏にある `lindera-dependency convert` は、そのためのデータを、語の係り受けと文節の境界を持つコーパスから作ります。対象は、最後の列に `BunsetuBILabel` を持つ CoNLL-U のファイルで、UD Japanese-GSD と UD Japanese-PUD がこの形です。
+文節の区切りは文節で学習し、解析器は文節の係り受けで学習します。どちらも、動かすときに使う辞書の形態素の上で学習します。`train` feature の裏にある `lindera dependency convert` は、そのためのデータを、語の係り受けと文節の境界を持つコーパスから作ります。対象は、最後の列に `BunsetuBILabel` を持つ CoNLL-U のファイルで、UD Japanese-GSD と UD Japanese-PUD がこの形です。
 
 ## コーパスを変換する
 
 ```shell
-cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -17,7 +17,7 @@ cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
 
 ```shell
 dictionary=$(lindera download unidic-cwj)
-cargo run --release -p lindera-dependency --features train -- convert \
+cargo run --release -p lindera-cli -- dependency convert \
     --dict "$dictionary" \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -26,7 +26,7 @@ cargo run --release -p lindera-dependency --features train -- convert \
 スキーマの無い辞書は断ります。
 
 ```text
-Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+Error: LinderaError { kind: Content, source: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj }
 ```
 
 学習するコマンドは辞書を読みません。[`train-chunker`](./chunking.md#モデルを学習する)・[`train-parser`](./parsing.md#モデルを学習する)・`instances` には、辞書の名前を `--dictionary-name` で渡します。省くと `ipadic` です。

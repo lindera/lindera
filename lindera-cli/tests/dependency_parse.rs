@@ -1,8 +1,8 @@
-//! The `lindera-dependency parse` command on plain text. It tokenizes with
+//! The `lindera dependency parse` command on plain text. It tokenizes with
 //! the embedded IPADIC, and needs no training code: the models are made by
 //! hand.
 
-#![cfg(feature = "embed-ipadic")]
+#![cfg(all(feature = "embed-ipadic", feature = "dependency"))]
 
 use std::collections::HashMap;
 use std::fs;
@@ -15,6 +15,17 @@ use lindera_dependency::lattice::{self, LatticeMorpheme};
 use lindera_dependency::model::ModelBuilder;
 use lindera_dependency::parser::{FeatureSet, PairWeights, ParserModel, Quantization};
 use lindera_dependency::{Morpheme, Schema, Sentence};
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// A chunker for which a particle, an auxiliary verb and a period continue
 /// a bunsetsu, and anything else starts one.
@@ -73,7 +84,7 @@ fn directory() -> (tempfile::TempDir, PathBuf) {
 
 /// Runs `parse` with arguments and paths, and text on its standard input.
 fn run(arguments: &[&str], paths: &[(&str, &Path)], input: &str) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"));
+    let mut command = dependency();
     command.arg("parse").args(arguments);
     for (option, path) in paths {
         command.arg(option).arg(path);
@@ -345,7 +356,7 @@ fn a_model_of_another_dictionary_is_refused() {
     let error = failure(run(&IPADIC, &[("--model", &unidic)], "彼は本を読んだ。\n"));
     assert_eq!(
         error,
-        "Error: embedded://ipadic: the model is for the dictionary \"unidic\", and the morphemes are of \"ipadic\"\n"
+        "Error: LinderaError { kind: Content, source: embedded://ipadic: the model is for the dictionary \"unidic\", and the morphemes are of \"ipadic\" }\n"
     );
 }
 
@@ -357,14 +368,18 @@ fn fails_with_the_cause() {
     // Text needs a dictionary, and a lattice input has no use for one.
     let error = failure(run(&[], &[("--model", &model)], text));
     assert!(
-        error.starts_with("Error: --dict is needed to tokenize text"),
+        error.starts_with(
+            "Error: LinderaError { kind: Content, source: --dict is needed to tokenize text"
+        ),
         "{error}"
     );
     let mut with_layer = vec!["--input-layer", "morphemes"];
     with_layer.extend_from_slice(&IPADIC);
     let error = failure(run(&with_layer, &[("--model", &model)], text));
     assert!(
-        error.starts_with("Error: --dict is for the input layer text"),
+        error.starts_with(
+            "Error: LinderaError { kind: Content, source: --dict is for the input layer text"
+        ),
         "{error}"
     );
     let error = failure(run(
@@ -373,7 +388,7 @@ fn fails_with_the_cause() {
         text,
     ));
     assert!(
-        error.starts_with("Error: cannot load the dictionary /no/such/dictionary: "),
+        error.starts_with("Error: LinderaError { kind: Content, source: cannot load the dictionary /no/such/dictionary: "),
         "{error}"
     );
 
@@ -381,7 +396,10 @@ fn fails_with_the_cause() {
     // is needed.
     let missing = directory.path().join("missing.model");
     let error = failure(run(&IPADIC, &[("--model", &missing)], text));
-    assert!(error.starts_with("Error: cannot read "), "{error}");
+    assert!(
+        error.starts_with("Error: LinderaError { kind: Content, source: cannot read "),
+        "{error}"
+    );
     let broken = directory.path().join("broken.model");
     fs::write(&broken, b"not a model").unwrap();
     let error = failure(run(&IPADIC, &[("--model", &broken)], text));
@@ -417,14 +435,19 @@ fn fails_with_the_cause() {
         &[("--model", &model), ("--input", &missing)],
         "",
     ));
-    assert!(error.starts_with("Error: cannot open "), "{error}");
+    assert!(
+        error.starts_with("Error: LinderaError { kind: Content, source: cannot open "),
+        "{error}"
+    );
     let error = failure(run(
         &["--input-layer", "morphemes"],
         &[("--model", &model)],
         "彼 名詞\nEOS\n",
     ));
     assert!(
-        error.starts_with("Error: the standard input: line 1: "),
+        error.starts_with(
+            "Error: LinderaError { kind: Content, source: the standard input: line 1: "
+        ),
         "{error}"
     );
 
@@ -440,7 +463,7 @@ fn fails_with_the_cause() {
     let error = String::from_utf8(output.stderr).unwrap();
     assert!(
         error.starts_with(
-            "Error: the standard input: sentence 2: the morpheme 1 (\"彼\") has fewer than the 7 feature columns"
+            "Error: LinderaError { kind: Content, source: the standard input: sentence 2: the morpheme 1 (\"彼\") has fewer than the 7 feature columns"
         ),
         "{error}"
     );
@@ -461,10 +484,7 @@ fn the_command_of_a_user_does_not_train() {
         "instances",
         "convert-cabocha",
     ] {
-        let output = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"))
-            .arg(subcommand)
-            .output()
-            .unwrap();
+        let output = dependency().arg(subcommand).output().unwrap();
         assert!(!output.status.success());
         let error = String::from_utf8(output.stderr).unwrap();
         assert!(
@@ -472,10 +492,7 @@ fn the_command_of_a_user_does_not_train() {
             "{error}"
         );
     }
-    let help = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"))
-        .arg("--help")
-        .output()
-        .unwrap();
+    let help = dependency().arg("--help").output().unwrap();
     let help = String::from_utf8(help.stdout).unwrap();
     assert!(help.contains("parse") && help.contains("chunk"), "{help}");
 }
@@ -499,7 +516,7 @@ fn the_output_goes_to_evaluate() {
         "",
     ));
     // Against itself: every bunsetsu and every head is right.
-    let evaluation = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"))
+    let evaluation = dependency()
         .arg("evaluate")
         .arg("--gold")
         .arg(&output_path)
@@ -520,13 +537,13 @@ fn the_output_goes_to_evaluate() {
 /// The model file that the builds of the tests embed: the test jobs name it
 /// in `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`. It is the model of the
 /// tests of lindera-analysis, in which every bunsetsu depends on the next.
-#[cfg(feature = "embed-model-ipadic")]
+#[cfg(feature = "embed-dependency-ipadic")]
 const EMBEDDED_MODEL_FILE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../resources/dependency/test_model_ipadic.bin"
 );
 
-#[cfg(feature = "embed-model-ipadic")]
+#[cfg(feature = "embed-dependency-ipadic")]
 #[test]
 fn the_embedded_model_parses_as_its_file_does() {
     let text = "彼は本を読んだ。\n今日は雨だ。\n";
@@ -542,7 +559,7 @@ fn the_embedded_model_parses_as_its_file_does() {
     assert_eq!(from_the_build, from_the_file);
 }
 
-#[cfg(not(feature = "embed-model-ipadic"))]
+#[cfg(not(feature = "embed-dependency-ipadic"))]
 #[test]
 fn a_build_without_the_embedded_model_names_the_feature() {
     let mut embedded = vec!["--model", "embedded://ipadic"];
@@ -550,7 +567,7 @@ fn a_build_without_the_embedded_model_names_the_feature() {
     let error = failure(run(&embedded, &[], "彼は本を読んだ。\n"));
     assert!(
         error.starts_with(
-            "Error: embedded://ipadic: the model for ipadic is not embedded in this build"
+            "Error: LinderaError { kind: Content, source: embedded://ipadic: the model for ipadic is not embedded in this build"
         ),
         "{error}"
     );
@@ -564,7 +581,7 @@ fn a_dictionary_without_an_embedded_model_is_refused() {
     let error = failure(run(&embedded, &[], "彼は本を読んだ。\n"));
     assert!(
         error.starts_with(
-            "Error: embedded://ko-dic: no model can be embedded for the dictionary ko-dic: there \
+            "Error: LinderaError { kind: Content, source: embedded://ko-dic: no model can be embedded for the dictionary ko-dic: there \
              are models for ipadic, unidic, unidic-cwj, unidic-csj"
         ),
         "{error}"
@@ -577,9 +594,9 @@ fn a_dictionary_without_an_embedded_model_is_refused() {
 #[test]
 fn a_model_for_unidic_is_embedded_by_its_feature_and_is_for_its_dictionary() {
     for (dictionary, embedded) in [
-        ("unidic", cfg!(feature = "embed-model-unidic")),
-        ("unidic-cwj", cfg!(feature = "embed-model-unidic-cwj")),
-        ("unidic-csj", cfg!(feature = "embed-model-unidic-csj")),
+        ("unidic", cfg!(feature = "embed-dependency-unidic")),
+        ("unidic-cwj", cfg!(feature = "embed-dependency-unidic-cwj")),
+        ("unidic-csj", cfg!(feature = "embed-dependency-unidic-csj")),
     ] {
         let model = format!("embedded://{dictionary}");
         let mut arguments = vec!["--model", model.as_str()];
@@ -596,7 +613,7 @@ fn a_model_for_unidic_is_embedded_by_its_feature_and_is_for_its_dictionary() {
         } else {
             assert!(
                 error.starts_with(&format!(
-                    "Error: {model}: the model for {dictionary} is not embedded in this build"
+                    "Error: LinderaError {{ kind: Content, source: {model}: the model for {dictionary} is not embedded in this build"
                 )),
                 "{error}"
             );

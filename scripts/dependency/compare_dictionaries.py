@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """How much the output of two dictionaries differs on the same sentences.
 
-Reads the lattice files `lindera-dependency convert` wrote for each
+Reads the lattice files `lindera dependency convert` wrote for each
 dictionary (convert_corpora.sh), and prints, for each pair of dictionaries
 and each file, over the sentences both kept (matched by their text):
 

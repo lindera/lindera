@@ -2,7 +2,7 @@
 """Trains and evaluates the parser of lindera-dependency for one setting.
 
 The driver of parser_experiments.sh. Every number comes from the
-`lindera-dependency` command (`train-parser`, `train-chunker`, `parse`,
+`lindera dependency` command (`train-parser`, `train-chunker`, `parse`,
 `evaluate`).
 
 Usage:
@@ -11,7 +11,7 @@ Usage:
     python3 -I -B parser_experiment.py compare <command> <work directory> <first name> <second name>
 
 cv       Trains on fold<i>.train.lattice and parses fold<i>.test.lattice on
-         its own bunsetsu, for the 10 folds `lindera-dependency split`
+         its own bunsetsu, for the 10 folds `lindera dependency split`
          writes, the folds at the same time. The outputs and the answers
          are joined in the order of the folds under
          <work directory>/cv/<name>/ and evaluated as one file.
@@ -42,7 +42,8 @@ def run(args):
 def train(command, data, model, options):
     """Trains a parser; returns the lines `key: value` of the summary."""
     result = run(
-        [command, "train-parser", "--input", data, "--output", model] + options
+        [command, "dependency", "train-parser", "--input", data, "--output", model]
+        + options
     )
     summary = {}
     for line in result.stderr.split("\n"):
@@ -53,7 +54,18 @@ def train(command, data, model, options):
 
 
 def evaluate(command, gold, system):
-    result = run([command, "evaluate", "--gold", gold, "--system", system, "--json"])
+    result = run(
+        [
+            command,
+            "dependency",
+            "evaluate",
+            "--gold",
+            gold,
+            "--system",
+            system,
+            "--json",
+        ]
+    )
     return json.loads(result.stdout)
 
 
@@ -66,6 +78,7 @@ def parse(command, layer, model, source, output):
     """The command line that parses a lattice file from an input layer."""
     return [
         command,
+        "dependency",
         "parse",
         "--input-layer",
         layer,
@@ -145,7 +158,18 @@ def full(argv):
     named = []
     if "--dictionary-name" in options:
         named = options[options.index("--dictionary-name") :][:2]
-    run([command, "train-chunker", "--input", training, "--output", chunker] + named)
+    run(
+        [
+            command,
+            "dependency",
+            "train-chunker",
+            "--input",
+            training,
+            "--output",
+            chunker,
+        ]
+        + named
+    )
     model = os.path.join(out, "model")
     summary = train(command, training, model, ["--chunker", chunker] + options)
     print(
@@ -176,6 +200,7 @@ def compare(argv):
     result = run(
         [
             command,
+            "dependency",
             "evaluate",
             "--gold",
             gold,

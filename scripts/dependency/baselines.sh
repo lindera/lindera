@@ -14,7 +14,7 @@
 #   <data directory>/baselines.
 #
 # For each tool and each file, one line with the three numbers counted by
-# `lindera-dependency evaluate`: the dependency accuracy with the bunsetsu
+# `lindera dependency evaluate`: the dependency accuracy with the bunsetsu
 # of the answer (level 1), the dependency accuracy from the morphemes (end
 # to end), and the F of the chunking. Under it, what the tool reports of
 # itself for the same output: `cabocha-system-eval` for CaboCha, and the
@@ -74,16 +74,16 @@ if [ ! -f "$lattice/ja_gsd-ud-train.lattice" ]; then
     exit 1
 fi
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train
-evaluate="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli
+evaluate="$root/target/release/lindera"
 train=$lattice/ja_gsd-ud-train.lattice
 
 # numbers <label> <gold> <output with the bunsetsu of the answer> <output
 # from the morphemes>: the line of `evaluate`.
 numbers() {
     local label=$1 gold=$2 given=$3 end=$4
-    "$evaluate" evaluate --gold "$gold" --system "$given" --json > "$given.json"
-    "$evaluate" evaluate --gold "$gold" --system "$end" --json > "$end.json"
+    "$evaluate" dependency evaluate --gold "$gold" --system "$given" --json > "$given.json"
+    "$evaluate" dependency evaluate --gold "$gold" --system "$end" --json > "$end.json"
     "${report[@]}" numbers "$label" "$given.json" "$end.json"
 }
 
@@ -161,14 +161,14 @@ for name in $files; do
     tr '\n' ' ' < "$out/$name.chunked.log" |
         sed -n 's/.*precision[[:space:]]*\([^)]*)\) recall[[:space:]]*\([^)]*)\) f1[[:space:]]*\([0-9.]*\).*/  jdepp: chunking P \1, R \2, F \3\n/p'
     # The chunker alone and the chunker before the parser are the same.
-    "$evaluate" evaluate --gold "$out/$name.chunked.lattice" --system "$out/$name.end.lattice" \
+    "$evaluate" dependency evaluate --gold "$out/$name.chunked.lattice" --system "$out/$name.end.lattice" \
         --json > "$out/$name.chunkers.json"
     "${report[@]}" same-bunsetsu "$out/$name.chunkers.json"
 done
 
 # --- The two parsers ---------------------------------------------------------
 for name in $files; do
-    "$evaluate" evaluate --gold "$work/cabocha/$name.given.lattice" \
+    "$evaluate" dependency evaluate --gold "$work/cabocha/$name.given.lattice" \
         --system "$work/jdepp/$name.given.lattice" --json > "$work/parsers.$name.json"
     "${report[@]}" differ "cabocha and jdepp $name" "$work/parsers.$name.json"
 done

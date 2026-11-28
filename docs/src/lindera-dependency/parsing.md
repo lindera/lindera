@@ -254,10 +254,10 @@ A sentence whose tree the parser cannot make (a head to the left, crossing arcs,
 
 ### The command
 
-With the `train` feature, `lindera-dependency instances` writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that `--dictionary-name` names:
+With the `train` feature, `lindera dependency instances` writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that `--dictionary-name` names:
 
 ```shell
-lindera-dependency instances --input train.lattice --output train.instances
+lindera dependency instances --input train.lattice --output train.instances
 ```
 
 Each line is one instance: `+1` or `-1`, then the feature strings, separated by tabs. An empty line ends each sentence, so that a file can be cut into folds between sentences. `--features` takes a feature set; the default is every group.
@@ -288,9 +288,9 @@ The command stops at a sentence whose tree does not come back when its answer de
 Training is behind the `train` feature. `train-parser` trains the parser on [training data](./training_data.md), with the schema of IPADIC, or of the dictionary that `--dictionary-name` names, and writes a [model file](./model_file.md). With `--chunker`, the chunker of another model file goes into the output, which is then the whole model of the dictionary; that file has to be for the same dictionary:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- train-chunker \
+cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
-cargo run --release -p lindera-dependency --features train -- train-parser \
+cargo run --release -p lindera-cli -- dependency train-parser \
     --input train.lattice --chunker chunker.model --output ipadic.model
 ```
 
@@ -328,9 +328,9 @@ A last line, `seconds:`, has the time of the training; it is left out here. Trai
 [`parse`](./command_line.md) with `--input-layer` finds the heads of a file in the lattice format with a model, for [`evaluate`](./evaluation.md) to compare with the answer:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 ```
 

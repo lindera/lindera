@@ -58,7 +58,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
 
       - name: Run test
-        run: cargo test -p lindera-dependency --features train,embed-ipadic
+        run: cargo test -p lindera-dependency --features train
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }}, ${{ matrix.toolchain }})

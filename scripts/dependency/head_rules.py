@@ -3,7 +3,7 @@
 
 The script the rule of `Schema::ipadic()` was explored with, before it was
 written in Rust: it shows examples by surface, which the report of
-`lindera-dependency convert` does not, and it measures the variants that
+`lindera dependency convert` does not, and it measures the variants that
 were not taken. The rule that was taken is measured by `convert` itself
 (convert_corpora.sh) and step by step by head_variants/.
 

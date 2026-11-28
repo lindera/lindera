@@ -2,7 +2,7 @@
 """Trains and evaluates the chunker of lindera-dependency for one setting.
 
 The driver of chunker_experiments.sh. Every number comes from the
-`lindera-dependency` command (`train-chunker`, `chunk`, `evaluate`).
+`lindera dependency` command (`train-chunker`, `chunk`, `evaluate`).
 
 Usage:
     python3 -I -B chunker_experiment.py cv <command> <folds directory> <work directory> <name> [train-chunker options...]
@@ -10,7 +10,7 @@ Usage:
     python3 -I -B chunker_experiment.py compare <command> <work directory> <first name> <second name>
 
 cv       Trains on fold<i>.train.lattice and segments fold<i>.test.lattice
-         again, for the 10 folds `lindera-dependency split` writes. The
+         again, for the 10 folds `lindera dependency split` writes. The
          outputs and the answers are joined in the order of the folds under
          <work directory>/cv/<name>/ and evaluated as one file.
 full     Trains on <lattice directory>/ja_gsd-ud-train.lattice and evaluates
@@ -38,7 +38,8 @@ def run(args):
 def train(command, data, model, options):
     """Trains a model; returns the lines `key: value` of the summary."""
     result = run(
-        [command, "train-chunker", "--input", data, "--output", model] + options
+        [command, "dependency", "train-chunker", "--input", data, "--output", model]
+        + options
     )
     summary = {}
     for line in result.stderr.split("\n"):
@@ -49,7 +50,18 @@ def train(command, data, model, options):
 
 
 def evaluate(command, gold, system):
-    result = run([command, "evaluate", "--gold", gold, "--system", system, "--json"])
+    result = run(
+        [
+            command,
+            "dependency",
+            "evaluate",
+            "--gold",
+            gold,
+            "--system",
+            system,
+            "--json",
+        ]
+    )
     return json.loads(result.stdout)
 
 
@@ -91,6 +103,7 @@ def cv(argv):
             run(
                 [
                     command,
+                    "dependency",
                     "chunk",
                     "--model",
                     model,
@@ -132,7 +145,19 @@ def full(argv):
     for file in files:
         gold = os.path.join(data, f"{file}.lattice")
         output = os.path.join(out, f"{file}.lattice")
-        run([command, "chunk", "--model", model, "--input", gold, "--output", output])
+        run(
+            [
+                command,
+                "dependency",
+                "chunk",
+                "--model",
+                model,
+                "--input",
+                gold,
+                "--output",
+                output,
+            ]
+        )
         print(
             f"full {name} {file}: {chunking(evaluate(command, gold, output))}",
             flush=True,
@@ -145,6 +170,7 @@ def compare(argv):
     result = run(
         [
             command,
+            "dependency",
             "evaluate",
             "--gold",
             gold,

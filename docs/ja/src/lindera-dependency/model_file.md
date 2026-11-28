@@ -162,7 +162,7 @@ cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ip
 scripts/dependency/build_model.sh
 ```
 
-スクリプトは、UD Japanese-GSD を固定の commit で取り、`lindera-dependency` コマンドを、名指しした toolchain と `Cargo.lock` の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、`scripts/dependency/data/model` に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。
+スクリプトは、UD Japanese-GSD を固定の commit で取り、`lindera` コマンドを、名指しした toolchain と `Cargo.lock` の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、`scripts/dependency/data/model` に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。
 
 ```text
 corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6

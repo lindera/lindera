@@ -1,6 +1,6 @@
 # コマンド
 
-Lindera CLI は6つのメインコマンドを提供します：
+Lindera CLI は7つのメインコマンドを提供します：
 
 - **list** - 形態素解析辞書の一覧と状態を表示
 - **tokenize** - テキストに対して形態素解析を実行
@@ -8,6 +8,7 @@ Lindera CLI は6つのメインコマンドを提供します：
 - **download** - GitHub リリースページから学習済み辞書をダウンロード
 - **train** - 注釈付きコーパスデータからCRFモデルを学習
 - **export** - 学習済みモデルを辞書フォーマットにエクスポート
+- **dependency** - 文節の係り受けを解析し、解析のモデルを学習・評価
 
 ## 警告とログメッセージ
 
@@ -26,6 +27,7 @@ Lindera CLI は6つのメインコマンドを提供します：
 
 - `tokenize`・`list`・`download` は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。`tokenize` は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。
 - `train`・`export` は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。
+- `dependency parse` と `dependency evaluate` は結果を標準出力に書き、`tokenize` と同じく、読み手のいない最初の書き込みで止まります。`dependency` のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。
 
 標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（`download` の進捗や通知、`list` の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。
 
@@ -1193,3 +1195,39 @@ EOS
    - `default_word_cost`: 素性重みの中央値から計算された値
    - `model_info`: 素性数、ラベル数、行列サイズ（`connection_matrix_size`。`matrix.def` の大きさを行数 x 列数で表す）、実際に回った学習の反復回数（`training_iterations`。`--max-iterations` 以下）、正則化の係数（`regularization`）とその種類（`regularization_type`。`l1`・`l2`・`elasticnet` のいずれか）、Elastic Net のときだけその L1 の比率（`elastic_net_l1_ratio`）、モデルの形式バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります
 3. **既存の設定を保持**します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）
+
+## dependency
+
+[`lindera-dependency`](../lindera-dependency.md) のライブラリで、文節の係り受けを解析します。7.1.0 からのコマンドです。このコマンドは、さらにサブコマンドを持ちます。
+
+```text
+lindera dependency <SUBCOMMAND>
+```
+
+| サブコマンド | 内容 | ページ |
+| --- | --- | --- |
+| `parse` | テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く | [コマンドライン](../lindera-dependency/command_line.md) |
+| `chunk` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](../lindera-dependency/chunking.md) |
+| `convert` | 文節のラベルを持つ CoNLL-U のファイルから、学習データを作る | [学習データ](../lindera-dependency/training_data.md) |
+| `evaluate` | 出力を正解と比べる | [評価](../lindera-dependency/evaluation.md) |
+| `split` | 交差検証の分割を書き出す | [評価](../lindera-dependency/evaluation.md) |
+| `train-chunker` | 文節の区切りを学習し、モデルファイルを書く | [文節の区切り](../lindera-dependency/chunking.md) |
+| `instances` | 解析器の学習事例を書き出す | [係り受けの解析](../lindera-dependency/parsing.md) |
+| `train-parser` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](../lindera-dependency/parsing.md) |
+| `convert-cabocha` | CaboCha の区切りと解析器のモデルを、モデルファイルに変換する | [CaboCha のモデル](../lindera-dependency/cabocha_models.md) |
+
+`parse` と `chunk` は `dependency` feature のあるビルドに、ほかの 7 つは、さらに `train` もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。
+
+### dependency の使用例
+
+`parse` には、分かち書きに使う辞書に合ったモデルが要ります。モデルは `download` で取得します。
+
+```bash
+DICT=$(lindera download ipadic)
+MODEL=$(lindera download dependency-ipadic)
+echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
+```
+
+各文の文節とその係り受けを、ラティス形式で書き出します。`cabocha -f1` が書く形式です。出力は[クイックスタート](../lindera-dependency/quickstart.md)に、読み方は[結果の読み方と使い方](../lindera-dependency/reading_the_result.md)にあります。
+
+`tokenize` は、トークンフィルター `japanese_dependency` で、同じ解析の結果を出力のトークンに書きます。[トークンフィルター](../lindera-dependency/token_filter.md)を参照してください。

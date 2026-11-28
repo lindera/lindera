@@ -14,16 +14,11 @@ license = { workspace = true }
 
 [features]
 default = []
-# The `lindera-dependency` command for a user: `parse`, which tokenizes text
-# with Lindera and writes its bunsetsu and dependencies, and `chunk`. It has
-# no training code (#1439).
-cli = ["dep:clap", "dep:lindera-segmenter"]
-# The tools around the parser, and their subcommands: the `corpus` module,
-# which makes training data (#1419), the `evaluation` module (#1420), the
-# training of the chunker with lindera-crf (#1421) and of the parser (#1437).
-train = ["cli", "dep:lindera-crf", "dep:serde_json"]
-# Embeds IPADIC in the command, for `--dict embedded://ipadic`.
-embed-ipadic = ["cli", "lindera-segmenter/embed-ipadic"]
+# The tools around the parser: the `corpus` module, which makes training
+# data (#1419), the `evaluation` module (#1420), the training of the chunker
+# with lindera-crf (#1421) and of the parser (#1437). The command that runs
+# them is `lindera dependency`, in lindera-cli (#1482).
+train = ["dep:lindera-crf"]
 # Embeds the model for IPADIC, for `embedded::model("ipadic")` and
 # `--model embedded://ipadic`: the one a release of Lindera publishes, or
 # the file LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE names (#1440). It
@@ -42,15 +37,13 @@ embed-model-unidic-csj = ["dep:lindera-dictionary"]
 # morphemes, and has to build without a tokenizer or a dictionary, for
 # wasm32-unknown-unknown as well (`make check-lindera-dependency`).
 #
-# Behind `cli`, the command depends on lindera-segmenter and on nothing
-# above it: lindera-analysis depends on this crate for the token filter,
-# behind its `dependency` feature (#1438), so this crate must never depend
-# on lindera-analysis or on the lindera facade.
+# The crate is a library only, and depends on no tokenizer with any
+# feature: the command is `lindera dependency`, in lindera-cli (#1482).
+# lindera-analysis depends on this crate for the token filter, behind its
+# `dependency` feature (#1438), so this crate must never depend on
+# lindera-segmenter, on lindera-analysis or on the lindera facade.
 [dependencies]
-clap = { version = "4.6.4", features = ["derive", "cargo"], optional = true }
 lindera-crf = { workspace = true, optional = true, features = ["train"] }
-lindera-segmenter = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
 
 # Only for the build script, and only with a feature that embeds a model:
 # the download and the check of a published archive.
@@ -59,8 +52,3 @@ lindera-dictionary = { workspace = true, optional = true, features = ["build_rs"
 
 [dev-dependencies]
 tempfile = "3.27.0"
-
-[[bin]]
-name = "lindera-dependency"
-path = "src/bin/lindera-dependency.rs"
-required-features = ["cli"]

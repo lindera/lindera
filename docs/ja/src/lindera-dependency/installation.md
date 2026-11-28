@@ -26,12 +26,12 @@ Error: LinderaError { kind: FeatureDisabled, source: the token filter japanese_d
 lindera-dependency = "7.1"
 ```
 
-既定のビルドは依存を持たず、`wasm32-unknown-unknown` 向けにビルドできます。Lindera のものでなくても、形態素の列なら受け取れます。[feature フラグ](./architecture.md#feature-フラグ)で、コマンド、学習、埋め込みのモデルを足します。
+既定のビルドは依存を持たず、`wasm32-unknown-unknown` 向けにビルドできます。Lindera のものでなくても、形態素の列なら受け取れます。[feature フラグ](./architecture.md#feature-フラグ)で、学習、埋め込みのモデルを足します。
 
-テキストを解析してラティス形式を書き出す `lindera-dependency` コマンドは、`cli` の裏にあります。
+このクレートはライブラリです。テキストを解析してラティス形式を書き出すコマンドは `lindera dependency` で、`lindera` コマンドの一部として、既定のビルドに入っています。
 
 ```shell
-cargo install lindera-dependency --features cli
+cargo install lindera-cli
 ```
 
 ## モデル

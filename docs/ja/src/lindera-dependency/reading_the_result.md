@@ -45,14 +45,14 @@
 
 結果には 2 つの形があり、中身は同じです。
 
-- `lindera-dependency` コマンドの**ラティス形式**。`cabocha -f1` が書く形式です。
+- `lindera dependency parse` の**ラティス形式**。`cabocha -f1` が書く形式です。
 - Lindera のトークナイザーの**トークンの欄**。トークンフィルター `japanese_dependency` が書き込みます。
 
 ### ラティス形式
 
 ```shell
 % echo "太郎は昨日買った新しい本を図書館で読んだ。" \
-    | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+    | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
 
 ```text
@@ -142,7 +142,7 @@ JSON の出力の各トークンの表層と、その `dependency` の欄は、�
 
 ### ほかの種類の文
 
-以下の表は、上の表と同じく、`lindera-dependency parse` の出力から読み取ったものです。
+以下の表は、上の表と同じく、`lindera dependency parse` の出力から読み取ったものです。
 
 **引用**: 彼は明日来ると言った。
 

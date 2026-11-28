@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prints the numbers of a baseline from what `lindera-dependency evaluate
+"""Prints the numbers of a baseline from what `lindera dependency evaluate
 --json` wrote. The lines of baselines.sh.
 
 Usage:

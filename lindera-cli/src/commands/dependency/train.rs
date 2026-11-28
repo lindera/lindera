@@ -1,6 +1,6 @@
-//! The subcommands of `lindera-dependency` that need the training code:
+//! The subcommands of `lindera dependency` that need the training code:
 //! making training data, training the chunker and the parser, and
-//! evaluating. They are in the build with the `train` feature.
+//! evaluating. They are in a build with the `train` feature.
 
 use std::borrow::Cow;
 use std::fs::{self, File};
@@ -9,6 +9,9 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
 use lindera_dependency::cabocha;
 use lindera_dependency::chunker::{self, Regularization, Template, TrainOptions};
 use lindera_dependency::corpus::{self, TokenizerError};
@@ -20,11 +23,9 @@ use lindera_dependency::parser::{
     TrainOptions as ParserTrainOptions,
 };
 use lindera_dependency::{DictionaryMorpheme, Schema};
-use lindera_segmenter::dictionary::load_dictionary;
-use lindera_segmenter::mode::Mode;
-use lindera_segmenter::segmenter::Segmenter;
 
 use super::{CommandError, read_lattice};
+use crate::commands::write_stdout;
 
 /// The arguments of `convert`.
 #[derive(Debug, clap::Args)]
@@ -552,7 +553,8 @@ pub(crate) fn evaluate(args: EvaluateArgs) -> Result<(), CommandError> {
     } else {
         text
     };
-    writeln!(io::stdout(), "{output}")?;
+    // A standard output without a reader ends the command quietly (#1316).
+    write_stdout(&format!("{output}\n"))?;
     Ok(())
 }
 

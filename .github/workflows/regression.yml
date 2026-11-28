@@ -446,17 +446,16 @@ jobs:
               - *shared-workspace
               - *shared-make
             # The default build of lindera-dependency depends on no other
-            # crate of the workspace; its command (`train`) tokenizes with
-            # lindera-segmenter and, in the tests, the embedded IPADIC, and
-            # trains the chunker with lindera-crf.
+            # crate of the workspace; with `train` it trains the chunker
+            # with lindera-crf, and a build that embeds a model reads the
+            # archive with lindera-dictionary. Its command is in lindera-cli
+            # (#1482), which has the filter of its own.
             # check-lindera-dependency follows this filter too, hence the
             # script and the Makefile.
             lindera-dependency:
               - 'lindera-dependency/**'
               - 'lindera-crf/**'
-              - 'lindera-segmenter/**'
               - 'lindera-dictionary/**'
-              - 'lindera-ipadic/**'
               # check-lindera-dependency reads the `dependency` feature of
               # these crates: the token filter japanese_dependency (#1438).
               - 'lindera-analysis/Cargo.toml'
@@ -555,35 +554,19 @@ jobs:
       lint: true
 
   # The job above tests and lints the default build, which has no
-  # dependency. This one does it with `cli`: the `lindera-dependency`
-  # command for a user, which tokenizes with IPADIC and has no training
-  # code (#1439). No other job builds the command without `train`.
-  test-lindera-dependency-cli:
-    name: Test lindera-dependency (cli)
-    needs: [test-lindera-dependency, test-lindera-segmenter, detect-changes]
-    if: >-
-      !cancelled() && !failure() &&
-      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dependency == 'true')
-    uses: ./.github/workflows/test-crate.yml
-    with:
-      crate: lindera-dependency
-      features: "--features cli,embed-ipadic"
-      dictionaries: "ipadic"
-      lint: true
-
-  # And this one with `train`: the corpus conversion, the training and the
-  # subcommands for them (#1419).
+  # dependency. This one does it with `train`, the corpus conversion and
+  # the training (#1419), and with the embedded models. The command that
+  # runs them, `lindera dependency`, is tested with lindera-cli (#1482).
   test-lindera-dependency-train:
     name: Test lindera-dependency (train)
-    needs: [test-lindera-dependency, test-lindera-segmenter, detect-changes]
+    needs: [test-lindera-dependency, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dependency == 'true')
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dependency
-      features: "--features train,embed-ipadic,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj"
-      dictionaries: "ipadic"
+      features: "--features train,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj"
       lint: true
 
   # lindera-dependency takes any sequence of morphemes: it has to build
@@ -1088,6 +1071,23 @@ jobs:
     with:
       crate: lindera-cli
       features: "--features train,embed-ipadic,dependency"
+      dictionaries: "ipadic"
+      lint: true
+
+  # The job above builds the command without a model. This one embeds the
+  # model for IPADIC, for `lindera dependency parse --model
+  # embedded://ipadic` and the token filter with `embedded://ipadic`, whose
+  # tests are in no other build of the command (#1482).
+  test-lindera-cli-embedded-model:
+    name: Test lindera-cli (embedded model)
+    needs: [test-lindera-cli, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-cli == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-cli
+      features: "--features train,embed-ipadic,embed-dependency-ipadic"
       dictionaries: "ipadic"
       lint: true
 

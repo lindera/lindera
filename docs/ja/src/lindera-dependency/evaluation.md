@@ -1,9 +1,9 @@
 # 評価
 
-`train` feature の裏にある `lindera-dependency evaluate` は、出力を正解と比べます。どちらも[ラティス形式](./architecture.md#ラティス形式)で、同じ文が同じ順に並んでいる必要があります。
+`train` feature の裏にある `lindera dependency evaluate` は、出力を正解と比べます。どちらも[ラティス形式](./architecture.md#ラティス形式)で、同じ文が同じ順に並んでいる必要があります。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- evaluate \
+cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice \
     --system output.lattice
 ```
@@ -45,7 +45,7 @@ end to end sentences: 14.43% (73/506)
 `--compare` を付けると、2 つ目の出力も評価し、2 つを対にします。文の区切り、一貫の係り、文のそれぞれについて、両方で正解、1 つ目だけ正解、2 つ目だけ正解、どちらも不正解を数えます。p 値は、食い違う 2 つの数に対する McNemar の正確検定（両側）のものです。区切りの対は、係り先が何であっても、2 つの区切りを比べられます。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- evaluate \
+cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 ```
 
@@ -67,10 +67,10 @@ dev と test は小さく、係りは 3,641 本と 3,967 本です。90% 前後�
 
 ## 交差検証
 
-`lindera-dependency split` は、分割を書き出します。入力の文 `i`（0 から数える）は、fold `i mod k` のテストのファイルと、ほかのすべての fold の学習のファイルに入ります。そのため、どこでコマンドを流しても同じ分割になります。
+`lindera dependency split` は、分割を書き出します。入力の文 `i`（0 から数える）は、fold `i mod k` のテストのファイルと、ほかのすべての fold の学習のファイルに入ります。そのため、どこでコマンドを流しても同じ分割になります。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- split \
+cargo run --release -p lindera-cli -- dependency split \
     --input train.lattice --folds 10 --output-dir folds
 ```
 

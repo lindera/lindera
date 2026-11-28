@@ -162,7 +162,7 @@ One script builds the file from the corpus and the sources of the repository:
 scripts/dependency/build_model.sh
 ```
 
-It gets UD Japanese-GSD at its fixed commit, builds the `lindera-dependency` command with a named toolchain and the dependencies of `Cargo.lock`, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to `scripts/dependency/data/model`. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:
+It gets UD Japanese-GSD at its fixed commit, builds the `lindera` command with a named toolchain and the dependencies of `Cargo.lock`, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to `scripts/dependency/data/model`. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:
 
 ```text
 corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6

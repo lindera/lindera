@@ -16,7 +16,7 @@
 //! counts what it did in a [`Report`], with how often the head word of a
 //! [`Schema`] is the content head of the corpus. Nothing here depends on a
 //! tokenizer:
-//! the caller gives the morphemes. The `lindera-dependency convert` command
+//! the caller gives the morphemes. The `lindera dependency convert` command
 //! tokenizes with Lindera.
 //!
 //! The corpora are not part of this repository. See the README of the crate

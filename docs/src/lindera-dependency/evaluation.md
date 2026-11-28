@@ -1,9 +1,9 @@
 # Evaluation
 
-`lindera-dependency evaluate`, behind the `train` feature, compares an output with the answer, both in the [lattice format](./architecture.md#the-lattice-format) with the same sentences in the same order.
+`lindera dependency evaluate`, behind the `train` feature, compares an output with the answer, both in the [lattice format](./architecture.md#the-lattice-format) with the same sentences in the same order.
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- evaluate \
+cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice \
     --system output.lattice
 ```
@@ -45,7 +45,7 @@ end to end sentences: 14.43% (73/506)
 With `--compare`, a second output is evaluated too, and the two are paired: each segmentation of a sentence, each end-to-end arc and each sentence is right in both, in the first only, in the second only or in neither. The p-value is the one of McNemar's exact test, two-sided, on the two discordant counts. The segmentations compare two chunkers, whatever the heads.
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- evaluate \
+cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 ```
 
@@ -67,10 +67,10 @@ The dev and the test file are small: 3,641 and 3,967 arcs. For an accuracy near 
 
 ## Cross-validation
 
-`lindera-dependency split` writes the folds. Sentence `i` of the input, from 0, is in the test file of fold `i mod k` and in the training file of every other fold, so the folds are the same wherever the command runs:
+`lindera dependency split` writes the folds. Sentence `i` of the input, from 0, is in the test file of fold `i mod k` and in the training file of every other fold, so the folds are the same wherever the command runs:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- split \
+cargo run --release -p lindera-cli -- dependency split \
     --input train.lattice --folds 10 --output-dir folds
 ```
 

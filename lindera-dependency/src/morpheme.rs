@@ -199,7 +199,8 @@ fn split_quoted(quoted: &str) -> Option<(String, Option<&str>)> {
 /// A morpheme of a dictionary: its surface and its feature columns.
 ///
 /// What a tokenizer gives, when it has no type of its own that implements
-/// [`Morpheme`]: the command makes one from each token of Lindera.
+/// [`Morpheme`]: the `lindera dependency` command makes one from each token
+/// of Lindera.
 ///
 /// # Examples
 ///

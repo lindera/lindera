@@ -1,7 +1,7 @@
-//! The `lindera-dependency train-chunker` and `lindera-dependency chunk`
+//! The `lindera dependency train-chunker` and `lindera dependency chunk`
 //! commands. They need no dictionary.
 
-#![cfg(feature = "train")]
+#![cfg(all(feature = "train", feature = "dependency"))]
 
 use std::fs;
 use std::path::Path;
@@ -10,6 +10,17 @@ use std::process::{Command, Output};
 use lindera_dependency::chunker::{ChunkerData, Column, Template};
 use lindera_dependency::model::{Model, ModelBuilder};
 use lindera_dependency::{Morpheme, Schema, lattice};
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// A sentence in the lattice format, of bunsetsu given as their morphemes,
 /// each `surface/part of speech`, every bunsetsu depending on the last.
@@ -54,7 +65,7 @@ fn training_data() -> String {
 
 /// Runs the command.
 fn run(arguments: &[&str], paths: &[(&str, &Path)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"));
+    let mut command = dependency();
     command.args(arguments);
     for (option, path) in paths {
         command.arg(option).arg(path);
@@ -349,7 +360,10 @@ fn fails_with_the_cause() {
         &["train-chunker", "--columns", "surface,lemma"],
         &train,
     ));
-    assert!(error.contains("Error: unknown column `lemma`"), "{error}");
+    assert!(
+        error.contains("Error: LinderaError { kind: Content, source: unknown column `lemma`"),
+        "{error}"
+    );
     fs::write(&template_path, "U00:%x[0,0\nB\n").unwrap();
     let error = failure(run(
         &["train-chunker"],
@@ -383,7 +397,10 @@ fn fails_with_the_cause() {
         ("--output", &output_path),
     ];
     let error = failure(run(&["chunk"], &chunk));
-    assert!(error.contains("Error: cannot read"), "{error}");
+    assert!(
+        error.contains("Error: LinderaError { kind: Content, source: cannot read"),
+        "{error}"
+    );
     fs::write(&model_path, b"not a model").unwrap();
     let error = failure(run(&["chunk"], &chunk));
     assert!(

@@ -168,10 +168,11 @@ crate=lindera-$dictionary
 "$here/fetch_corpora.sh" "$work/corpora"
 corpus=$(git -C "$work/corpora/gsd" rev-parse HEAD)
 
-# The command. --locked: the dependencies of Cargo.lock, and no others.
+# The command: `lindera`, whose default build has `lindera dependency` with
+# its training. --locked: the dependencies of Cargo.lock, and no others.
 "${cargo[@]}" build --manifest-path "$root/Cargo.toml" --locked --release \
-    -p lindera-dependency --features train,embed-ipadic
-bin="$root/target/release/lindera-dependency"
+    -p lindera-cli --features embed-ipadic
+bin="$root/target/release/lindera"
 compiler=$("${rustc[@]}" --version)
 host=$("${rustc[@]}" -vV | sed -n 's/^host: //p')
 libc=$(getconf GNU_LIBC_VERSION 2> /dev/null || uname -sr)
@@ -179,10 +180,9 @@ libc=$(getconf GNU_LIBC_VERSION 2> /dev/null || uname -sr)
 # The dictionary: the embedded IPADIC, the one given, or the one of the
 # release of the version of the workspace.
 if [ -z "$dict" ] && [ "$dictionary" != ipadic ]; then
-    "${cargo[@]}" build --manifest-path "$root/Cargo.toml" --locked --release -p lindera-cli
     mkdir -p "$work/dictionaries"
     dict=$(env -u LINDERA_DATA_DIR LINDERA_DICTIONARIES_DIR="$work/dictionaries" \
-        "$root/target/release/lindera" download "$dictionary")
+        "$bin" download "$dictionary")
 fi
 if [ "$dictionary" = ipadic ] && [ -z "$dict" ]; then
     dict=embedded://ipadic
@@ -204,7 +204,7 @@ fi
 
 # The training data: the train file only. From the directory of the corpus,
 # so that the report names the file without a path.
-env -C "$work/corpora/gsd" "$bin" convert --dict "$dict" \
+env -C "$work/corpora/gsd" "$bin" dependency convert --dict "$dict" \
     --input ja_gsd-ud-train.conllu --output "$work/train.lattice" \
     2> "$work/train.report"
 cat "$work/train.report"
@@ -213,7 +213,7 @@ cat "$work/train.report"
 # defaults of the command are the settings of the released model. The number
 # of threads of train-chunker changes how long the training takes and not
 # its result. The line of each iteration stays in the log.
-"$bin" train-chunker --dictionary-name "$dictionary" \
+"$bin" dependency train-chunker --dictionary-name "$dictionary" \
     --input "$work/train.lattice" --output "$work/chunker.model" \
     2> "$work/train-chunker.log" || {
     cat "$work/train-chunker.log" >&2
@@ -221,7 +221,7 @@ cat "$work/train.report"
 }
 grep -v '^iter: ' "$work/train-chunker.log"
 model=$out/$key/dependency.model
-"$bin" train-parser --dictionary-name "$dictionary" --input "$work/train.lattice" \
+"$bin" dependency train-parser --dictionary-name "$dictionary" --input "$work/train.lattice" \
     --chunker "$work/chunker.model" --output "$model"
 
 # What the file is, for `lindera download` and `lindera list`.

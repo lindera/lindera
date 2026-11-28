@@ -32,6 +32,8 @@ The easiest way to obtain a dictionary is the `download` subcommand, which insta
 
 `lindera list` shows the dictionaries in place and those embedded in the binary.
 
+`lindera dependency parse` writes the bunsetsu of each sentence and their dependencies, from 7.1.0 on: see the chapter of [`lindera-dependency`](https://lindera.github.io/lindera/lindera-dependency/command_line.html).
+
 Available dictionary names: `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba`.
 
 `lindera download dependency-ipadic` gets the model of the dependency parser for IPADIC the same way, from 7.1.0 on (`dependency-unidic`, `dependency-unidic-cwj` and `dependency-unidic-csj` the ones for UniDic), and prints the path of the model file, which the token filter `japanese_dependency` takes as `model`.

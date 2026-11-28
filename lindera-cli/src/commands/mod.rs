@@ -5,6 +5,8 @@ use lindera::LinderaResult;
 use lindera::error::{LinderaError, LinderaErrorKind};
 
 pub mod build;
+#[cfg(feature = "dependency")]
+pub mod dependency;
 pub mod download;
 #[cfg(feature = "train")]
 pub mod export;

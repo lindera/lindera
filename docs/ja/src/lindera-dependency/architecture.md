@@ -156,12 +156,12 @@ assert_eq!(output, text.as_bytes());
 
 ### コマンド
 
-`cli` feature を付けると、`lindera-dependency` コマンドがビルドされます。分かち書きには `lindera-segmenter` を使い、学習のコードは入りません。`train` feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。
+このクレートにバイナリはありません。コマンドは `lindera-cli` の `lindera dependency` で、そのクレートの `dependency` feature の裏にあり、既定のビルドに入っています。`lindera-cli` の `train` feature（これも既定のビルドに入っています）を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。
 
 | サブコマンド | Feature | 内容 | ページ |
 | --- | --- | --- | --- |
-| `parse` | `cli` | テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く | [コマンドライン](./command_line.md) |
-| `chunk` | `cli` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
+| `parse` | `dependency` | テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く | [コマンドライン](./command_line.md) |
+| `chunk` | `dependency` | モデルファイルで、ファイルの形態素を区切り直す | [文節の区切り](./chunking.md) |
 | `convert` | `train` | 文節のラベルを持つ CoNLL-U のファイルから、学習データを作る | [学習データ](./training_data.md) |
 | `evaluate` | `train` | 出力を正解と比べる | [評価](./evaluation.md) |
 | `split` | `train` | 交差検証の分割を書き出す | [評価](./evaluation.md) |
@@ -170,16 +170,14 @@ assert_eq!(output, text.as_bytes());
 | `train-parser` | `train` | 解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる | [係り受けの解析](./parsing.md) |
 | `convert-cabocha` | `train` | CaboCha の区切りと解析器のモデルを、モデルファイルに変換する | [CaboCha のモデル](./cabocha_models.md) |
 
-コマンドは `lindera-cli` ではなく、このクレートにあります。ラティス形式を書き出し、学習を持つコマンドで、トークナイザーを使うだけの人には要らないためです。`lindera-cli` は、解析器を[トークンフィルター](./token_filter.md)として動かします。
+コマンドは、このクレートではなく `lindera-cli` にあります（[#1482](https://github.com/lindera/lindera/issues/1482)）。利用者が入れるコマンドが、辞書とモデルのダウンロードも行う 1 つで済み、このクレートは、どの feature でもトークナイザーに依存しません。`lindera-cli` は、解析器を[トークンフィルター](./token_filter.md)としても動かします。
 
 ## Feature フラグ
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
 | （なし） | 型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、`wasm32-unknown-unknown` 向けにビルドできる | Yes |
-| `cli` | `lindera-dependency` コマンドの `parse` と `chunk`。分かち書きは `lindera-segmenter`。学習のコードは入らない | No |
-| `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習と解析器の学習、そのサブコマンド（`cli` を含む） | No |
-| `embed-ipadic` | コマンドに IPADIC を埋め込む。`--dict embedded://ipadic` で使う（`cli` を含む） | No |
+| `train` | `corpus` と `evaluation` のモジュール、`lindera-crf` による区切りの学習と解析器の学習 | No |
 | `embed-model-ipadic` | [IPADIC のモデル](./model_file.md#埋め込む)を埋め込む。`embedded::model("ipadic")` と `--model embedded://ipadic` で使う。ビルド依存が増え、ライブラリの依存は増えない | No |
 | `embed-model-unidic`、`embed-model-unidic-cwj`、`embed-model-unidic-csj` | [UniDic のモデル](./model_file.md#unidic-のモデル)を埋め込む。`embedded::model("unidic")` と `--model embedded://unidic` で使う。ほかの 2 つの名前でも同じ | No |
 
