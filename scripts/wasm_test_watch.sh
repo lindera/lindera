@@ -67,7 +67,7 @@ if [ -z "$command" ]; then
   command="cd lindera-wasm && exec wasm-pack test --node --features='$features'"
 fi
 logs=$(mktemp -d)
-echo "node $(node --version), $(wasm-pack --version), $(nproc) processors, features $features"
+echo "node $(node --version), $(wasm-pack --version), $(nproc) processors, features $features, NODE_ARGS '${NODE_ARGS:-}'"
 
 # Writes what the processes of a run are doing: every process of the group,
 # with its threads and their stacks.

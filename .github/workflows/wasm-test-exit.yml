@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [baseline]
+        variant: [baseline, workaround]
         index: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     steps:
       - name: Run checkout
@@ -49,5 +49,9 @@ jobs:
       - name: Run the tests of the host
         run: cargo test -p lindera-wasm --lib
 
+      # `baseline` is the step as it was, and `workaround` what the
+      # Makefile gives Node.js now (NODE_EXIT_OPTIONS).
       - name: Run the Node.js tests five times
+        env:
+          NODE_ARGS: ${{ matrix.variant == 'workaround' && '--no-concurrent-sparkplug' || '' }}
         run: scripts/wasm_test_watch.sh --runs 5 --grace 120
