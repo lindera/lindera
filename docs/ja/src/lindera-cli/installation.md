@@ -19,11 +19,11 @@ cargo経由でバイナリをインストールできます：
 Lindera はバイナリに辞書を同梱していません。最も簡単な入手方法は `download` サブコマンドで、CLI と同じバージョンのビルド済み辞書を取得して辞書ディレクトリ（Linux では `~/.local/share/lindera/dictionaries/ipadic`）にインストールし、`--dict` に渡すパスを表示します：
 
 ```shell
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 ```
 
-利用可能な辞書名と保存場所については[コマンド](commands.md#download)を、置いてある辞書の一覧については [`lindera list`](commands.md#list) を参照してください。
+利用可能な辞書名と保存場所については[コマンド](commands.md#download)を、置いてある辞書の一覧については [`lindera dictionary list`](commands.md#list) を参照してください。
 
 または、[GitHub Releases](https://github.com/lindera/lindera/releases) ページからビルド済み辞書を手動でダウンロードすることもできます：
 
@@ -83,7 +83,7 @@ CLI 使用時に展開した辞書パスを指定します（アーカイブに�
 % cargo build --release --features=embed-unidic-cwj
 ```
 
-実行ファイルは 1.2 GB の辞書を含み、ビルドには 11 GiB ほどのメモリを使います。`lindera download unidic-cwj` なら、埋め込まずに辞書を取得できます。
+実行ファイルは 1.2 GB の辞書を含み、ビルドには 11 GiB ほどのメモリを使います。`lindera dictionary download unidic-cwj` なら、埋め込まずに辞書を取得できます。
 
 #### UniDic CSJ（日本語辞書）
 
@@ -91,7 +91,7 @@ CLI 使用時に展開した辞書パスを指定します（アーカイブに�
 % cargo build --release --features=embed-unidic-csj
 ```
 
-実行ファイルは 1.2 GB の辞書を含み、ビルドには、UniDic CWJ と同じく 8〜11 GiB のメモリを使います。`lindera download unidic-csj` なら、埋め込まずに辞書を取得できます。
+実行ファイルは 1.2 GB の辞書を含み、ビルドには、UniDic CWJ と同じく 8〜11 GiB のメモリを使います。`lindera dictionary download unidic-csj` なら、埋め込まずに辞書を取得できます。
 
 #### SudachiDict（日本語辞書）
 

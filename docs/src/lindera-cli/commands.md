@@ -1,13 +1,14 @@
 # Commands
 
-The Lindera CLI provides seven main commands:
+The Lindera CLI provides three main commands:
 
-- **list** - List the morphological analysis dictionaries and their status
 - **tokenize** - Perform morphological analysis on text
-- **build** - Build a dictionary from source CSV files
-- **download** - Download a pre-built dictionary from the GitHub releases page
-- **train** - Train a CRF model from annotated corpus data
-- **export** - Export a trained model to dictionary format
+- **dictionary** - Work with dictionaries, with a subcommand for each operation:
+  - **list** - List the morphological analysis dictionaries and their status
+  - **download** - Download a pre-built dictionary from the GitHub releases page
+  - **build** - Build a dictionary from source CSV files
+  - **train** - Train a CRF model from annotated corpus data
+  - **export** - Export a trained model to dictionary format
 - **dependency** - Analyze bunsetsu dependencies, and train and evaluate the models of the analysis
 
 ## Warnings and log messages
@@ -25,45 +26,13 @@ The `RUST_LOG` environment variable selects the messages, for example `RUST_LOG=
 
 When the program that reads the standard output of a command exits first, as `head` does once it has the lines it wants, the command ends quietly, with exit code 0 and no message:
 
-- `tokenize`, `list` and `download` write their result there, so they stop at the first write that has no reader. `tokenize` reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.
-- `train` and `export` only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.
+- `tokenize`, `dictionary list` and `dictionary download` write their result there, so they stop at the first write that has no reader. `tokenize` reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.
+- `dictionary train` and `dictionary export` only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.
 - `dependency parse`, `dependency evaluate`, `dependency list` and `dependency download` write their result there, and stop at the first write that has no reader, as `tokenize` does. The other subcommands of `dependency` write files, and report on them on standard error.
 
-When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of `download` and the notices of `list`, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.
+When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of `dictionary download` and the notices of `dictionary list`, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.
 
 Up to v6.2.0, the commands failed instead; see the [migration guide](../migration_v6_to_v7.md#the-commands-end-quietly-when-their-standard-output-has-no-reader).
-
-## list
-
-List the dictionaries that `--dict` can take: those embedded in the binary (via the `embed-*` feature flags) and those in the dictionaries directory, where `lindera download` puts them, each with the version of Lindera that built it.
-
-### List parameters
-
-This command takes no arguments. It looks for dictionaries in the directory named by `LINDERA_DICTIONARIES_DIR`, as `lindera download` does (see [Storage location](#storage-location)).
-
-### List usage
-
-```shell
-% lindera list
-```
-
-```text
-Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
-NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
-```
-
-The table, on stdout, has one dictionary per line: the embedded dictionaries first, then the subdirectories of the dictionaries directory, by name.
-
-- `NAME` is the kind of the embedded dictionary, or the name of the directory.
-- `VERSION` is the version of Lindera that built the dictionary (`lindera_version` in its `metadata.json`), or `unknown` for a dictionary built before v7.0.0.
-- `STATUS` is `ok`; `incomplete` when required files are missing (download it again with `lindera download <name> --force`); or `other version` when another version of Lindera built the dictionary, or one that does not say (for a downloadable dictionary, `lindera download <name>` replaces it).
-- `DICT` is the value to pass to `--dict`.
-
-The models of the dependency parser, which are installed in the same directory, are not in this table: [`lindera dependency list`](#models-of-the-dependency-parser) shows them.
-
-Messages go to stderr: a subdirectory with neither `metadata.json` nor `model.json`, such as the `6.2.0/` above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run `lindera download`. Entries whose name starts with `.` are skipped silently.
 
 ## tokenize
 
@@ -72,7 +41,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 ### Parameters
 
 - `--dict` / `-d`: Dictionary URI or path (required)
-  - File path: `/path/to/dictionary`, such as the path that `lindera download` prints, or `file:///path/to/dictionary`
+  - File path: `/path/to/dictionary`, such as the path that `lindera dictionary download` prints, or `file:///path/to/dictionary`
   - Embedded: `embedded://ipadic`, `embedded://unidic`, etc.
   - A dictionary name alone, such as `ipadic`, is not accepted, unless a directory of that name exists. The error points to the embedded dictionary and to the directory of the downloaded one:
 
@@ -625,7 +594,7 @@ lindera tokenize --dict embedded://ipadic --max-threads 8 large.txt > large.meca
 - Every tokenizing thread holds its own copy of the user dictionary, if any; the system dictionary is shared.
 - As on one thread, the output is buffered: a line that cannot be read (not UTF-8) or tokenized ends the command with exit code 1 after the output of the lines before it, and a standard output without a reader ends it with exit code 0, without reading the rest of the input.
 - A warning, such as the one of a [forced sentence cut](../lindera/segmenter.md#sentence-splitting), comes from the thread that tokenizes its line, so the warnings of several lines can reach stderr in another order than their lines.
-- The default is 1, unlike the default of `lindera train --max-threads` (the number of CPU cores), so that the CPU use and the memory of existing scripts stay as they were. A short input gains nothing from more threads.
+- The default is 1, unlike the default of `lindera dictionary train --max-threads` (the number of CPU cores), so that the CPU use and the memory of existing scripts stay as they were. A short input gains nothing from more threads.
 
 ### Advanced tokenization with filters
 
@@ -645,11 +614,111 @@ Lindera provides an analytical framework that combines character filters, tokeni
 EOS
 ```
 
-## build
+## dictionary
+
+Works with dictionaries. From 7.1.0 on, the operations on dictionaries are subcommands of one command:
+
+```text
+lindera dictionary <SUBCOMMAND>
+```
+
+| Subcommand | What it does |
+| --- | --- |
+| [`list`](#list) | Lists the dictionaries in place and those embedded in the binary |
+| [`download`](#download) | Downloads a pre-built dictionary from the GitHub releases page |
+| [`build`](#build) | Builds a dictionary from source CSV files |
+| [`train`](#train) | Trains a CRF model from annotated corpus data |
+| [`export`](#export) | Exports a trained model to dictionary format |
+
+`list`, `download` and `build` are in every build, and `train` and `export` in a build with the `train` feature, which is in the default build.
+
+### Deprecated names
+
+Up to v7.0.0 the five were subcommands of `lindera` itself: `lindera list`, `lindera download`, `lindera build`, `lindera train` and `lindera export`. Those names still run: each does what the new command does, with the same options, the same standard output and the same exit code, after one line on stderr:
+
+```text
+Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+```
+
+`lindera --help` does not list them, and they are removed in v8.0.0. A command line with an argument that is rejected before the command runs, such as an unknown option, ends with that message alone, without the warning.
+
+### list
+
+List the dictionaries that `--dict` can take: those embedded in the binary (via the `embed-*` feature flags) and those in the dictionaries directory, where `lindera dictionary download` puts them, each with the version of Lindera that built it.
+
+#### List parameters
+
+This command takes no arguments. It looks for dictionaries in the directory named by `LINDERA_DICTIONARIES_DIR`, as `lindera dictionary download` does (see [Storage location](#storage-location)).
+
+#### List usage
+
+```shell
+% lindera dictionary list
+```
+
+```text
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
+```
+
+The table, on stdout, has one dictionary per line: the embedded dictionaries first, then the subdirectories of the dictionaries directory, by name.
+
+- `NAME` is the kind of the embedded dictionary, or the name of the directory.
+- `VERSION` is the version of Lindera that built the dictionary (`lindera_version` in its `metadata.json`), or `unknown` for a dictionary built before v7.0.0.
+- `STATUS` is `ok`; `incomplete` when required files are missing (download it again with `lindera dictionary download <name> --force`); or `other version` when another version of Lindera built the dictionary, or one that does not say (for a downloadable dictionary, `lindera dictionary download <name>` replaces it).
+- `DICT` is the value to pass to `--dict`.
+
+The models of the dependency parser, which are installed in the same directory, are not in this table: [`lindera dependency list`](#models-of-the-dependency-parser) shows them.
+
+Messages go to stderr: a subdirectory with neither `metadata.json` nor `model.json`, such as the `6.2.0/` above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run `lindera dictionary download`. Entries whose name starts with `.` are skipped silently.
+
+### download
+
+Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory. The model of the dependency parser, which a release publishes next to the dictionaries, is downloaded with `lindera dependency download`: see [Downloading the model of the dependency parser](#downloading-the-model-of-the-dependency-parser).
+
+#### Download parameters
+
+- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba`
+- `--force`: Re-download and replace the dictionary even when the CLI's version built it
+
+#### Storage location
+
+`lindera dictionary download <name>` installs the dictionary in `<dictionaries directory>/<name>/` and prints that path, the value to pass to `--dict`. The `LINDERA_DICTIONARIES_DIR` environment variable names the dictionaries directory, by default `lindera/dictionaries` in the OS's local data directory; see [LINDERA_DICTIONARIES_DIR](../getting_started/environment_variables.md#lindera_dictionaries_dir) for the default location on each OS and for `LINDERA_DATA_DIR`, the variable before v7.0.0.
+
+A complete dictionary already in place is kept when the CLI's version built it, as the `lindera_version` of its `metadata.json` says. When another version of Lindera built it, or its `metadata.json` does not say, as for a dictionary built before v7.0.0, `lindera dictionary download` downloads it again without `--force`, and says so on stderr, for example `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`.
+
+#### Download usage
+
+```shell
+% lindera dictionary download ipadic
+```
+
+```text
+Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/ipadic
+```
+
+On a terminal, a progress line follows the first line. The installed path is printed to stdout (progress and notices go to stderr), also when the dictionary is already there, so it can be captured in scripts and passed to `tokenize`:
+
+```shell
+% DICT_DIR=$(lindera dictionary download ipadic)
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
+```
+
+Notes:
+
+- The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.
+- Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.
+- The largest dictionary (`ipadic-neologd`) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.
+
+### build
 
 Build (compile) a morphological analysis dictionary from source CSV files for use with Lindera.
 
-### Build parameters
+#### Build parameters
 
 - `--src` / `-s`: Source directory containing dictionary CSV files (or single CSV file for user dictionary)
 - `--dest` / `-d`: Destination directory for compiled dictionary output
@@ -658,9 +727,9 @@ Build (compile) a morphological analysis dictionary from source CSV files for us
 - `--system-dict`: The system dictionary the user dictionary is for, as a URI or a directory path, the forms `tokenize --dict` accepts (optional; only with `--user`). The build then checks every row's context IDs against its connection matrix (see [Context ID check](#context-id-check))
 - `--context-id-freq` / `-f`: Context-ID access-frequency file used to reorder connection-cost IDs (optional; only meaningful when the dictionary's `metadata.json` sets `connection_id_mapping: true`)
 
-### Dictionary types
+#### Dictionary types
 
-#### System dictionary
+##### System dictionary
 
 A full morphological analysis dictionary containing:
 
@@ -669,13 +738,13 @@ A full morphological analysis dictionary containing:
 - Unknown word handling rules
 - Character type definitions
 
-#### User dictionary
+##### User dictionary
 
 A supplementary dictionary for custom words that works alongside a system dictionary.
 
-### Context ID check
+#### Context ID check
 
-When it builds a system dictionary, `lindera build` checks that every context ID lies inside the connection matrix, as MeCab's `mecab-dict-index` does. In every `lex.csv` row and `unk.def` line, the right context ID must be below the first value of the `matrix.def` header, and the left context ID below the second. A dictionary that breaks this fails to build, with an error that names the file, the line, the ID and the matrix size. For example, with a 2 x 2 `matrix.def` and a `lex.csv` whose second row has the right context ID 2:
+When it builds a system dictionary, `lindera dictionary build` checks that every context ID lies inside the connection matrix, as MeCab's `mecab-dict-index` does. In every `lex.csv` row and `unk.def` line, the right context ID must be below the first value of the `matrix.def` header, and the left context ID below the second. A dictionary that breaks this fails to build, with an error that names the file, the line, the ID and the matrix size. For example, with a 2 x 2 `matrix.def` and a `lex.csv` whose second row has the right context ID 2:
 
 ```text
 Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
@@ -685,18 +754,18 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 - A `matrix.def` row whose IDs fall outside its axes is an error too, and so is an `unk.def` line with fewer than four fields.
 - A user dictionary (`--user`) is checked only when `--system-dict` names the system dictionary it is for, as described below.
 
-With `--system-dict`, `lindera build --user` checks every row of the user dictionary against the connection matrix of that system dictionary, with the same bounds. A simple row is checked with the default context IDs of `metadata.json` (`default_left_context_id` and `default_right_context_id`). The first row outside the matrix fails the build, with an error that names its CSV line and surface, and no `.bin` file is written. For example, against IPADIC's 1316 x 1316 matrix, with a `userdic.csv` whose second row has the left context ID 60000:
+With `--system-dict`, `lindera dictionary build --user` checks every row of the user dictionary against the connection matrix of that system dictionary, with the same bounds. A simple row is checked with the default context IDs of `metadata.json` (`default_left_context_id` and `default_right_context_id`). The first row outside the matrix fails the build, with an error that names its CSV line and surface, and no `.bin` file is written. For example, against IPADIC's 1316 x 1316 matrix, with a `userdic.csv` whose second row has the left context ID 60000:
 
 ```text
-% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+% lindera dictionary build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 ```
 
 Without `--system-dict`, the build does not know the system dictionary, and the user dictionary builds. `lindera tokenize --user-dict` then checks it against the system dictionary and fails with an error that names the first entry outside the matrix by its word id (see [Context IDs](../concepts/user_dictionary.md#context-ids)). A `.csv` given to `lindera tokenize --user-dict` is built for the system dictionary of `--dict` as it is loaded, so its error names the CSV line and surface, as with `--system-dict`.
 
-### Cells missing from matrix.def
+#### Cells missing from matrix.def
 
-A `matrix.def` does not have to list every cell. `lindera build` gives a cell that it leaves out the cost 0, as MeCab's `mecab-dict-index` does. Up to v6.2.0, such a cell cost 32767 (`i16::MAX`), which made the connection very expensive. For example, with the following `matrix.def`, the connections from the right context ID 1 to the left context IDs 0 and 1 cost 10 and 20, and the other seven cells cost 0:
+A `matrix.def` does not have to list every cell. `lindera dictionary build` gives a cell that it leaves out the cost 0, as MeCab's `mecab-dict-index` does. Up to v6.2.0, such a cell cost 32767 (`i16::MAX`), which made the connection very expensive. For example, with the following `matrix.def`, the connections from the right context ID 1 to the left context IDs 0 and 1 cost 10 and 20, and the other seven cells cost 0:
 
 ```text
 3 3
@@ -704,11 +773,11 @@ A `matrix.def` does not have to list every cell. `lindera build` gives a cell th
 1 1 20
 ```
 
-The bundled dictionaries and the `matrix.def` that `lindera export` writes list every cell, so this rule does not change them.
+The bundled dictionaries and the `matrix.def` that `lindera dictionary export` writes list every cell, so this rule does not change them.
 
-### char.def and unk.def check
+#### char.def and unk.def check
 
-When it builds a system dictionary, `lindera build` also checks `char.def` and `unk.def` against each other, as `mecab-dict-index` does:
+When it builds a system dictionary, `lindera dictionary build` also checks `char.def` and `unk.def` against each other, as `mecab-dict-index` does:
 
 - A range line of `char.def` names only categories defined on an earlier line.
 - Each category is defined once.
@@ -721,35 +790,35 @@ A dictionary that breaks one of these fails to build, with an error that names t
 Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
 ```
 
-`lindera train` checks its `--char-def` and `--unk-def` in the same way before it trains (see [Training Pipeline](../development/training_pipeline.md#3-character-definition-chardef)).
+`lindera dictionary train` checks its `--char-def` and `--unk-def` in the same way before it trains (see [Training Pipeline](../development/training_pipeline.md#3-character-definition-chardef)).
 
-### char.def format
+#### char.def format
 
 A dictionary's `metadata.json` selects the format of its `char.def` with `char_def_format` ([#1388](https://github.com/lindera/lindera/issues/1388)):
 
 - `"mecab"`, the default when the field is omitted: MeCab's format. The last line that covers a code point decides its categories, and the first of them, its default category, alone creates unknown words.
 - `"sudachi"`: Sudachi's format, which SudachiDict uses. A code point gets the categories of every line that covers it. Besides the categories that the file defines, a range line can name `ALL` (every category) and the flags `NOOOVBOW` (no unknown word starts at the character) and `NOOOVEOW` (no unknown word starts right after it), and a code point can be outside the BMP. The file must define `DEFAULT`, cannot define `ALL`, `NOOOVBOW` or `NOOOVEOW` as a category, and can define at most 64 categories. Every category of a character creates unknown words, over runs cut as Sudachi cuts them, and a position where nothing else starts gets a one-character unknown word of `DEFAULT`, as in Sudachi. A character is whitespace (for `--keep-whitespace`, `--disable-skip-whitespace` and the left-space penalty) only when `SPACE` is its only category, so that the characters that `ALL` puts in every category, such as combining marks and ZWJ, are not.
 
-`lindera train` reads `--char-def` in MeCab's format only.
+`lindera dictionary train` reads `--char-def` in MeCab's format only.
 
-### Lexicon format
+#### Lexicon format
 
 A dictionary's `metadata.json` selects the format of its lexicon CSV files with `lexicon_format` ([#1389](https://github.com/lindera/lindera/issues/1389)):
 
 - `"mecab"`, the default when the field is omitted: MeCab's format. Every field is taken as written.
-- `"sudachi"`: Sudachi's format, which SudachiDict uses. A backslash, `u` and four hex digits, or a backslash, `u` and one to six hex digits in braces, stand for the code point that the digits name, and the builder decodes them in every field, as Sudachi's dictionary builder does: SudachiDict writes `http://` as `http:\u002f\u002f` and `1,2塁` as `1\u002c2塁`. The escapes are decoded left to right, the text that one stands for is not decoded again, and a backslash before an escape stays, since there is no escape for the backslash itself. An escape for a value that is not a Unicode scalar value (a surrogate, or above U+10FFFF), or for NUL, which separates the details of an entry in a built dictionary, fails the build with an error that names the file and the line. The user dictionaries built for the dictionary, with `lindera build --user` and its `metadata.json` or from a `.csv` file loaded with the dictionary, are decoded in the same way.
+- `"sudachi"`: Sudachi's format, which SudachiDict uses. A backslash, `u` and four hex digits, or a backslash, `u` and one to six hex digits in braces, stand for the code point that the digits name, and the builder decodes them in every field, as Sudachi's dictionary builder does: SudachiDict writes `http://` as `http:\u002f\u002f` and `1,2塁` as `1\u002c2塁`. The escapes are decoded left to right, the text that one stands for is not decoded again, and a backslash before an escape stays, since there is no escape for the backslash itself. An escape for a value that is not a Unicode scalar value (a surrogate, or above U+10FFFF), or for NUL, which separates the details of an entry in a built dictionary, fails the build with an error that names the file and the line. The user dictionaries built for the dictionary, with `lindera dictionary build --user` and its `metadata.json` or from a `.csv` file loaded with the dictionary, are decoded in the same way.
 
 `unk.def` is read as written in both formats, as Sudachi reads it.
 
-### Rows that are not in the encoding
+#### Rows that are not in the encoding
 
 A row of a lexicon CSV file that is not UTF-8 fails the build of a dictionary whose `encoding` is UTF-8: it is how a wrong `encoding` is found. With `"skip_invalid_encoding": true` in the `metadata.json`, the builder skips such a row and warns of it, with the file and the line ([#1466](https://github.com/lindera/lindera/issues/1466)). The default is `false`. Of the official dictionaries, the JUMAN dictionary alone sets it: six rows of its source end in the middle of a character (see [Build](../lindera-jumandic/build.md#the-six-rows-that-are-skipped)).
 
 For an encoding other than UTF-8, bytes that have no character in the encoding become U+FFFD, the replacement character, and the build goes on; with the setting, a row that has such bytes is skipped in the same way.
 
-### Examples
+#### Examples
 
-#### Build IPADIC (Japanese dictionary)
+##### Build IPADIC (Japanese dictionary)
 
 ```shell
 # Download and extract IPADIC source files
@@ -757,84 +826,84 @@ For an encoding other than UTF-8, bytes that have no character in the encoding b
 % tar zxvf /tmp/mecab-ipadic-2.7.0-20250920.tar.gz -C /tmp
 
 # Build the dictionary
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ipadic-2.7.0-20250920 \
   --dest /tmp/lindera-ipadic-2.7.0-20250920 \
   --metadata ./lindera-ipadic/metadata.json
 ```
 
-#### Build IPADIC NEologd (Japanese dictionary)
+##### Build IPADIC NEologd (Japanese dictionary)
 
 ```shell
 % curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ipadic-neologd-0.0.7-20200820 \
   --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
   --metadata ./lindera-ipadic-neologd/metadata.json
 ```
 
-#### Build UniDic (Japanese dictionary)
+##### Build UniDic (Japanese dictionary)
 
 ```shell
 % curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
 % unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt
 ```
 
-#### Build CC-CEDICT (Chinese dictionary)
+##### Build CC-CEDICT (Chinese dictionary)
 
 ```shell
 % curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/CC-CEDICT-MeCab-0.1.0-20261021 \
   --dest /tmp/lindera-cc-cedict-0.1.0-20261021 \
   --metadata ./lindera-cc-cedict/metadata.json
 ```
 
-#### Build Jieba (Chinese dictionary)
+##### Build Jieba (Chinese dictionary)
 
 ```shell
 % curl -L -o /tmp/mecab-jieba-0.1.3.tar.gz "https://lindera.dev/mecab-jieba-0.1.3.tar.gz"
 % tar zxvf /tmp/mecab-jieba-0.1.3.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-jieba-0.1.3/dict-src \
   --dest /tmp/lindera-jieba-0.1.3 \
   --metadata ./lindera-jieba/metadata.json
 ```
 
-#### Build ko-dic (Korean dictionary)
+##### Build ko-dic (Korean dictionary)
 
 ```shell
 % curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
   --metadata ./lindera-ko-dic/metadata.json \
   --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 ```
 
-### Build user dictionaries
+#### Build user dictionaries
 
-#### Build IPADIC user dictionary (Japanese)
+##### Build IPADIC user dictionary (Japanese)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-ipadic#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-ipadic/metadata.json \
@@ -843,121 +912,81 @@ For more details about user dictionary format please refer to the following URL:
 
 Add `--system-dict embedded://ipadic`, or the path of a built IPADIC, to check the rows' context IDs against IPADIC's connection matrix (see [Context ID check](#context-id-check)).
 
-#### Build UniDic user dictionary (Japanese)
+##### Build UniDic user dictionary (Japanese)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-unidic#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-unidic/metadata.json \
   --user
 ```
 
-#### Build SudachiDict user dictionary (Japanese)
+##### Build SudachiDict user dictionary (Japanese)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera SudachiDict Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-sudachidict#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/sudachidict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-sudachidict/metadata.json \
   --user
 ```
 
-#### Build CC-CEDICT user dictionary (Chinese)
+##### Build CC-CEDICT user dictionary (Chinese)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-cc-cedict#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
   --user
 ```
 
-#### Build Jieba user dictionary (Chinese)
+##### Build Jieba user dictionary (Chinese)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera Jieba Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/jieba_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-jieba/metadata.json \
   --user
 ```
 
-#### Build ko-dic user dictionary (Korean)
+##### Build ko-dic user dictionary (Korean)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-ko-dic#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 ```
 
-## download
-
-Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory. The model of the dependency parser, which a release publishes next to the dictionaries, is downloaded with `lindera dependency download`: see [Downloading the model of the dependency parser](#downloading-the-model-of-the-dependency-parser).
-
-### Download parameters
-
-- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba`
-- `--force`: Re-download and replace the dictionary even when the CLI's version built it
-
-### Storage location
-
-`lindera download <name>` installs the dictionary in `<dictionaries directory>/<name>/` and prints that path, the value to pass to `--dict`. The `LINDERA_DICTIONARIES_DIR` environment variable names the dictionaries directory, by default `lindera/dictionaries` in the OS's local data directory; see [LINDERA_DICTIONARIES_DIR](../getting_started/environment_variables.md#lindera_dictionaries_dir) for the default location on each OS and for `LINDERA_DATA_DIR`, the variable before v7.0.0.
-
-A complete dictionary already in place is kept when the CLI's version built it, as the `lindera_version` of its `metadata.json` says. When another version of Lindera built it, or its `metadata.json` does not say, as for a dictionary built before v7.0.0, `lindera download` downloads it again without `--force`, and says so on stderr, for example `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`.
-
-### Download usage
-
-```shell
-% lindera download ipadic
-```
-
-```text
-Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
-Downloaded dictionary 'ipadic'
-/home/user/.local/share/lindera/dictionaries/ipadic
-```
-
-On a terminal, a progress line follows the first line. The installed path is printed to stdout (progress and notices go to stderr), also when the dictionary is already there, so it can be captured in scripts and passed to `tokenize`:
-
-```shell
-% DICT_DIR=$(lindera download ipadic)
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
-```
-
-Notes:
-
-- The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.
-- Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.
-- The largest dictionary (`ipadic-neologd`) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.
-
-## train
+### train
 
 Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the `train` feature flag enabled. (The `train` feature flag is enabled by default.)
 
-### Train parameters
+#### Train parameters
 
 - `--seed` / `-s`: Seed lexicon file (CSV format) to be weighted
 - `--corpus` / `-c`: Training corpus (annotated text)
@@ -974,9 +1003,9 @@ Train a new morphological analysis model from annotated corpus data. To use this
 - `--max-threads` / `-t`: Maximum number of threads, 1 or more (defaults to CPU core count; affects only speed, never the trained model)
 - `--break-characters <CHARS>` / `--disable-break-characters`: The break characters of the unknown-word candidates, as for `lindera tokenize` (default: `・`). Train with the value the dictionary will be used with; the corpus's own tokens are kept whatever they span
 
-### Basic workflow
+#### Basic workflow
 
-#### 1. Prepare training files
+##### 1. Prepare training files
 
 **Seed lexicon file (seed.csv):**
 
@@ -998,7 +1027,7 @@ Note: The exact field definitions differ between dictionary formats (IPADIC, Uni
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 ```
 
-The file is read as CSV, as `lindera build` reads `lex.csv`: a field may be quoted (`",",0,0,0,...`), and a line that starts with `#` is an entry, not a comment. See [Seed Lexicon](../development/training_pipeline.md#1-seed-lexicon-seedcsv) for the details.
+The file is read as CSV, as `lindera dictionary build` reads `lex.csv`: a field may be quoted (`",",0,0,0,...`), and a line that starts with `#` is an entry, not a comment. See [Seed Lexicon](../development/training_pipeline.md#1-seed-lexicon-seedcsv) for the details.
 
 **Training corpus (corpus.txt):**
 
@@ -1018,10 +1047,10 @@ EOS
 
 For detailed information about file formats and advanced features, see [Training Pipeline](../development/training_pipeline.md).
 
-#### 2. Train model
+##### 2. Train model
 
 ```bash
-lindera train \
+lindera dictionary train \
   --seed ./resources/training/seed.csv \
   --corpus ./resources/training/corpus.txt \
   --unk-def ./resources/training/unk.def \
@@ -1032,9 +1061,9 @@ lindera train \
   --max-iterations 100
 ```
 
-#### 3. Training results
+##### 3. Training results
 
-`lindera train` writes the model to the `--output` file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see [How training works](../development/training_pipeline.md#how-training-works)). With the files in `./resources/training/`:
+`lindera dictionary train` writes the model to the `--output` file. Once it has built the training lattices, it prints how the gold tokens of the corpus were labelled (see [How training works](../development/training_pipeline.md#how-training-works)). With the files in `./resources/training/`:
 
 ```text
 Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
@@ -1057,18 +1086,18 @@ The trained model contains:
 
 Corpus words that are not in the seed lexicon are not added as words. They are learned through the `unk.def` entries, or through virtual labels, which are trained but not exported.
 
-## export
+### export
 
 Export a trained model file to Lindera dictionary format files. This feature requires building with the `train` feature flag enabled.
 
-### Export parameters
+#### Export parameters
 
 - `--model` / `-m`: Path to the trained model file (.dat format)
 - `--output` / `-o`: Directory to output the dictionary files
 - `--metadata`: Optional metadata.json file to update with trained model information
 - `--cost-factor`: Override cost factor for weight-to-cost conversion (default: value from trained model, typically 700)
 
-### Output files
+#### Output files
 
 The export command creates the following dictionary files in the output directory:
 
@@ -1082,20 +1111,20 @@ The export command creates the following dictionary files in the output director
 - `right-id.def`: Right context ID to feature string mapping
 - `metadata.json`: Updated metadata file (if `--metadata` option is provided)
 
-### Model format version
+#### Model format version
 
-`lindera export` reads a model of the current format version (3.0.0) only. A `model.dat` written by an earlier version, which includes every `model.dat` written before 7.0.0, is rejected, and has to be trained again with `lindera train`. For a model trained with the 6.1.0 CLI:
+`lindera dictionary export` reads a model of the current format version (3.0.0) only. A `model.dat` written by an earlier version, which includes every `model.dat` written before 7.0.0, is rejected, and has to be trained again with `lindera dictionary train`. For a model trained with the 6.1.0 CLI:
 
 ```text
-Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera dictionary train` to regenerate it. }
 ```
 
-### Complete workflow example
+#### Complete workflow example
 
-#### 1. Train model
+##### 1. Train model
 
 ```bash
-lindera train \
+lindera dictionary train \
   --seed ./resources/training/seed.csv \
   --corpus ./resources/training/corpus.txt \
   --unk-def ./resources/training/unk.def \
@@ -1106,25 +1135,25 @@ lindera train \
   --max-iterations 100
 ```
 
-#### 2. Export to dictionary format
+##### 2. Export to dictionary format
 
 ```bash
-lindera export \
+lindera dictionary export \
   --model /tmp/lindera/training/model.dat \
   --metadata ./resources/training/metadata.json \
   --output /tmp/lindera/training/dictionary
 ```
 
-#### 3. Build dictionary
+##### 3. Build dictionary
 
 ```bash
-lindera build \
+lindera dictionary build \
   --src /tmp/lindera/training/dictionary \
   --dest /tmp/lindera/training/compiled_dictionary \
   --metadata /tmp/lindera/training/dictionary/metadata.json
 ```
 
-#### 4. Use trained dictionary
+##### 4. Use trained dictionary
 
 ```bash
 echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
@@ -1142,7 +1171,7 @@ echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/t
 EOS
 ```
 
-### Metadata update feature
+#### Metadata update feature
 
 When the `--metadata` option is provided, the export command will:
 
@@ -1181,7 +1210,7 @@ lindera dependency <SUBCOMMAND>
 `parse` needs the model for the dictionary it tokenizes with, which `dependency download` gets:
 
 ```bash
-DICT=$(lindera download ipadic)
+DICT=$(lindera dictionary download ipadic)
 MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
@@ -1196,7 +1225,7 @@ It writes the bunsetsu of each sentence and their dependencies in the lattice fo
 
 ```shell
 % MODEL=$(lindera dependency download ipadic)
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 ```

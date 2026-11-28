@@ -36,7 +36,7 @@ fn check_format_version(version: Option<&str>) -> Result<()> {
     }
     Err(anyhow::anyhow!(
         "model format version {} is not {MODEL_FORMAT_VERSION}, so the model was written by \
-         a different version of lindera-trainer; re-run `lindera train` to regenerate it.",
+         a different version of lindera-trainer; re-run `lindera dictionary train` to regenerate it.",
         version.unwrap_or("(none)")
     ))
 }
@@ -627,7 +627,7 @@ impl Model {
 
         if buffer.is_empty() {
             return Err(anyhow::anyhow!(
-                "model file is empty; re-run `lindera train` to produce one"
+                "model file is empty; re-run `lindera dictionary train` to produce one"
             ));
         }
 
@@ -681,7 +681,7 @@ impl Model {
         Err(anyhow::anyhow!(
             "failed to deserialize model: {rkyv_error}. The file is not a legacy JSON \
              model either, so it was most likely written by a different version of \
-             lindera-trainer; re-run `lindera train` to regenerate it."
+             lindera-trainer; re-run `lindera dictionary train` to regenerate it."
         ))
     }
 
@@ -2004,7 +2004,10 @@ mod determinism_tests {
             Err(err) => err.to_string(),
         };
 
-        assert!(err.contains("lindera train"), "unhelpful message: {err}");
+        assert!(
+            err.contains("lindera dictionary train"),
+            "unhelpful message: {err}"
+        );
         assert!(
             err.contains("1.0.0"),
             "message must name the version: {err}"
@@ -2048,7 +2051,10 @@ mod determinism_tests {
             Ok(_) => panic!("a 1.0.0 JSON model must not load"),
             Err(err) => err.to_string(),
         };
-        assert!(err.contains("lindera train"), "unhelpful message: {err}");
+        assert!(
+            err.contains("lindera dictionary train"),
+            "unhelpful message: {err}"
+        );
         assert!(
             err.contains("1.0.0"),
             "message must name the version: {err}"
@@ -2070,7 +2076,10 @@ mod determinism_tests {
             Err(err) => err.to_string(),
         };
 
-        assert!(err.contains("lindera train"), "unhelpful message: {err}");
+        assert!(
+            err.contains("lindera dictionary train"),
+            "unhelpful message: {err}"
+        );
     }
 
     /// A payload that looks like JSON but is malformed is reported as a JSON

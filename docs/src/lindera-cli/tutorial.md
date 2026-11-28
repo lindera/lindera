@@ -18,10 +18,10 @@ Verify the installation:
 
 ## 2. Download a dictionary
 
-Download the pre-built IPADIC dictionary from the GitHub releases page. It is installed in the dictionaries directory (`~/.local/share/lindera/dictionaries/ipadic` on Linux), and `lindera download` prints its path, kept here in `DICT_DIR` for the steps below:
+Download the pre-built IPADIC dictionary from the GitHub releases page. It is installed in the dictionaries directory (`~/.local/share/lindera/dictionaries/ipadic` on Linux), and `lindera dictionary download` prints its path, kept here in `DICT_DIR` for the steps below:
 
 ```shell
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 ```
 
 See [Commands](commands.md#download) for the available dictionary names and storage locations.

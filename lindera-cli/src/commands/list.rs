@@ -146,7 +146,7 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
         write_line(
             Stream::Stderr,
             format_args!(
-                "No dictionaries in {}; run 'lindera download <name>' to download one",
+                "No dictionaries in {}; run 'lindera dictionary download <name>' to download one",
                 dir.display()
             ),
         );

@@ -25,15 +25,249 @@ fn lindera_process() -> std::process::Command {
     std::process::Command::new(env!("CARGO_BIN_EXE_lindera"))
 }
 
-#[test]
-fn help_shows_subcommands() {
-    let output = lindera().arg("--help").output().unwrap();
+/// The subcommands a help lists: the first word of each line under
+/// `Commands:`.
+///
+/// # Arguments
+///
+/// * `arguments` - The arguments that ask for the help, such as `--help`.
+///
+/// # Returns
+///
+/// The names, in the order of the help.
+fn listed_subcommands(arguments: &[&str]) -> Vec<String> {
+    let output = lindera().args(arguments).output().unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("list"));
-    assert!(stdout.contains("tokenize"));
-    assert!(stdout.contains("build"));
-    assert!(stdout.contains("download"));
+    stdout
+        .lines()
+        .skip_while(|line| *line != "Commands:")
+        .skip(1)
+        .take_while(|line| !line.is_empty())
+        .filter_map(|line| line.split_whitespace().next())
+        .map(str::to_string)
+        .collect()
+}
+
+/// `lindera --help` lists `tokenize` and one command for each object with
+/// operations. The operations on dictionaries are not there under the names
+/// they had as subcommands of `lindera`: those are deprecated (#1483).
+#[test]
+fn help_shows_subcommands() {
+    let mut expected = vec!["tokenize", "dictionary"];
+    if cfg!(feature = "dependency") {
+        expected.push("dependency");
+    }
+    expected.push("help");
+    assert_eq!(listed_subcommands(&["--help"]), expected);
+}
+
+/// `lindera dictionary --help` lists the operations on dictionaries, the two
+/// of the training with the `train` feature only (#1483).
+#[test]
+fn dictionary_help_shows_the_operations() {
+    let mut expected = vec!["list", "download", "build"];
+    if cfg!(feature = "train") {
+        expected.extend(["train", "export"]);
+    }
+    expected.push("help");
+    assert_eq!(listed_subcommands(&["dictionary", "--help"]), expected);
+}
+
+/// The line a deprecated subcommand of `lindera` writes to stderr before it
+/// runs (#1483).
+fn deprecation_warning(name: &str) -> String {
+    format!(
+        "Warning: `lindera {name}` is deprecated and will be removed in v8.0.0; use `lindera dictionary {name}` instead"
+    )
+}
+
+/// Runs an operation on dictionaries in its two forms, `lindera dictionary
+/// <name>` and then the deprecated `lindera <name>`, and asserts that the
+/// deprecated one differs by its warning alone: the same exit code and the
+/// same standard output, and on stderr the warning as the first line with
+/// the stderr of the new form after it. The new form writes no such warning.
+///
+/// # Arguments
+///
+/// * `name` - The name of the operation, such as `build`.
+/// * `configure` - Gives the command its other arguments and its
+///   environment; called once for each form.
+///
+/// # Returns
+///
+/// The output of the new form.
+fn assert_deprecated_name_runs_as_dictionary(
+    name: &str,
+    configure: impl Fn(&mut Command),
+) -> std::process::Output {
+    let (new_output, old_stdout) = run_both_forms(name, configure);
+    assert_eq!(
+        old_stdout,
+        String::from_utf8(new_output.stdout.clone()).unwrap()
+    );
+    new_output
+}
+
+/// What [`assert_deprecated_name_runs_as_dictionary`] does, without the
+/// comparison of the standard outputs, for an operation whose standard
+/// output differs from one run to the next.
+///
+/// # Returns
+///
+/// The output of the new form, and the standard output of the deprecated
+/// one.
+fn run_both_forms(name: &str, configure: impl Fn(&mut Command)) -> (std::process::Output, String) {
+    let mut new_form = lindera();
+    new_form.args(["dictionary", name]);
+    configure(&mut new_form);
+    let new_output = new_form.output().unwrap();
+    let new_stderr = String::from_utf8(new_output.stderr.clone()).unwrap();
+    assert!(!new_stderr.contains("is deprecated"), "got: {new_stderr}");
+
+    let mut old_form = lindera();
+    old_form.arg(name);
+    configure(&mut old_form);
+    let old_output = old_form.output().unwrap();
+    let old_stderr = String::from_utf8(old_output.stderr).unwrap();
+    assert_eq!(
+        old_stderr,
+        format!("{}\n{new_stderr}", deprecation_warning(name))
+    );
+    assert_eq!(old_output.status.code(), new_output.status.code());
+    (new_output, String::from_utf8(old_output.stdout).unwrap())
+}
+
+/// `lindera list`, deprecated, lists what `lindera dictionary list` lists.
+#[test]
+fn deprecated_list_runs_as_dictionary_list() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let output = assert_deprecated_name_runs_as_dictionary("list", |command| {
+        command
+            .env("LINDERA_DICTIONARIES_DIR", dictionaries.path())
+            .env_remove("LINDERA_DATA_DIR");
+    });
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .starts_with("NAME")
+    );
+}
+
+/// `lindera download`, deprecated, gives the path `lindera dictionary
+/// download` gives. The dictionary is in place and built by this version,
+/// so nothing is downloaded.
+#[test]
+fn deprecated_download_runs_as_dictionary_download() {
+    let dir = tempfile::tempdir().unwrap();
+    let (dict, _) = build_four_by_four_dictionary(dir.path());
+    let dictionaries = dir.path().join("dictionaries");
+    std::fs::create_dir(&dictionaries).unwrap();
+    std::fs::rename(&dict, dictionaries.join("ipadic")).unwrap();
+
+    let output = assert_deprecated_name_runs_as_dictionary("download", |command| {
+        command
+            .arg("ipadic")
+            .env("LINDERA_DICTIONARIES_DIR", &dictionaries)
+            .env_remove("LINDERA_DATA_DIR");
+    });
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap().trim_end(),
+        dictionaries.join("ipadic").to_str().unwrap()
+    );
+}
+
+/// A deprecated name fails as the new form does, with the same exit code,
+/// after its warning.
+#[test]
+fn deprecated_build_fails_as_dictionary_build() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = assert_deprecated_name_runs_as_dictionary("build", |command| {
+        command
+            .args(["--src", dir.path().join("missing").to_str().unwrap()])
+            .args(["--dest", dir.path().join("dict").to_str().unwrap()])
+            .args([
+                "--metadata",
+                dir.path().join("missing.json").to_str().unwrap(),
+            ]);
+    });
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!output.stderr.is_empty());
+}
+
+/// An argument that clap rejects ends a deprecated name as it ends the new
+/// form, with exit code 2 and the message of clap, and without the warning:
+/// the command has not run.
+#[test]
+fn deprecated_name_with_a_wrong_argument_fails_as_before() {
+    for arguments in [
+        &["download", "no-such-dictionary"][..],
+        &["dictionary", "download", "no-such-dictionary"],
+    ] {
+        let output = lindera().args(arguments).output().unwrap();
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert_eq!(output.status.code(), Some(2), "{arguments:?}: {stderr}");
+        assert!(
+            stderr.starts_with("error: invalid value 'no-such-dictionary'"),
+            "{arguments:?}: {stderr}"
+        );
+    }
+}
+
+/// `lindera build`, deprecated, builds what `lindera dictionary build`
+/// builds.
+#[test]
+fn deprecated_build_runs_as_dictionary_build() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = write_four_by_four_source(dir.path());
+    let metadata = dir.path().join("metadata.json");
+    std::fs::write(
+        &metadata,
+        serde_json::to_vec(&lindera::dictionary::Metadata::default()).unwrap(),
+    )
+    .unwrap();
+    // One destination for each form: the first argument tells them apart.
+    let destination = |command: &Command| {
+        let new_form = command.get_args().next().unwrap() == "dictionary";
+        dir.path().join(if new_form { "new" } else { "old" })
+    };
+
+    let output = assert_deprecated_name_runs_as_dictionary("build", |command| {
+        let destination = destination(command);
+        command
+            .args(["--src", source.to_str().unwrap()])
+            .args(["--dest", destination.to_str().unwrap()])
+            .args(["--metadata", metadata.to_str().unwrap()]);
+    });
+    assert!(output.status.success());
+    for file in DICTIONARY_FILES {
+        assert_eq!(
+            std::fs::read(dir.path().join("old").join(file)).unwrap(),
+            std::fs::read(dir.path().join("new").join(file)).unwrap(),
+            "{file} differs"
+        );
+    }
+}
+
+/// A deprecated name with a stderr that has no reader: the warning is
+/// dropped, and the command writes its result and ends with exit code 0
+/// (#1338).
+#[test]
+fn deprecated_list_ends_without_a_stderr_reader() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let run = |arguments: &[&str]| {
+        let mut command = lindera_process();
+        command
+            .args(arguments)
+            .env("LINDERA_DICTIONARIES_DIR", dictionaries.path())
+            .env_remove("LINDERA_DATA_DIR");
+        run_without_stderr_reader(command)
+    };
+    let stdout = run(&["list"]);
+    assert!(stdout.starts_with("NAME"), "got: {stdout}");
+    assert_eq!(stdout, run(&["dictionary", "list"]));
 }
 
 #[test]
@@ -84,7 +318,7 @@ fn write_dictionary_files(dir: &Path) {
 fn list_succeeds() {
     let dictionaries_dir = tempfile::tempdir().unwrap();
     let output = lindera_with_dictionaries_dir(dictionaries_dir.path())
-        .arg("list")
+        .args(["dictionary", "list"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -133,7 +367,7 @@ fn list_shows_a_built_dictionary_with_its_version() {
     let (dict, _) = build_four_by_four_dictionary(dir.path());
 
     let output = lindera_with_dictionaries_dir(dir.path())
-        .arg("list")
+        .args(["dictionary", "list"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -172,7 +406,10 @@ fn tokenize_with_invalid_dictionary_fails() {
 
 #[test]
 fn download_help_lists_dictionary_names() {
-    let output = lindera().args(["download", "--help"]).output().unwrap();
+    let output = lindera()
+        .args(["dictionary", "download", "--help"])
+        .output()
+        .unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("ipadic-neologd"), "got: {stdout}");
@@ -183,7 +420,7 @@ fn download_help_lists_dictionary_names() {
 #[test]
 fn download_with_invalid_name_fails() {
     let output = lindera()
-        .args(["download", "no-such-dictionary"])
+        .args(["dictionary", "download", "no-such-dictionary"])
         .output()
         .unwrap();
     assert!(!output.status.success());
@@ -266,7 +503,7 @@ fn dependency_download_refuses_a_dictionary_without_a_model() {
 fn download_refuses_the_name_of_a_model() {
     let dictionaries = tempfile::tempdir().unwrap();
     let output = lindera_with_dictionaries_dir(dictionaries.path())
-        .args(["download", "dependency-ipadic"])
+        .args(["dictionary", "download", "dependency-ipadic"])
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
@@ -366,7 +603,7 @@ fn list_leaves_the_models_to_dependency_list() {
     );
 
     let output = lindera_with_dictionaries_dir(dictionaries.path())
-        .arg("list")
+        .args(["dictionary", "list"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -426,7 +663,13 @@ fn build_user_rejects_a_dictionary_name_for_the_system_dictionary() {
     let dictionaries_dir = dir.path().join("dictionaries");
 
     let output = lindera_with_dictionaries_dir(&dictionaries_dir)
-        .args(["build", "--user", "--src", user_csv.to_str().unwrap()])
+        .args([
+            "dictionary",
+            "build",
+            "--user",
+            "--src",
+            user_csv.to_str().unwrap(),
+        ])
         .args(["--dest", user_dest.to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .args(["--system-dict", "ipadic"])
@@ -453,7 +696,7 @@ fn list_reads_the_dictionaries_dir_variable() {
     write_dictionary_files(&dictionary);
 
     let output = lindera_with_dictionaries_dir(dictionaries_dir.path())
-        .arg("list")
+        .args(["dictionary", "list"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -475,7 +718,7 @@ fn list_reads_the_deprecated_data_dir_variable_with_a_warning() {
     let output = lindera()
         .env("LINDERA_DATA_DIR", data_dir.path())
         .env_remove("LINDERA_DICTIONARIES_DIR")
-        .arg("list")
+        .args(["dictionary", "list"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -503,7 +746,7 @@ fn list_prefers_the_dictionaries_dir_variable_over_the_deprecated_one() {
     let output = lindera()
         .env("LINDERA_DICTIONARIES_DIR", dictionaries_dir.path())
         .env("LINDERA_DATA_DIR", data_dir.path())
-        .arg("list")
+        .args(["dictionary", "list"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -573,7 +816,7 @@ fn build_four_by_four_dictionary(dir: &Path) -> (PathBuf, PathBuf) {
 
     let dict = dir.join("dict");
     let output = lindera()
-        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["dictionary", "build", "--src", source.to_str().unwrap()])
         .args(["--dest", dict.to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .output()
@@ -594,7 +837,13 @@ fn build_user_dictionary(
     extra_args: &[&str],
 ) -> std::process::Output {
     lindera()
-        .args(["build", "--user", "--src", user_csv.to_str().unwrap()])
+        .args([
+            "dictionary",
+            "build",
+            "--user",
+            "--src",
+            user_csv.to_str().unwrap(),
+        ])
         .args(["--dest", dest.to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .args(extra_args)
@@ -722,7 +971,7 @@ fn build_user_with_system_dict_accepts_context_ids_inside_the_matrix() {
 fn build_system_dict_requires_user() {
     let dir = tempfile::tempdir().unwrap();
     let output = lindera()
-        .args(["build", "--src", dir.path().to_str().unwrap()])
+        .args(["dictionary", "build", "--src", dir.path().to_str().unwrap()])
         .args(["--dest", dir.path().join("dict").to_str().unwrap()])
         .args([
             "--metadata",
@@ -760,7 +1009,7 @@ fn build_takes_the_context_id_freq_from_the_option_alone() {
     let missing = dir.path().join("missing.txt");
 
     let output = lindera()
-        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["dictionary", "build", "--src", source.to_str().unwrap()])
         .args(["--dest", dir.path().join("dict").to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .args(["--context-id-freq", histogram.to_str().unwrap()])
@@ -808,7 +1057,7 @@ fn build_rejects_a_char_def_category_without_an_unk_def_line() {
     .unwrap();
 
     let output = lindera()
-        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["dictionary", "build", "--src", source.to_str().unwrap()])
         .args(["--dest", dir.path().join("dict").to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .output()
@@ -857,7 +1106,7 @@ fn tokenize_ab_with_matrix_def(dir: &Path, matrix_def: &str) -> String {
     .unwrap();
     let dict = dir.join("dict");
     lindera()
-        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["dictionary", "build", "--src", source.to_str().unwrap()])
         .args(["--dest", dict.to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .assert()
@@ -979,7 +1228,7 @@ fn build_accepts_unk_def_lines_with_different_left_and_right_ids_silently() {
     .unwrap();
 
     let output = lindera()
-        .args(["build", "--src", source.to_str().unwrap()])
+        .args(["dictionary", "build", "--src", source.to_str().unwrap()])
         .args(["--dest", dir.path().join("dict").to_str().unwrap()])
         .args(["--metadata", metadata.to_str().unwrap()])
         .env_remove("RUST_LOG")
@@ -1114,7 +1363,7 @@ fn list_ends_quietly_without_a_stdout_reader() {
     let dir = tempfile::tempdir().unwrap();
     let mut command = lindera_process();
     command
-        .arg("list")
+        .args(["dictionary", "list"])
         .env("LINDERA_DICTIONARIES_DIR", dir.path())
         .env_remove("LINDERA_DATA_DIR");
     run_without_stdout_reader(command, Input::Null);
@@ -1133,7 +1382,7 @@ fn download_ends_quietly_without_a_stdout_reader() {
 
     let mut command = lindera_process();
     command
-        .args(["download", "ipadic"])
+        .args(["dictionary", "download", "ipadic"])
         .env("LINDERA_DICTIONARIES_DIR", &dictionaries)
         .env_remove("LINDERA_DATA_DIR");
     let stderr = run_without_stdout_reader(command, Input::Null);
@@ -1404,7 +1653,7 @@ fn list_writes_its_table_without_a_stderr_reader() {
     std::fs::create_dir(dir.path().join("not-a-dictionary")).unwrap();
     let mut command = lindera_process();
     command
-        .arg("list")
+        .args(["dictionary", "list"])
         .env("LINDERA_DICTIONARIES_DIR", dir.path())
         .env_remove("LINDERA_DATA_DIR");
     let stdout = run_without_stderr_reader(command);
@@ -1418,7 +1667,7 @@ fn list_with_the_deprecated_data_dir_without_a_stderr_reader() {
     let dir = tempfile::tempdir().unwrap();
     let mut command = lindera_process();
     command
-        .arg("list")
+        .args(["dictionary", "list"])
         .env("LINDERA_DATA_DIR", dir.path())
         .env_remove("LINDERA_DICTIONARIES_DIR");
     let stdout = run_without_stderr_reader(command);
@@ -1439,7 +1688,7 @@ fn download_writes_the_path_without_a_stderr_reader() {
 
     let mut command = lindera_process();
     command
-        .args(["download", "ipadic"])
+        .args(["dictionary", "download", "ipadic"])
         .env("LINDERA_DICTIONARIES_DIR", &dictionaries)
         .env_remove("LINDERA_DATA_DIR");
     let stdout = run_without_stderr_reader(command);
@@ -2354,6 +2603,7 @@ mod with_trained_dictionary {
         let training = training_dir();
         let input = |name: &str| training.join(name).to_str().unwrap().to_string();
         vec![
+            "dictionary".to_string(),
             "train".to_string(),
             "--seed".to_string(),
             input("seed.csv"),
@@ -2421,7 +2671,7 @@ mod with_trained_dictionary {
         let output = dir.path().join("dictionary");
         let mut command = lindera_process();
         command
-            .arg("export")
+            .args(["dictionary", "export"])
             .args(["--model", model.to_str().unwrap()])
             .args([
                 "--metadata",
@@ -2603,7 +2853,7 @@ mod with_trained_dictionary {
             );
             stdout_of(
                 lindera()
-                    .arg("export")
+                    .args(["dictionary", "export"])
                     .args(["--model", model.to_str().unwrap()])
                     .args(["--metadata", metadata.to_str().unwrap()])
                     .args(["--output", output.to_str().unwrap()]),
@@ -2636,14 +2886,14 @@ mod with_trained_dictionary {
         stdout_of(&mut train_command(&training.join("corpus.txt"), &model));
         stdout_of(
             lindera()
-                .arg("export")
+                .args(["dictionary", "export"])
                 .args(["--model", model.to_str().unwrap()])
                 .args(["--metadata", &input("metadata.json")])
                 .args(["--output", source.to_str().unwrap()]),
         );
         stdout_of(
             lindera()
-                .arg("build")
+                .args(["dictionary", "build"])
                 .args(["--src", source.to_str().unwrap()])
                 .args(["--dest", dict.to_str().unwrap()])
                 .args(["--metadata", source.join("metadata.json").to_str().unwrap()]),
@@ -2785,5 +3035,69 @@ mod with_trained_dictionary {
             assert!(!stderr.contains(warning), "got: {stderr}");
         }
         assert!(model.is_file());
+    }
+
+    /// `lindera train` and `lindera export`, deprecated, write what `lindera
+    /// dictionary train` and `lindera dictionary export` write (#1483).
+    #[test]
+    fn deprecated_train_and_export_run_as_the_dictionary_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        // One output for each form: the first argument tells them apart.
+        let form = |command: &Command| {
+            if command.get_args().next().unwrap() == "dictionary" {
+                "new"
+            } else {
+                "old"
+            }
+        };
+        let corpus = training_dir().join("corpus.txt");
+
+        // The standard output of `train` has the path of the model and the
+        // time the training took.
+        let (output, old_stdout) = run_both_forms("train", |command| {
+            let model = dir.path().join(format!("{}.dat", form(command)));
+            command
+                .args(&train_inputs_args(&corpus, &model)[2..])
+                .args(["--max-iterations", "3", "--max-threads", "1"]);
+        });
+        assert!(output.status.success());
+        let stable = |stdout: &str| -> Vec<String> {
+            stdout
+                .lines()
+                .filter(|line| !line.starts_with("Training completed successfully in "))
+                .map(|line| line.replace("old.dat", "new.dat"))
+                .collect()
+        };
+        let new_stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(new_stdout.contains("Model saved to "), "got: {new_stdout}");
+        assert_eq!(stable(&old_stdout), stable(&new_stdout));
+        assert_eq!(
+            std::fs::read(dir.path().join("old.dat")).unwrap(),
+            std::fs::read(dir.path().join("new.dat")).unwrap()
+        );
+
+        // `export` lists the files it wrote: each form runs in a directory
+        // of its own and writes to the same relative path.
+        let output = assert_deprecated_name_runs_as_dictionary("export", |command| {
+            let directory = dir.path().join(form(command));
+            std::fs::create_dir(&directory).unwrap();
+            let exported = Path::new("dictionary");
+            command
+                .current_dir(directory)
+                .args(["--model", dir.path().join("new.dat").to_str().unwrap()])
+                .args([
+                    "--metadata",
+                    training_dir().join("metadata.json").to_str().unwrap(),
+                ])
+                .args(["--output", exported.to_str().unwrap()]);
+        });
+        assert!(output.status.success());
+        for file in ["lex.csv", "matrix.def", "unk.def", "char.def"] {
+            assert_eq!(
+                std::fs::read(dir.path().join("old/dictionary").join(file)).unwrap(),
+                std::fs::read(dir.path().join("new/dictionary").join(file)).unwrap(),
+                "{file} differs"
+            );
+        }
     }
 }

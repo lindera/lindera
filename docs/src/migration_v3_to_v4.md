@@ -1,5 +1,7 @@
 # Migrating from v3 to v4
 
+> **Note:** From v7.1.0 on, the commands on dictionaries are subcommands of `lindera dictionary`: `lindera dictionary build` for `lindera build`, and likewise for `list`, `download`, `train` and `export`. This guide keeps the names of the version it describes, which run through v7.x with a deprecation warning and are removed in v8.0.0. See [Migrating from v7.0 to v7.1](./migration_v7_0_to_v7_1.md#the-commands-on-dictionaries-are-under-lindera-dictionary).
+
 Lindera v4.0.0 is a major release that bundles the breaking changes that were
 deliberately deferred during the v3 series. Each change is small on its own; this
 guide lists every one so you can upgrade with confidence.

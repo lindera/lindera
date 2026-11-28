@@ -19,11 +19,11 @@ Alternatively, you can download a pre-built binary from the release page:
 Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the `download` subcommand, which fetches the pre-built dictionary matching the CLI version, installs it in the dictionaries directory (`~/.local/share/lindera/dictionaries/ipadic` on Linux) and prints its path, which `--dict` takes:
 
 ```shell
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 ```
 
-See [Commands](commands.md#download) for the available dictionary names and storage locations, and [`lindera list`](commands.md#list) for the dictionaries in place.
+See [Commands](commands.md#download) for the available dictionary names and storage locations, and [`lindera dictionary list`](commands.md#list) for the dictionaries in place.
 
 Alternatively, you can download a pre-built dictionary manually from the [GitHub Releases](https://github.com/lindera/lindera/releases) page:
 
@@ -83,7 +83,7 @@ For advanced users who want to embed dictionaries directly into the binary, use 
 % cargo build --release --features=embed-unidic-cwj
 ```
 
-The binary carries the 1.2 GB dictionary, and the build takes about 11 GiB of memory. `lindera download unidic-cwj` gets the dictionary without embedding it.
+The binary carries the 1.2 GB dictionary, and the build takes about 11 GiB of memory. `lindera dictionary download unidic-cwj` gets the dictionary without embedding it.
 
 #### UniDic CSJ (Japanese dictionary)
 
@@ -91,7 +91,7 @@ The binary carries the 1.2 GB dictionary, and the build takes about 11 GiB of me
 % cargo build --release --features=embed-unidic-csj
 ```
 
-The binary carries the 1.2 GB dictionary, and the build takes 8 to 11 GiB of memory, as for UniDic CWJ. `lindera download unidic-csj` gets the dictionary without embedding it.
+The binary carries the 1.2 GB dictionary, and the build takes 8 to 11 GiB of memory, as for UniDic CWJ. `lindera dictionary download unidic-csj` gets the dictionary without embedding it.
 
 #### SudachiDict (Japanese dictionary)
 

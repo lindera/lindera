@@ -336,7 +336,7 @@ impl Metadata {
         }
 
         let hint = if self.format_version < DICTIONARY_FORMAT_VERSION {
-            "rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`"
+            "rebuild it with `lindera dictionary build`, or download a matching prebuilt dictionary with `lindera dictionary download`"
         } else {
             "upgrade Lindera to a version that understands this dictionary"
         };
@@ -543,7 +543,7 @@ mod tests {
 
         let err = metadata.validate_format_version().unwrap_err().to_string();
         assert!(err.contains("ipadic"), "{err}");
-        assert!(err.contains("lindera build"), "{err}");
+        assert!(err.contains("lindera dictionary build"), "{err}");
     }
 
     #[test]

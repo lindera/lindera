@@ -14,6 +14,8 @@
 
 v7.1 は、文節の係り受け解析（[Lindera Dependency](./lindera-dependency.md)）を足します。`Token` の変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、[変わらないこと](#変わらないこと)に挙げます。
 
+v7.1 は、5 つのコマンドの名前を非推奨にもします。動かなくなるものはありません。[辞書のコマンドは `lindera dictionary` の下に](#辞書のコマンドは-lindera-dictionary-の下に)を参照してください。
+
 ## `Token` は `Token::new` で作る
 
 `Token` に、係り受け解析の結果を持つ欄が加わりました。`Token::dependency()` で読み、係り受けを解析するトークンフィルターを使わなければ `None` です（[#1438](https://github.com/lindera/lindera/issues/1438)）。欄を足すと、この型の構造体式がすべて壊れます。そこで、この型を `#[non_exhaustive]` にしました。今後は、欄を足してもコードが壊れません。
@@ -66,7 +68,7 @@ let token = Token::new(
 error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
 ```
 
-代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには [`lindera build`](./lindera-cli/commands.md) を、公開されている辞書を入れるには [`lindera download`](./lindera-cli/commands.md) を使います。
+代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには [`lindera dictionary build`](./lindera-cli/commands.md) を、公開されている辞書を入れるには [`lindera dictionary download`](./lindera-cli/commands.md) を使います。
 
 ## `Metadata` に欄が増えた
 
@@ -78,6 +80,34 @@ error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_d
 
 `skip_invalid_encoding: false` を足してください。これまでのビルドと同じ動きです。または、式の最後に `..Default::default()` を書いてください。こう書くと、今後に欄が増えても影響を受けません。`metadata.json` を読むコード、`Metadata::default()` から始めるコード、`Metadata::new` を呼ぶコードは、影響を受けません。この欄の無い `metadata.json` は `false` として読まれ、`false` のときは、書き出すファイルにこの欄は入りません。
 
+## 辞書のコマンドは `lindera dictionary` の下に
+
+これは非推奨で、破壊的変更ではありません。v7.0 のコマンドラインは、これまでどおり動きます。
+
+コマンドラインは、先に対象を、その後に操作を書く形になりました（[#1482](https://github.com/lindera/lindera/issues/1482)、[#1483](https://github.com/lindera/lindera/issues/1483)）。係り受け解析の操作は `lindera dependency` に、辞書の操作は `lindera dictionary` にあります。辞書の操作は、これまで `lindera` 自身のサブコマンドでした。
+
+| v7.0 | v7.1 |
+| --- | --- |
+| `lindera list` | `lindera dictionary list` |
+| `lindera download` | `lindera dictionary download` |
+| `lindera build` | `lindera dictionary build` |
+| `lindera train` | `lindera dictionary train` |
+| `lindera export` | `lindera dictionary export` |
+
+オプション・標準出力・終了コードは変わりません。`lindera tokenize` の名前はそのままです。
+
+v7.0 の名前は今も動きます。新しいコマンドと同じことをする前に、標準エラー出力へ 1 行を書きます。
+
+```text
+Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+```
+
+`lindera --help` の一覧には出ず、v8.0.0 で削除します。スクリプトが 5 つのどれかを呼んでいるなら、名前を変えてください。変えるまでは、標準エラー出力に 1 行増えるだけで、ほかは変わりません。
+
+これらのコマンドを案内するメッセージは、新しい名前を書きます。たとえば、辞書のディレクトリが空のときの `lindera dictionary list` の案内（`run 'lindera dictionary download <name>' to download one`）や、形式の版が違う辞書のエラー（``rebuild it with `lindera dictionary build` ``）です。ライブラリが同じ文を書くので、バインディングにも同じ文が出ます。
+
+[コマンド](./lindera-cli/commands.md#dictionary) を参照してください。
+
 ## 変わらないこと
 
 - `Token::as_value` と `lindera tokenize -o json` が書く JSON は、係り受けを持たないトークンでは、キーが増えません。
@@ -85,4 +115,4 @@ error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_d
 - トークンは、ポインター 1 つ分だけ大きくなります。
 - `lindera` コマンドとバインディングは、既定のビルドに `dependency` feature を持ちます。トークンフィルター `japanese_dependency` がパッケージに入り、`lindera-dependency` クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。`default-features = false` で、入っていないビルドになります。ライブラリの `lindera` と `lindera-analysis` は、feature を指定したときだけ持ちます。
 - モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera dependency download ipadic` で取得します。UniDic のモデルは、`unidic`・`unidic-cwj`・`unidic-csj` で取得します。
-- 10 個目の辞書として、[JUMAN 辞書](./lindera-jumandic.md)（辞書名 `jumandic`、クレート `lindera-jumandic`、feature `embed-jumandic`）が増えました。mecab-jumandic 7.0-20130310 から作ります（[#1466](https://github.com/lindera/lindera/issues/1466)）。既定のビルドは、これを埋め込みません。`lindera download jumandic` で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに[変換できます](./lindera-dependency/cabocha_models.md)。
+- 10 個目の辞書として、[JUMAN 辞書](./lindera-jumandic.md)（辞書名 `jumandic`、クレート `lindera-jumandic`、feature `embed-jumandic`）が増えました。mecab-jumandic 7.0-20130310 から作ります（[#1466](https://github.com/lindera/lindera/issues/1466)）。既定のビルドは、これを埋め込みません。`lindera dictionary download jumandic` で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに[変換できます](./lindera-dependency/cabocha_models.md)。
