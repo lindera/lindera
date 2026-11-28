@@ -21,7 +21,7 @@ Lindera は Cargo の feature フラグを使用して、オプション機能�
   `lindera-analysis` クレートを再エクスポートします。v5.x・v6.x では別の依存として
   追加する必要がありました。
 - `train` は `lindera-cli`・`lindera-python`・`lindera-nodejs`・`lindera-ruby`・`lindera-php` ではデフォルトで有効です。`lindera` ライブラリクレートではデフォルトで無効なので、ライブラリとして使用する場合は `features = ["train"]` で明示的に有効にしてください。`lindera-wasm` では利用できません。
-- `dependency` は、7.1.0 から、`lindera-cli`・`lindera-python`・`lindera-nodejs`・`lindera-ruby`・`lindera-php`・`lindera-wasm` でデフォルトで有効です。パッケージにフィルターが入っています。モデルは入っておらず、利用者がダウンロードします（`lindera download dependency-ipadic`）。ライブラリクレートの `lindera` と `lindera-analysis` では、デフォルトで無効です。
+- `dependency` は、7.1.0 から、`lindera-cli`・`lindera-python`・`lindera-nodejs`・`lindera-ruby`・`lindera-php`・`lindera-wasm` でデフォルトで有効です。パッケージにフィルターが入っています。モデルは入っておらず、利用者がダウンロードします（`lindera dependency download ipadic`）。ライブラリクレートの `lindera` と `lindera-analysis` では、デフォルトで無効です。
 
 ## 外部辞書の使用（推奨）
 

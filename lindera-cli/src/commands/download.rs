@@ -10,7 +10,7 @@ use lindera_crf::console::{Stream, write, write_line};
 
 use super::{io_err, write_stdout};
 use crate::dictionary_registry::{
-    DOWNLOADABLE_NAMES, Downloadable, dictionaries_dir, dictionary_dir, download_url,
+    DOWNLOADABLE_DICTIONARIES, Downloadable, dictionaries_dir, dictionary_dir, download_url,
 };
 
 /// Buffer size for streaming the downloaded archive to disk.
@@ -120,21 +120,21 @@ pub(crate) enum DownloadOutcome {
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
-    about = "Download a pre-built dictionary, or the model of the dependency parser, from the Lindera GitHub releases",
+    about = "Download a pre-built dictionary from the Lindera GitHub releases",
     version = get_version(),
 )]
 /// Arguments for the `download` subcommand.
 pub struct DownloadArgs {
     /// Name of the dictionary to download.
     #[clap(
-        value_parser = clap::builder::PossibleValuesParser::new(DOWNLOADABLE_NAMES),
-        help = "Dictionary name, or dependency-<dictionary> for the model of the dependency parser for ipadic, unidic, unidic-cwj or unidic-csj"
+        value_parser = clap::builder::PossibleValuesParser::new(DOWNLOADABLE_DICTIONARIES),
+        help = "Dictionary name (the model of the dependency parser for a dictionary is downloaded with `lindera dependency download`)"
     )]
     name: String,
     /// Replaces an already downloaded dictionary when set.
     #[clap(
         long = "force",
-        help = "Re-download and replace an existing dictionary or model"
+        help = "Re-download and replace an existing dictionary"
     )]
     force: bool,
 }
@@ -157,17 +157,41 @@ pub struct DownloadArgs {
 /// path is printed. An error when the download or the installation fails, or
 /// when the path cannot be written to stdout (see `stdout_err`).
 pub fn download(args: DownloadArgs) -> LinderaResult<()> {
+    download_named(&args.name, &args.name, args.force)
+}
+
+/// Downloads a dictionary or a model, and prints what to pass on.
+///
+/// What `lindera download` does for a dictionary and `lindera dependency
+/// download` for a model of the dependency parser: the two differ in the
+/// name a user gives, and in nothing of the download.
+///
+/// # Arguments
+///
+/// * `name` - The name of what is downloaded: a dictionary, or
+///   `dependency-<dictionary>` for a model. It names the archive and the
+///   directory it is installed in.
+/// * `shown` - The name a user gave, for the notices: the dictionary.
+/// * `force` - Re-download even when what is in place is complete and of
+///   the CLI's version.
+///
+/// # Returns
+///
+/// `Ok(())` once the path is printed: the directory of a dictionary, or the
+/// model file. An error when the download or the installation fails, or
+/// when the path cannot be written to stdout (see `stdout_err`).
+pub(crate) fn download_named(name: &str, shown: &str, force: bool) -> LinderaResult<()> {
     let dictionaries_dir = dictionaries_dir()?;
     let version = get_version();
     let fetcher = UreqFetcher::new();
-    let mut progress = progress_renderer(download_url(&args.name, version));
+    let mut progress = progress_renderer(download_url(name, version));
 
     let outcome = download_dictionary(
         &fetcher,
-        &args.name,
+        name,
         version,
         &dictionaries_dir,
-        args.force,
+        force,
         &mut progress,
     )?;
 
@@ -179,10 +203,10 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
         // Terminate the `\r`-rewritten progress line.
         write_line(Stream::Stderr, format_args!(""));
     }
-    let kind = Downloadable::of(&args.name);
+    let kind = Downloadable::of(name);
     let noun = kind.noun();
     let (notice, path) = match outcome {
-        DownloadOutcome::Installed(path) => (format!("Downloaded {noun} '{}'", args.name), path),
+        DownloadOutcome::Installed(path) => (format!("Downloaded {noun} '{shown}'"), path),
         DownloadOutcome::Replaced {
             path,
             previous_version,
@@ -192,21 +216,17 @@ pub fn download(args: DownloadArgs) -> LinderaResult<()> {
                 None => "an unknown version of Lindera".to_string(),
             };
             (
-                format!(
-                    "Downloaded {noun} '{}', replacing the one built by {previous}",
-                    args.name
-                ),
+                format!("Downloaded {noun} '{shown}', replacing the one built by {previous}"),
                 path,
             )
         }
         DownloadOutcome::AlreadyPresent(path) => (
             format!(
-                "{} '{}' is already downloaded; use --force to re-download it",
+                "{} '{shown}' is already downloaded; use --force to re-download it",
                 match kind {
                     Downloadable::Dictionary => "Dictionary",
                     Downloadable::DependencyModel => "Model",
                 },
-                args.name
             ),
             path,
         ),
@@ -1225,13 +1245,9 @@ mod tests {
     }
 
     #[test]
-    fn the_names_of_download_are_the_dictionaries_and_the_models() {
-        use crate::dictionary_registry::{
-            DOWNLOADABLE_DICTIONARIES, DOWNLOADABLE_MODELS, DOWNLOADABLE_NAMES,
-        };
-        let mut names: Vec<&str> = DOWNLOADABLE_DICTIONARIES.to_vec();
-        names.extend(DOWNLOADABLE_MODELS);
-        assert_eq!(DOWNLOADABLE_NAMES.to_vec(), names);
+    fn a_name_is_a_dictionary_or_a_model() {
+        use crate::dictionary_registry::DOWNLOADABLE_MODELS;
+
         for name in DOWNLOADABLE_DICTIONARIES {
             assert_eq!(Downloadable::of(name), Downloadable::Dictionary);
         }

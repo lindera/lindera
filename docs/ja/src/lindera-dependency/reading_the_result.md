@@ -2,7 +2,7 @@
 
 このページは、[クイックスタート](./quickstart.md)を動かしたあとで、結果が何を表しているのかを知りたい人のためのものです。文節と係り受けとは何か、いろいろな種類の文の結果をどう読むか、プログラムからどう使うか、どこまで信じてよいかを説明します。
 
-このページの出力は、どれも、Lindera のリリースが作る IPADIC 用のモデルと、IPADIC の辞書で作りました。`lindera download dependency-ipadic` と `lindera download ipadic` が取得する 2 つです。コマンドの中の `$MODEL` と `$DICT` は、クイックスタートと同じく、この 2 つのコマンドが出力するパスです。
+このページの出力は、どれも、Lindera のリリースが作る IPADIC 用のモデルと、IPADIC の辞書で作りました。`lindera dependency download ipadic` と `lindera download ipadic` が取得する 2 つです。コマンドの中の `$MODEL` と `$DICT` は、クイックスタートと同じく、この 2 つのコマンドが出力するパスです。
 
 ## 文節と係り受け
 
@@ -260,7 +260,7 @@ fn print_dependents(bunsetsu: &[Bunsetsu], parts_of_speech: &[&str]) {
 
 fn main() -> lindera::LinderaResult<()> {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");

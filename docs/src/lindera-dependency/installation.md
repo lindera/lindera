@@ -38,7 +38,7 @@ cargo install lindera-cli
 
 The analysis needs a [model file](./model_file.md) for the dictionary of the tokenizer. Lindera publishes four with each release: one for IPADIC ([The model for IPADIC](./model_file.md#the-model-for-ipadic)) and one for each of `unidic`, `unidic-cwj` and `unidic-csj` ([The models for UniDic](./model_file.md#the-models-for-unidic)). A model is not part of a package or of a crate, as the dictionaries are not. There are three ways to get one, shown here for IPADIC; for a UniDic dictionary, its name takes the place of `ipadic`:
 
-- `lindera download dependency-ipadic` installs the model of the version of the command, and prints the path of the model file ([`download`](../lindera-cli/commands.md#downloading-the-model-of-the-dependency-parser)).
+- `lindera dependency download ipadic` installs the model of the version of the command, and prints the path of the model file ([`download`](../lindera-cli/commands.md#downloading-the-model-of-the-dependency-parser)).
 - `lindera-dependency-ipadic-<version>.zip`, on the page of a [release](https://github.com/lindera/lindera/releases), holds the model file `dependency.model` and its `NOTICE.txt`.
 - The feature `embed-dependency-ipadic` of `lindera`, of the command and of the bindings (`embed-model-ipadic` of `lindera-dependency`) embeds it in the build ([Embedding it](./model_file.md#embedding-it)).
 

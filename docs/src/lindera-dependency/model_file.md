@@ -104,7 +104,7 @@ The same parts give the same bytes. A part trained with another schema than the 
 
 The project trains a model for IPADIC, with a chunker and a parser. A release of Lindera builds it with [`build_model.sh`](#building-it-again) and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: `lindera-dependency-ipadic-<version>.zip` in `v<version>`. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.
 
-[`lindera download dependency-ipadic`](../lindera-cli/commands.md#downloading-the-model-of-the-dependency-parser) installs the archive of the version of the command, and prints the path of the model file.
+[`lindera dependency download ipadic`](../lindera-cli/commands.md#downloading-the-model-of-the-dependency-parser) installs the archive of the version of the command, and prints the path of the model file.
 
 The archive holds one directory, `lindera-dependency-ipadic`, with three files:
 
@@ -210,7 +210,7 @@ A release of Lindera publishes a model for each of the three UniDic dictionaries
 | | |
 | --- | --- |
 | Archive | `lindera-dependency-unidic-<version>.zip`, `lindera-dependency-unidic-cwj-<version>.zip`, `lindera-dependency-unidic-csj-<version>.zip`, each with one directory of the same three files |
-| Download | `lindera download dependency-unidic`, `dependency-unidic-cwj` or `dependency-unidic-csj` |
+| Download | `lindera dependency download unidic`, `unidic-cwj` or `unidic-csj` |
 | Embedding | `embed-model-unidic`, `embed-model-unidic-cwj` or `embed-model-unidic-csj` of `lindera-dependency`, forwarded as `embed-dependency-unidic` and the like; the model is then `embedded://unidic`, `embedded://unidic-cwj` or `embedded://unidic-csj` |
 | File for a build from the repository | [`LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE`](../getting_started/environment_variables.md#lindera_build_dependency_model_ipadic_file), `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE` or `LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE` |
 | Building it again | [`build_model.sh --dictionary <name>`](#building-it-again), with `--dict` for the directory of the dictionary |

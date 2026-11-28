@@ -21,7 +21,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
   re-exports the `lindera-analysis` crate. In v5.x and v6.x it had to be added
   as a separate dependency.
 - `train` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, and `lindera-php`. It is disabled by default in the `lindera` library crate -- enable it explicitly with `features = ["train"]` for library usage. It is not available in `lindera-wasm`.
-- `dependency` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, `lindera-php` and `lindera-wasm`, from 7.1.0 on: the packages have the filter, and no model, which a user downloads (`lindera download dependency-ipadic`). It is disabled by default in the `lindera` and `lindera-analysis` library crates.
+- `dependency` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, `lindera-php` and `lindera-wasm`, from 7.1.0 on: the packages have the filter, and no model, which a user downloads (`lindera dependency download ipadic`). It is disabled by default in the `lindera` and `lindera-analysis` library crates.
 
 ## Using External Dictionaries (Recommended)
 

@@ -224,7 +224,8 @@ model=$out/$key/dependency.model
 "$bin" dependency train-parser --dictionary-name "$dictionary" --input "$work/train.lattice" \
     --chunker "$work/chunker.model" --output "$model"
 
-# What the file is, for `lindera download` and `lindera list`.
+# What the file is, for `lindera dependency download` and `lindera
+# dependency list`.
 cat > "$out/$key/model.json" << EOF
 {
   "name": "dependency-$dictionary",

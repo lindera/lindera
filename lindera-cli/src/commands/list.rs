@@ -7,6 +7,8 @@ use lindera_cli::get_version;
 use lindera_crf::console::{Stream, write_line};
 
 use super::{io_err, write_stdout};
+#[cfg(feature = "dependency")]
+use crate::dictionary_registry::MODEL_NAME_PREFIX;
 use crate::dictionary_registry::{
     Downloadable, MODEL_METADATA_FILE, dictionaries_dir, embedded_dictionary_names,
     installed_lindera_version, is_complete_dictionary_dir,
@@ -16,9 +18,12 @@ use crate::dictionary_registry::{
 const HEADERS: [&str; 4] = ["NAME", "VERSION", "STATUS", "DICT"];
 
 /// Column headers of the table of the models of the dependency parser. The
-/// last column is the value of `model` of the token filter
-/// `japanese_dependency`.
-const MODEL_HEADERS: [&str; 4] = ["NAME", "VERSION", "STATUS", "MODEL"];
+/// first column is the dictionary a model is for, which is the name
+/// `lindera dependency download` takes; the last one is the value of
+/// `--model` of `lindera dependency parse` and of `model` of the token
+/// filter `japanese_dependency`.
+#[cfg(feature = "dependency")]
+const MODEL_HEADERS: [&str; 4] = ["DICTIONARY", "VERSION", "STATUS", "MODEL"];
 
 /// Shown in the `VERSION` column when the dictionary does not say which
 /// version of Lindera built it, as a dictionary built before v7.0.0 does.
@@ -27,7 +32,7 @@ const UNKNOWN_VERSION: &str = "unknown";
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
-    about = "List the embedded dictionaries and those in LINDERA_DICTIONARIES_DIR, and the models of the dependency parser",
+    about = "List the embedded dictionaries and those in LINDERA_DICTIONARIES_DIR",
     version = get_version(),
 )]
 /// Arguments for the `list` subcommand.
@@ -81,7 +86,10 @@ struct DirectoryListing {
     rows: Vec<DictionaryRow>,
     /// One row per model of the dependency parser, by name: the
     /// subdirectories with a `model.json` (#1440). The last cell of a row
-    /// is the model file.
+    /// is the model file. `lindera dependency list` writes them; `lindera
+    /// list` only has to know that such a directory is not to be reported
+    /// as skipped.
+    #[cfg_attr(not(feature = "dependency"), allow(dead_code))]
     models: Vec<DictionaryRow>,
     /// Subdirectories with neither `metadata.json` nor `model.json`, by
     /// name.
@@ -97,11 +105,9 @@ struct DirectoryListing {
 /// `metadata.json` are reported on stderr instead, as is a dictionaries
 /// directory without dictionaries.
 ///
-/// The models of the dependency parser follow in a table of their own, when
-/// there is one: the models embedded in the binary
-/// (`embed-dependency-ipadic`, `embed-dependency-unidic` and the like) and
-/// those `lindera download` installed, each with the value to pass as
-/// `model` to the token filter `japanese_dependency` (#1440, #1441).
+/// The models of the dependency parser, which are installed next to the
+/// dictionaries, are not in this table: `lindera dependency list` writes
+/// them (#1482).
 ///
 /// # Arguments
 ///
@@ -146,15 +152,69 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
         );
     }
     rows.extend(listing.rows);
-    let mut models = embedded_model_rows();
-    models.extend(listing.models);
+    write_stdout(&render_rows(&HEADERS, &rows))
+}
 
-    let mut output = render_rows(&HEADERS, &rows);
-    if !models.is_empty() {
-        output.push('\n');
-        output.push_str(&render_rows(&MODEL_HEADERS, &models));
+/// Runs `lindera dependency list`.
+///
+/// Prints a table of the models of the dependency parser: those embedded in
+/// the binary (`embed-dependency-ipadic`, `embed-dependency-unidic` and the
+/// like) and those `lindera dependency download` installed in
+/// `LINDERA_DICTIONARIES_DIR`, each with the dictionary it is for, the
+/// version of Lindera that built it, its state, and the value to pass as
+/// `--model` to `lindera dependency parse` and as `model` to the token
+/// filter `japanese_dependency` (#1440, #1441, #1482). A build and a
+/// directory without a model are reported on stderr, and the table then has
+/// its header alone.
+///
+/// # Returns
+///
+/// `Ok(())` when the listing is printed. An error when the dictionaries
+/// directory cannot be determined or read, or when the listing cannot be
+/// written to stdout (see `stdout_err`).
+#[cfg(feature = "dependency")]
+pub(crate) fn list_models() -> LinderaResult<()> {
+    let dir = dictionaries_dir()?;
+    let mut models = embedded_model_rows();
+    models.extend(
+        directory_listing(&dir, get_version())?
+            .models
+            .into_iter()
+            .map(model_row),
+    );
+    if models.is_empty() {
+        write_line(
+            Stream::Stderr,
+            format_args!(
+                "No models in {}; run 'lindera dependency download <dictionary>' to download one",
+                dir.display()
+            ),
+        );
     }
-    write_stdout(&output)
+    write_stdout(&render_rows(&MODEL_HEADERS, &models))
+}
+
+/// The row of a model in place, as `lindera dependency list` writes it.
+///
+/// # Arguments
+///
+/// * `row` - The row of the directory of the model, by the name of the
+///   directory.
+///
+/// # Returns
+///
+/// The row with the dictionary of the model as its name: the name of the
+/// directory without `dependency-`, which is the name `lindera dependency
+/// download` takes. A directory with another name keeps it.
+#[cfg(feature = "dependency")]
+fn model_row(row: DictionaryRow) -> DictionaryRow {
+    match row.name.strip_prefix(MODEL_NAME_PREFIX) {
+        Some(dictionary) => DictionaryRow {
+            name: dictionary.to_string(),
+            ..row
+        },
+        None => row,
+    }
 }
 
 /// The rows of the models embedded in the binary.
@@ -163,15 +223,17 @@ pub fn list(_args: ListArgs) -> LinderaResult<()> {
 ///
 /// One row for each model a feature embeds, `embed-dependency-ipadic` for
 /// IPADIC and `embed-dependency-<dictionary>` for a UniDic dictionary, with
-/// `embedded://<dictionary>` as the value of `model`; no row for a build
-/// without such a feature. An embedded model does not say which version of
-/// Lindera built it, and is the one this binary was built with.
+/// the dictionary as its name and `embedded://<dictionary>` as the value of
+/// `model`; no row for a build without such a feature. An embedded model
+/// does not say which version of Lindera built it, and is the one this
+/// binary was built with.
+#[cfg(feature = "dependency")]
 fn embedded_model_rows() -> Vec<DictionaryRow> {
     EMBEDDED_MODELS
         .iter()
         .filter(|(_, embedded)| *embedded)
         .map(|(dictionary, _)| DictionaryRow {
-            name: format!("dependency-{dictionary}"),
+            name: dictionary.to_string(),
             version: None,
             status: Status::Ok,
             dict: format!("embedded://{dictionary}"),
@@ -181,6 +243,7 @@ fn embedded_model_rows() -> Vec<DictionaryRow> {
 
 /// The dictionaries a model can be embedded for, each with whether this
 /// build embeds it.
+#[cfg(feature = "dependency")]
 const EMBEDDED_MODELS: [(&str, bool); 4] = [
     ("ipadic", cfg!(feature = "embed-dependency-ipadic")),
     ("unidic", cfg!(feature = "embed-dependency-unidic")),
@@ -600,21 +663,40 @@ olddic  unknown  other version  /data/olddic
         assert_eq!(listing.skipped, vec![dir.join("other")]);
     }
 
+    #[cfg(feature = "dependency")]
     #[test]
-    fn the_table_of_the_models_has_its_own_last_column() {
+    fn the_table_of_the_models_has_its_own_columns() {
         let rows = vec![DictionaryRow {
-            name: "dependency-ipadic".to_string(),
+            name: "ipadic".to_string(),
             version: Some("7.1.0".to_string()),
             status: Status::Ok,
             dict: "/data/dependency-ipadic/dependency.model".to_string(),
         }];
         let expected = "\
-NAME               VERSION  STATUS  MODEL
-dependency-ipadic  7.1.0    ok      /data/dependency-ipadic/dependency.model
+DICTIONARY  VERSION  STATUS  MODEL
+ipadic      7.1.0    ok      /data/dependency-ipadic/dependency.model
 ";
         assert_eq!(render_rows(&MODEL_HEADERS, &rows), expected);
     }
 
+    #[cfg(feature = "dependency")]
+    #[test]
+    fn a_model_in_place_is_listed_by_its_dictionary() {
+        let row = |name: &str| DictionaryRow {
+            name: name.to_string(),
+            version: Some("7.1.0".to_string()),
+            status: Status::Ok,
+            dict: format!("/data/{name}/dependency.model"),
+        };
+        let listed = model_row(row("dependency-unidic-cwj"));
+        assert_eq!(listed.name, "unidic-cwj");
+        // The file is the one of the directory, whose name does not change.
+        assert_eq!(listed.dict, "/data/dependency-unidic-cwj/dependency.model");
+        // A directory that is not named after a dictionary keeps its name.
+        assert_eq!(model_row(row("my-model")), row("my-model"));
+    }
+
+    #[cfg(feature = "dependency")]
     #[test]
     fn the_embedded_model_is_listed_in_a_build_that_has_one() {
         let rows = embedded_model_rows();
@@ -625,24 +707,25 @@ dependency-ipadic  7.1.0    ok      /data/dependency-ipadic/dependency.model
             .collect();
         assert_eq!(rows.len(), embedded.len());
         for (row, dictionary) in rows.iter().zip(embedded) {
-            assert_eq!(row.name, format!("dependency-{dictionary}"));
+            assert_eq!(row.name, dictionary);
             assert_eq!(row.dict, format!("embedded://{dictionary}"));
             assert_eq!(row.status, Status::Ok);
         }
         assert_eq!(
-            rows.iter().any(|row| row.name == "dependency-ipadic"),
+            rows.iter().any(|row| row.name == "ipadic"),
             cfg!(feature = "embed-dependency-ipadic")
         );
     }
 
+    #[cfg(feature = "dependency")]
     #[test]
     fn a_model_that_can_be_embedded_can_be_downloaded() {
-        use crate::dictionary_registry::DOWNLOADABLE_MODELS;
+        use crate::dictionary_registry::MODEL_DICTIONARIES;
 
-        let names: Vec<String> = EMBEDDED_MODELS
+        let dictionaries: Vec<&str> = EMBEDDED_MODELS
             .iter()
-            .map(|(dictionary, _)| format!("dependency-{dictionary}"))
+            .map(|(dictionary, _)| *dictionary)
             .collect();
-        assert_eq!(names, DOWNLOADABLE_MODELS);
+        assert_eq!(dictionaries, MODEL_DICTIONARIES);
     }
 }

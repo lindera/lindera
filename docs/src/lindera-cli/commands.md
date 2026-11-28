@@ -27,7 +27,7 @@ When the program that reads the standard output of a command exits first, as `he
 
 - `tokenize`, `list` and `download` write their result there, so they stop at the first write that has no reader. `tokenize` reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.
 - `train` and `export` only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.
-- `dependency parse` and `dependency evaluate` write their result there, and stop at the first write that has no reader, as `tokenize` does. The other subcommands of `dependency` write files, and report on them on standard error.
+- `dependency parse`, `dependency evaluate`, `dependency list` and `dependency download` write their result there, and stop at the first write that has no reader, as `tokenize` does. The other subcommands of `dependency` write files, and report on them on standard error.
 
 When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of `download` and the notices of `list`, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.
 
@@ -61,23 +61,9 @@ The table, on stdout, has one dictionary per line: the embedded dictionaries fir
 - `STATUS` is `ok`; `incomplete` when required files are missing (download it again with `lindera download <name> --force`); or `other version` when another version of Lindera built the dictionary, or one that does not say (for a downloadable dictionary, `lindera download <name>` replaces it).
 - `DICT` is the value to pass to `--dict`.
 
+The models of the dependency parser, which are installed in the same directory, are not in this table: [`lindera dependency list`](#models-of-the-dependency-parser) shows them.
+
 Messages go to stderr: a subdirectory with neither `metadata.json` nor `model.json`, such as the `6.2.0/` above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run `lindera download`. Entries whose name starts with `.` are skipped silently.
-
-### Models of the dependency parser
-
-The models of the [dependency parser](../lindera-dependency/token_filter.md) follow in a table of their own, when there is one: the models embedded in the binary (the `embed-dependency-ipadic` feature flag, and `embed-dependency-unidic`, `embed-dependency-unidic-cwj` and `embed-dependency-unidic-csj`) and those that `lindera download dependency-ipadic` and the like installed, which are the subdirectories with a `model.json`.
-
-```text
-NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-
-NAME               VERSION  STATUS  MODEL
-dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-```
-
-- `VERSION` is the version of Lindera that built the model (`lindera_version` in its `model.json`), or `unknown` for the embedded model, which does not say.
-- `STATUS` is as for a dictionary: `ok`, `incomplete`, or `other version`, which `lindera download dependency-ipadic` replaces.
-- `MODEL` is the value to pass as `model` to the token filter `japanese_dependency`: the model file, or `embedded://ipadic`.
 
 ## tokenize
 
@@ -929,12 +915,12 @@ For more details about user dictionary format please refer to the following URL:
 
 ## download
 
-Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory. The same command gets the model of the dependency parser, which a release publishes next to the dictionaries: see [Downloading the model of the dependency parser](#downloading-the-model-of-the-dependency-parser).
+Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it in the dictionaries directory. The model of the dependency parser, which a release publishes next to the dictionaries, is downloaded with `lindera dependency download`: see [Downloading the model of the dependency parser](#downloading-the-model-of-the-dependency-parser).
 
 ### Download parameters
 
-- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba`; or a model of the dependency parser, one of `dependency-ipadic`, `dependency-unidic`, `dependency-unidic-cwj`, `dependency-unidic-csj`: the one for the dictionary of that name
-- `--force`: Re-download and replace the dictionary or the model even when the CLI's version built it
+- Name (required): a dictionary, one of `ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba`
+- `--force`: Re-download and replace the dictionary even when the CLI's version built it
 
 ### Storage location
 
@@ -966,36 +952,6 @@ Notes:
 - The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.
 - Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.
 - The largest dictionary (`ipadic-neologd`) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.
-
-### Downloading the model of the dependency parser
-
-`lindera download dependency-ipadic` gets the [model for IPADIC](../lindera-dependency/model_file.md#the-model-for-ipadic) of the token filter `japanese_dependency`, `lindera-dependency-ipadic-<version>.zip` on the page of the release of the CLI's version, from 7.1.0 on. It installs it in `<dictionaries directory>/dependency-ipadic/`, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as `model`. `dependency-unidic`, `dependency-unidic-cwj` and `dependency-unidic-csj` get the [models for UniDic](../lindera-dependency/model_file.md#the-models-for-unidic) the same way:
-
-```shell
-% MODEL=$(lindera download dependency-ipadic)
-% DICT_DIR=$(lindera download ipadic)
-% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
-    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
-```
-
-The directory holds `dependency.model`, `model.json` and `NOTICE.txt`, which has the license of the model. A model in place is kept when the CLI's version built it, as the `lindera_version` of its `model.json` says, and replaced otherwise, as a dictionary is. With the model in place:
-
-```shell
-% lindera download dependency-ipadic
-```
-
-```text
-Model 'dependency-ipadic' is already downloaded; use --force to re-download it
-/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-```
-
-A version without a release, or with a release before 7.1.0, has no model to download:
-
-```text
-Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
-```
-
-The filter needs a build of the CLI with the `dependency` feature. The model belongs to IPADIC: use it with that dictionary.
 
 ## train
 
@@ -1208,6 +1164,8 @@ lindera dependency <SUBCOMMAND>
 | --- | --- | --- |
 | `parse` | Parses plain text, or input that is tokenized or segmented already, and writes the lattice format | [Command Line](../lindera-dependency/command_line.md) |
 | `chunk` | Segments the morphemes of a file again with a model file | [Chunking](../lindera-dependency/chunking.md) |
+| `download` | Downloads the model for a dictionary | [Below](#downloading-the-model-of-the-dependency-parser) |
+| `list` | Lists the models in place and those embedded in the binary | [Below](#models-of-the-dependency-parser) |
 | `convert` | Makes training data from a CoNLL-U file with bunsetsu labels | [Training Data](../lindera-dependency/training_data.md) |
 | `evaluate` | Compares an output with the answer | [Evaluation](../lindera-dependency/evaluation.md) |
 | `split` | Writes the folds of a cross-validation | [Evaluation](../lindera-dependency/evaluation.md) |
@@ -1216,18 +1174,69 @@ lindera dependency <SUBCOMMAND>
 | `train-parser` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](../lindera-dependency/parsing.md) |
 | `convert-cabocha` | Converts the chunker and parser models of CaboCha into a model file | [CaboCha's Models](../lindera-dependency/cabocha_models.md) |
 
-`parse` and `chunk` are in a build with the `dependency` feature, and the seven others in a build that has `train` as well. Both features are in the default build.
+`parse`, `chunk`, `download` and `list` are in a build with the `dependency` feature, and the seven others in a build that has `train` as well. Both features are in the default build.
 
 ### Dependency usage
 
-`parse` needs the model for the dictionary it tokenizes with, which `download` gets:
+`parse` needs the model for the dictionary it tokenizes with, which `dependency download` gets:
 
 ```bash
 DICT=$(lindera download ipadic)
-MODEL=$(lindera download dependency-ipadic)
+MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
 
 It writes the bunsetsu of each sentence and their dependencies in the lattice format, which is what `cabocha -f1` writes. [Quick Start](../lindera-dependency/quickstart.md) has the output, and [Reading and Using the Result](../lindera-dependency/reading_the_result.md) says how to read it.
 
 `tokenize` gives the same analysis on the tokens of its output, with the token filter `japanese_dependency`: see [Token Filter](../lindera-dependency/token_filter.md).
+
+### Downloading the model of the dependency parser
+
+`lindera dependency download ipadic` gets the [model for IPADIC](../lindera-dependency/model_file.md#the-model-for-ipadic) of the token filter `japanese_dependency`, `lindera-dependency-ipadic-<version>.zip` on the page of the release of the CLI's version, from 7.1.0 on. It installs it in `<dictionaries directory>/dependency-ipadic/`, next to the dictionaries, and prints the path of the model file in it, which is what `lindera dependency parse` takes as `--model` and the filter as `model`. `unidic`, `unidic-cwj` and `unidic-csj` get the [models for UniDic](../lindera-dependency/model_file.md#the-models-for-unidic) the same way:
+
+```shell
+% MODEL=$(lindera dependency download ipadic)
+% DICT_DIR=$(lindera download ipadic)
+% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
+    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
+```
+
+The directory holds `dependency.model`, `model.json` and `NOTICE.txt`, which has the license of the model. A model in place is kept when the CLI's version built it, as the `lindera_version` of its `model.json` says, and replaced otherwise, as a dictionary is. With the model in place:
+
+```shell
+% lindera dependency download ipadic
+```
+
+```text
+Model 'ipadic' is already downloaded; use --force to re-download it
+/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+A version without a release, or with a release before 7.1.0, has no model to download:
+
+```text
+Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
+```
+
+The filter needs a build of the CLI with the `dependency` feature. The model belongs to IPADIC: use it with that dictionary.
+
+### Models of the dependency parser
+
+`lindera dependency list` writes a table of the models of the [dependency parser](../lindera-dependency/token_filter.md): the models embedded in the binary (the `embed-dependency-ipadic` feature flag, and `embed-dependency-unidic`, `embed-dependency-unidic-cwj` and `embed-dependency-unidic-csj`) and those that `lindera dependency download ipadic` and the like installed, which are the subdirectories with a `model.json`.
+
+```shell
+% lindera dependency list
+```
+
+```text
+DICTIONARY  VERSION  STATUS  MODEL
+ipadic      7.1.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+```
+
+- `DICTIONARY` is the dictionary the model is for: the name `lindera dependency download` takes.
+
+- `VERSION` is the version of Lindera that built the model (`lindera_version` in its `model.json`), or `unknown` for the embedded model, which does not say.
+- `STATUS` is as for a dictionary: `ok`, `incomplete`, or `other version`, which `lindera dependency download ipadic` replaces.
+- `MODEL` is the value to pass as `--model` to `lindera dependency parse` and as `model` to the token filter `japanese_dependency`: the model file, or `embedded://ipadic`.
+
+Without a model, the table has its header alone, and a line on stderr says how to download one.

@@ -193,8 +193,8 @@ fn download_with_invalid_name_fails() {
 
 /// Writes the files of a downloaded model of the dependency parser into
 /// `dir`, creating it, with dummy content and a `model.json` that says
-/// `version` built it: what `lindera download` and `lindera list` check, not
-/// a model that can be loaded.
+/// `version` built it: what `lindera dependency download` and `lindera
+/// dependency list` check, not a model that can be loaded.
 fn write_model_files(dir: &Path, version: &str) {
     std::fs::create_dir_all(dir).unwrap();
     std::fs::write(dir.join("dependency.model"), b"test").unwrap();
@@ -208,17 +208,19 @@ fn write_model_files(dir: &Path, version: &str) {
     .unwrap();
 }
 
-/// `lindera download dependency-ipadic` prints the model file, the value of
-/// `model` of the token filter, and not its directory. The model is in
-/// place and of this version, so nothing is downloaded (#1440).
+/// `lindera dependency download ipadic` prints the model file, the value of
+/// `--model` and of `model` of the token filter, and not its directory. The
+/// model is in place and of this version, so nothing is downloaded (#1440,
+/// #1482).
+#[cfg(feature = "dependency")]
 #[test]
-fn download_prints_the_model_file_of_a_model_in_place() {
+fn dependency_download_prints_the_model_file_of_a_model_in_place() {
     let dictionaries = tempfile::tempdir().unwrap();
     let model = dictionaries.path().join("dependency-ipadic");
     write_model_files(&model, env!("CARGO_PKG_VERSION"));
 
     let output = lindera_with_dictionaries_dir(dictionaries.path())
-        .args(["download", "dependency-ipadic"])
+        .args(["dependency", "download", "ipadic"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -228,20 +230,140 @@ fn download_prints_the_model_file_of_a_model_in_place() {
     );
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("Model 'dependency-ipadic' is already downloaded"),
+        stderr.contains("Model 'ipadic' is already downloaded"),
         "got: {stderr}"
     );
 }
 
-/// `lindera list` shows a downloaded model in a table of its own, after the
-/// dictionaries, with the model file in its last column; a model of
-/// another version is marked (#1440).
+/// `lindera dependency download` takes the dictionaries that have a model,
+/// and no other name.
+#[cfg(feature = "dependency")]
 #[test]
-fn list_shows_the_models_in_a_table_of_their_own() {
+fn dependency_download_refuses_a_dictionary_without_a_model() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    for name in ["ko-dic", "dependency-ipadic"] {
+        let output = lindera_with_dictionaries_dir(dictionaries.path())
+            .args(["dependency", "download", name])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2), "{name}");
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            stderr.contains(&format!("invalid value '{name}'")),
+            "{name}: {stderr}"
+        );
+        assert!(
+            stderr.contains("[possible values: ipadic, unidic, unidic-cwj, unidic-csj]"),
+            "{name}: {stderr}"
+        );
+    }
+}
+
+/// `lindera download` takes the dictionaries: the name of a model, which it
+/// took before `lindera dependency download` was there, is refused, with
+/// nothing downloaded (#1482).
+#[test]
+fn download_refuses_the_name_of_a_model() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let output = lindera_with_dictionaries_dir(dictionaries.path())
+        .args(["download", "dependency-ipadic"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("invalid value 'dependency-ipadic'"),
+        "got: {stderr}"
+    );
+    assert!(output.stdout.is_empty());
+    assert_eq!(std::fs::read_dir(dictionaries.path()).unwrap().count(), 0);
+}
+
+/// `lindera dependency list` shows the downloaded models, each by its
+/// dictionary, with the model file in the last column; a model of another
+/// version is marked (#1440, #1482).
+#[cfg(feature = "dependency")]
+#[test]
+fn dependency_list_shows_the_models_by_their_dictionary() {
     let dictionaries = tempfile::tempdir().unwrap();
     let model = dictionaries.path().join("dependency-ipadic");
     write_model_files(&model, env!("CARGO_PKG_VERSION"));
     write_model_files(&dictionaries.path().join("dependency-old"), "0.0.1");
+
+    let output = lindera_with_dictionaries_dir(dictionaries.path())
+        .args(["dependency", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!stderr.contains("No models"), "got: {stderr}");
+
+    let cells =
+        |line: &str| -> Vec<String> { line.split_whitespace().map(str::to_string).collect() };
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(
+        cells(lines[0]),
+        ["DICTIONARY", "VERSION", "STATUS", "MODEL"],
+        "got: {stdout}"
+    );
+    let file = model.join("dependency.model").display().to_string();
+    // A build that embeds a model lists that one first.
+    let rows: Vec<Vec<String>> = lines[1..]
+        .iter()
+        .map(|line| cells(line))
+        .filter(|row| row.last().map(String::as_str) != Some("embedded://ipadic"))
+        .collect();
+    assert_eq!(rows.len(), 2, "got: {stdout}");
+    assert_eq!(
+        rows[0],
+        ["ipadic", env!("CARGO_PKG_VERSION"), "ok", &file],
+        "got: {stdout}"
+    );
+    assert_eq!(rows[1][..4], ["old", "0.0.1", "other", "version"]);
+}
+
+/// Without a model in place, `lindera dependency list` says how to get one,
+/// and its table has the header alone, or the models of the build.
+#[cfg(feature = "dependency")]
+#[test]
+fn dependency_list_says_how_to_download_a_model() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    let output = lindera_with_dictionaries_dir(dictionaries.path())
+        .args(["dependency", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stdout.starts_with("DICTIONARY  VERSION  STATUS  MODEL\n"),
+        "got: {stdout}"
+    );
+    let embedded = stdout.lines().skip(1).count();
+    assert!(
+        stdout
+            .lines()
+            .skip(1)
+            .all(|line| line.contains("embedded://")),
+        "got: {stdout}"
+    );
+    assert_eq!(
+        stderr.contains("run 'lindera dependency download <dictionary>'"),
+        embedded == 0,
+        "got: {stderr}"
+    );
+}
+
+/// `lindera list` shows the dictionaries. A model in place is not in its
+/// table, and is not reported as a directory that was skipped (#1482).
+#[test]
+fn list_leaves_the_models_to_dependency_list() {
+    let dictionaries = tempfile::tempdir().unwrap();
+    write_model_files(
+        &dictionaries.path().join("dependency-ipadic"),
+        env!("CARGO_PKG_VERSION"),
+    );
 
     let output = lindera_with_dictionaries_dir(dictionaries.path())
         .arg("list")
@@ -251,32 +373,12 @@ fn list_shows_the_models_in_a_table_of_their_own() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(!stderr.contains("Skipped"), "got: {stderr}");
-
-    let lines: Vec<&str> = stdout.lines().collect();
-    let header = lines
-        .iter()
-        .position(|line| line.ends_with("MODEL"))
-        .unwrap_or_else(|| panic!("the table of the models is missing, got: {stdout}"));
-    assert!(lines[0].ends_with("DICT"), "got: {stdout}");
-    assert_eq!(lines[header - 1], "", "got: {stdout}");
-    let cells =
-        |line: &str| -> Vec<String> { line.split_whitespace().map(str::to_string).collect() };
-    let file = model.join("dependency.model").display().to_string();
-    // A build that embeds a model lists that one first.
-    let rows: Vec<Vec<String>> = lines[header + 1..]
-        .iter()
-        .map(|line| cells(line))
-        .filter(|row| row.last().map(String::as_str) != Some("embedded://ipadic"))
-        .collect();
-    assert_eq!(
-        rows[0],
-        ["dependency-ipadic", env!("CARGO_PKG_VERSION"), "ok", &file],
+    assert!(
+        stdout.lines().next().unwrap().ends_with("DICT"),
         "got: {stdout}"
     );
-    assert_eq!(
-        rows[1][..4],
-        ["dependency-old", "0.0.1", "other", "version"]
-    );
+    assert!(!stdout.contains("MODEL"), "got: {stdout}");
+    assert!(!stdout.contains("dependency-ipadic"), "got: {stdout}");
 }
 
 /// `--dict` takes a URI or a path; a dictionary name fails with the two ways
@@ -1220,6 +1322,30 @@ fn dependency_evaluate_ends_quietly_without_a_stdout_reader() {
         lattice,
     ]);
     run_without_stdout_reader(command, Input::Null);
+}
+
+/// `lindera dependency list` writes its table to stdout, and `lindera
+/// dependency download` the path of the model file. The model is in place
+/// and of this version, so nothing is downloaded.
+#[cfg(feature = "dependency")]
+#[test]
+fn dependency_list_and_download_end_quietly_without_a_stdout_reader() {
+    let dir = tempfile::tempdir().unwrap();
+    write_model_files(
+        &dir.path().join("dependency-ipadic"),
+        env!("CARGO_PKG_VERSION"),
+    );
+    for arguments in [
+        &["dependency", "list"][..],
+        &["dependency", "download", "ipadic"],
+    ] {
+        let mut command = lindera_process();
+        command
+            .args(arguments)
+            .env("LINDERA_DICTIONARIES_DIR", dir.path())
+            .env_remove("LINDERA_DATA_DIR");
+        run_without_stdout_reader(command, Input::Null);
+    }
 }
 
 // The commands with a stderr that has no reader: their own messages there are

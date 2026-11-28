@@ -84,5 +84,5 @@ error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_d
 - `Token::details` は、これまでどおり辞書の欄を持ちます。係り受け解析の結果は、そこには書きません。
 - トークンは、ポインター 1 つ分だけ大きくなります。
 - `lindera` コマンドとバインディングは、既定のビルドに `dependency` feature を持ちます。トークンフィルター `japanese_dependency` がパッケージに入り、`lindera-dependency` クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。`default-features = false` で、入っていないビルドになります。ライブラリの `lindera` と `lindera-analysis` は、feature を指定したときだけ持ちます。
-- モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera download dependency-ipadic` で取得します。UniDic のモデルは、`dependency-unidic`・`dependency-unidic-cwj`・`dependency-unidic-csj` で取得します。
+- モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、`lindera dependency download ipadic` で取得します。UniDic のモデルは、`unidic`・`unidic-cwj`・`unidic-csj` で取得します。
 - 10 個目の辞書として、[JUMAN 辞書](./lindera-jumandic.md)（辞書名 `jumandic`、クレート `lindera-jumandic`、feature `embed-jumandic`）が増えました。mecab-jumandic 7.0-20130310 から作ります（[#1466](https://github.com/lindera/lindera/issues/1466)）。既定のビルドは、これを埋め込みません。`lindera download jumandic` で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに[変換できます](./lindera-dependency/cabocha_models.md)。

@@ -147,7 +147,7 @@ fn a_build_without_the_embedded_model_names_the_feature() {
     assert!(output.stdout.is_empty());
 }
 
-/// The model as `lindera download dependency-ipadic` leaves it, and the path
+/// The model as `lindera dependency download ipadic` leaves it, and the path
 /// the command prints for it, given to the filter (#1440). The model is in
 /// place and of this version, so nothing is downloaded.
 #[test]
@@ -170,7 +170,7 @@ fn the_path_that_download_prints_is_what_the_filter_takes() {
 
     let output = Command::cargo_bin("lindera")
         .expect("lindera binary should build")
-        .args(["download", "dependency-ipadic"])
+        .args(["dependency", "download", "ipadic"])
         .env("LINDERA_DICTIONARIES_DIR", dictionaries.path())
         .env_remove("LINDERA_DATA_DIR")
         .output()
