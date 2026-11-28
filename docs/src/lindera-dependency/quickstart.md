@@ -41,13 +41,12 @@ Each token of the JSON output has a `dependency`. The surface of each token with
 
 The sentence has four bunsetsu: 彼は (0) and 花を (2) depend on 見た。 (3), 赤い (1) on 花を, and the last one on nothing. [Token Filter](./token_filter.md) describes the fields, how a text is cut into sentences, and the same from a configuration file and from the bindings.
 
-## With the `lindera-dependency` command
+## With `lindera dependency parse`
 
-The command of the crate writes the lattice format, which is what `cabocha -f1` writes:
+`lindera dependency parse`, of the same command, writes the lattice format, which is what `cabocha -f1` writes:
 
 ```shell
-% cargo install lindera-dependency --features cli
-% echo "彼は赤い花を見た。" | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+% echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
 
 ```text

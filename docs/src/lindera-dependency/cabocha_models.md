@@ -1,6 +1,6 @@
 # CaboCha's Models
 
-[CaboCha](https://taku910.github.io/cabocha/) comes with models trained on the Kyoto University Text Corpus 4.0. They cannot be trained again without the corpus, and their bunsetsu are those of the Kyoto corpus, not those of UD Japanese-GSD, which the models of this crate follow. `lindera-dependency convert-cabocha` converts such a model into a [model file](./model_file.md), and the analysis with the converted model is the one CaboCha gives.
+[CaboCha](https://taku910.github.io/cabocha/) comes with models trained on the Kyoto University Text Corpus 4.0. They cannot be trained again without the corpus, and their bunsetsu are those of the Kyoto corpus, not those of UD Japanese-GSD, which the models of this crate follow. `lindera dependency convert-cabocha` converts such a model into a [model file](./model_file.md), and the analysis with the converted model is the one CaboCha gives.
 
 ## The terms of the models
 
@@ -29,14 +29,14 @@ The two files have to be those of one model. The part-of-speech set is read in t
 
 ## Converting
 
-The command is in the build with the `train` feature:
+The command is in the default build of `lindera`, which has the `train` feature:
 
 ```sh
-cargo install lindera-dependency --features train,embed-ipadic
+cargo install lindera-cli --features embed-ipadic
 ```
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.ipa.txt \
     --parser cabocha/model/dep.ipa.txt \
     --output cabocha-ipa.model
@@ -58,7 +58,7 @@ The file is a model for `ipadic`, read by `parse`, by the [token filter](./token
 
 ```sh
 echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict embedded://ipadic --model cabocha-ipa.model
+    | lindera dependency parse --dict embedded://ipadic --model cabocha-ipa.model
 ```
 
 ```text
@@ -95,7 +95,7 @@ From Rust, `lindera_dependency::cabocha::convert` takes the content of the two f
 The model for JUMAN is the one CaboCha's page gives the highest accuracy for: it was trained on the Kyoto corpus as it is, where the other two were trained on the corpus tokenized again. It is converted in the same way:
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.juman.txt \
     --parser cabocha/model/dep.juman.txt \
     --output cabocha-juman.model
@@ -117,7 +117,7 @@ The file is a model for `jumandic`. `lindera-dependency` embeds no dictionary bu
 
 ```sh
 echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+    | lindera dependency parse --dict jumandic --model cabocha-juman.model
 ```
 
 ```text
@@ -149,7 +149,7 @@ EOS
 The model for UniDic is converted in the same way:
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.unidic.txt \
     --parser cabocha/model/dep.unidic.txt \
     --output cabocha-unidic.model
@@ -171,7 +171,7 @@ The file is a model for `unidic`, the dictionary built from unidic-mecab 2.1.2. 
 
 ```sh
 echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+    | lindera dependency parse --dict unidic --model cabocha-unidic.model
 ```
 
 ```text
@@ -237,7 +237,7 @@ The defaults are those of `cabocha-model-index`, with which CaboCha's own build 
 
 ## Agreement with CaboCha
 
-`scripts/dependency/cabocha_models.sh` converts the model for IPA, or with `--posset juman` or `--posset unidic` the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by `scripts/dependency/build_baselines.sh`, with the model as its own build compiled it) and to `lindera-dependency parse` with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.
+`scripts/dependency/cabocha_models.sh` converts the model for IPA, or with `--posset juman` or `--posset unidic` the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by `scripts/dependency/build_baselines.sh`, with the model as its own build compiled it) and to `lindera dependency parse` with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.
 
 On the same morphemes, those of Lindera with IPADIC, everything is the same:
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The speed of `lindera-dependency parse` on plain text: the sentences per
+# The speed of `lindera dependency parse` on plain text: the sentences per
 # second of the command of a user, from the text to the lattice format.
 #
 # Usage: parse_speed.sh [--dict <URI or path>] <model file> [<repetitions> [<data directory>]]
@@ -16,8 +16,8 @@
 #                     (fetch_corpora.sh).
 #
 # The text is the `# text = ` lines of the test file of UD Japanese-GSD, one
-# sentence per line. The command is built with `cli,embed-ipadic`, which is
-# the build without the training code, and is run five times on an empty
+# sentence per line. The command is `lindera`, in its default build with
+# IPADIC embedded (`embed-ipadic`), and is run five times on an empty
 # input, on the text once, and on the text repeated; the fastest run of
 # each is kept. Loading the dictionary and the model is the time on the
 # empty input, and the sentences per second without it come from the
@@ -42,9 +42,9 @@ data=$(readlink -f "${3:-$here/data}")
 work=$data/parse_speed
 mkdir -p "$work"
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency \
-    --features cli,embed-ipadic
-command=$root/target/release/lindera-dependency
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli \
+    --features embed-ipadic
+command=$root/target/release/lindera
 
 sed -n 's/^# text = //p' "$data/gsd/ja_gsd-ud-test.conllu" > "$work/once.txt"
 : > "$work/empty.txt"
@@ -58,7 +58,7 @@ fastest() {
     local best="" start end seconds
     for _ in 1 2 3 4 5; do
         start=${EPOCHREALTIME/,/.}
-        "$command" parse --model "$model" --dict "$dict" \
+        "$command" dependency parse --model "$model" --dict "$dict" \
             --input "$1" --output "$work/out.lattice"
         end=${EPOCHREALTIME/,/.}
         seconds=$(echo "$end - $start" | bc -l)

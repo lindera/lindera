@@ -45,14 +45,14 @@ The result does not say what kind of dependency one is. There is no label such a
 
 The result comes in two forms, with the same content:
 
-- the **lattice format** of the `lindera-dependency` command, which is what `cabocha -f1` writes;
+- the **lattice format** of `lindera dependency parse`, which is what `cabocha -f1` writes;
 - **fields on the tokens** of the Lindera tokenizer, with the token filter `japanese_dependency`.
 
 ### The lattice format
 
 ```shell
 % echo "太郎は昨日買った新しい本を図書館で読んだ。" \
-    | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+    | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
 
 ```text
@@ -142,7 +142,7 @@ The sentence has a clause inside a clause, and the dependencies keep the two apa
 
 ### More kinds of sentence
 
-The tables below are read from the output of `lindera-dependency parse`, as the one above.
+The tables below are read from the output of `lindera dependency parse`, as the one above.
 
 **A quotation**: 彼は明日来ると言った。
 

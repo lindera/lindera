@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Converts UD Japanese-GSD (train, dev, test) and UD Japanese-PUD to training
-# data with `lindera-dependency convert` and a dictionary, and shows the
+# data with `lindera dependency convert` and a dictionary, and shows the
 # report of each file: the sentences kept and dropped, the bunsetsu merged,
 # and how often the head word of the schema is the content head of the
 # corpus.
@@ -27,8 +27,8 @@ root=$(readlink -f "$here/../..")
 parse_dictionary_arguments "$@"
 data=$(readlink -f "${rest[0]:-$here/data}")
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train,embed-ipadic
-bin="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli --features embed-ipadic
+bin="$root/target/release/lindera"
 resolve_dictionary "$root" "$data"
 
 output=$(dictionary_directory "$data")/lattice
@@ -37,7 +37,7 @@ for entry in gsd/ja_gsd-ud-train gsd/ja_gsd-ud-dev gsd/ja_gsd-ud-test pud/ja_pud
     name=$(basename "$entry")
     # From the directory of the corpus, so that the report names the file
     # without a path.
-    env -C "$data/$(dirname "$entry")" "$bin" convert --dict "$dict" \
+    env -C "$data/$(dirname "$entry")" "$bin" dependency convert --dict "$dict" \
         --input "$name.conllu" --output "$output/$name.lattice" \
         2> "$output/$name.report"
     cat "$output/$name.report"

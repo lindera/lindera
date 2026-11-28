@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compares what CaboCha wrote with what `lindera-dependency parse` wrote,
+"""Compares what CaboCha wrote with what `lindera dependency parse` wrote,
 both in the lattice format. The numbers of cabocha_models.sh.
 
 Usage:

@@ -1,25 +1,25 @@
 # コマンドライン
 
-`lindera-dependency` コマンドは、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを[ラティス形式](./architecture.md#ラティス形式)で書き出します。`cabocha -f1` が書くのと同じ形式です。
+`lindera dependency parse` は、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを[ラティス形式](./architecture.md#ラティス形式)で書き出します。`cabocha -f1` が書くのと同じ形式です。
 
 区切りと解析器の入った[モデルファイル](./model_file.md)が必要です。7.1.0 から Lindera のリリースが公開する [IPADIC のモデル](./model_file.md#ipadic-のモデル)か [UniDic のモデル](./model_file.md#unidic-のモデル)、または自分で[学習した](./parsing.md#モデルを学習する)モデルを使います。
 
 ## ビルド
 
-コマンドは `cli` feature の裏にあります。この feature は `clap` と `lindera-segmenter` を入れ、学習のコードは入れません。`embed-ipadic` を付けると、IPADIC を埋め込みます。`embed-model-ipadic` を付けると、[IPADIC のモデル](./model_file.md#埋め込む)を埋め込み、`--model embedded://ipadic` で指せます。UniDic CWJ なら、`embed-model-unidic-cwj` と `--model embedded://unidic-cwj` です。`unidic` と `unidic-csj` も同じで、辞書はディレクトリで渡します。
+`lindera dependency` は、[`lindera` コマンド](../lindera-cli/installation.md)の一部で、既定のビルドに入っています。リリースのバイナリにも、`cargo install lindera-cli` で入れたコマンドにもあります。`lindera-cli` の `dependency` feature の裏にあります。`embed-ipadic` を付けると、IPADIC を埋め込みます。`embed-dependency-ipadic` を付けると、[IPADIC のモデル](./model_file.md#埋め込む)を埋め込み、`--model embedded://ipadic` で指せます。UniDic CWJ なら、`embed-dependency-unidic-cwj` と `--model embedded://unidic-cwj` です。`unidic` と `unidic-csj` も同じで、辞書はディレクトリで渡します。
 
 ```shell
-cargo build --release -p lindera-dependency --features cli,embed-ipadic
+cargo build --release -p lindera-cli --features embed-ipadic
 ```
 
-バイナリは `target/release/lindera-dependency` です。`cli` のビルドのサブコマンドは、`parse` と [`chunk`](./chunking.md) の 2 つです。`train` feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。
+バイナリは `target/release/lindera` です。`lindera dependency` の利用者向けのサブコマンドは、`parse` と [`chunk`](./chunking.md) の 2 つです。`train` feature（これも既定のビルドに入っています）を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。クレート `lindera-dependency` 自体はライブラリで、コマンドを持ちません。
 
 ## テキストを解析する
 
 入力の 1 行が 1 文です。
 
 ```shell
-echo "彼は赤い花を見た。" | lindera-dependency parse \
+echo "彼は赤い花を見た。" | lindera dependency parse \
     --model ipadic.model --dict embedded://ipadic
 ```
 
@@ -61,7 +61,7 @@ EOS
 モデルは 1 つの辞書の形態素で学習したもので、ほかの辞書の形態素を渡しても、失敗せずに誤った答えを返します。そこでコマンドは、読み込んだ辞書の名前をモデルファイルの中の名前と比べ、違えば止まります。
 
 ```text
-Error: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic"
+Error: LinderaError { kind: Content, source: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic" }
 ```
 
 ## 分かち書き済みの入力
@@ -75,9 +75,9 @@ Error: embedded://ipadic: the model is for the dictionary "unidic", and the morp
 | `bunsetsu` | ラティス形式の形態素と文節 | 入力の文節を解析する | `-I2` |
 
 ```shell
-lindera-dependency parse --model ipadic.model --input-layer morphemes \
+lindera dependency parse --model ipadic.model --input-layer morphemes \
     --input tokens.lattice --output output.lattice
-lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
+lindera dependency parse --model ipadic.model --input-layer bunsetsu \
     --input dev.lattice --output output.lattice
 ```
 
@@ -99,6 +99,6 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 
 UD Japanese-GSD の test のテキスト（543 文）で、既定のモデルと埋め込んだ IPADIC を使うと、コマンドは、テキストからラティス形式まで、毎秒約 6,600 文を書き出します。辞書とモデルの読み込みは約 5 ミリ秒です。数字はマシンによって変わります。`scripts/dependency/parse_speed.sh` で測れます。
 
-## `lindera` コマンド
+## `lindera tokenize`
 
-`lindera tokenize` は、解析器をトークンフィルターとして動かします。[トークンフィルター](./token_filter.md)を見てください。結果は、ラティス形式ではなく、JSON の出力のトークンに書かれます。`lindera` コマンドは、7.1.0 から、既定のビルドにフィルターを持ちます。
+`lindera tokenize` は、解析器をトークンフィルターとして動かします。[トークンフィルター](./token_filter.md)を見てください。結果は、ラティス形式ではなく、JSON の出力のトークンに書かれます。`lindera` コマンドは、7.1.0 から、`lindera dependency` と同じく、既定のビルドにフィルターを持ちます。

@@ -5,14 +5,14 @@ Counts, on files in the lattice format with bunsetsu, how many heads are
 right when every bunsetsu but the last depends on the next one, by the three
 levels of CaboCha's eval.cpp (level 0 counts every bunsetsu, level 1 leaves
 out the last of each sentence, level 2 the last two), and the sentences with
-every head right. Written independently of `lindera-dependency evaluate`,
+every head right. Written independently of `lindera dependency evaluate`,
 to check its numbers.
 
 Usage:
     python3 -I -B baseline_next.py [--write <directory>] <lattice file>...
 
 With --write, it also writes each file with the heads replaced by the next
-bunsetsu, as an input for `lindera-dependency evaluate --system`.
+bunsetsu, as an input for `lindera dependency evaluate --system`.
 """
 
 import os

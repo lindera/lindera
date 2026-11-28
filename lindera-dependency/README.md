@@ -21,8 +21,10 @@ dictionaries with it. It holds:
 - the model file of a dictionary, which is read in place
 - the parser, which finds the head of each bunsetsu, with its features
   and the training of its classifier
-- the `lindera-dependency` command, which parses plain text and writes
-  the lattice format
+
+The crate is a library. Its command is `lindera dependency`, of the
+`lindera` command (the `lindera-cli` crate), which parses plain text and
+writes the lattice format, and trains and evaluates.
 
 The token filter `japanese_dependency` of Lindera runs this analysis in a
 tokenizer. It is in `lindera-analysis`, behind its `dependency` feature.
@@ -36,7 +38,7 @@ feature `embed-model-ipadic` embeds it in a program. The same is published
 for `unidic`, `unidic-cwj` and `unidic-csj`, with the name of the dictionary
 in place of `ipadic`: `lindera-dependency-unidic-cwj-<version>.zip` and
 `embed-model-unidic-cwj`, for UniDic CWJ. The chunker and the parser can
-also be trained with the commands of the crate, in a few seconds each.
+also be trained with `lindera dependency`, in a few seconds each.
 
 The documentation has a chapter on the crate, in
 [English](../docs/src/lindera-dependency.md) and in
@@ -53,15 +55,16 @@ In its default build it has no dependency, and builds for
 
 ## Command line
 
-With the `cli` feature the crate builds the `lindera-dependency` command,
-which has no training code. `parse` reads plain text, one sentence per
-line, tokenizes it with a Lindera dictionary, and writes the bunsetsu and
-their dependencies in the lattice format, as `cabocha -f1` does. It needs a
-model file with a chunker and a parser, trained [as below](#training-the-parser).
+The command is `lindera dependency`, in the default build of the `lindera`
+command; this crate has no binary. `parse` reads plain text, one sentence
+per line, tokenizes it with a Lindera dictionary, and writes the bunsetsu
+and their dependencies in the lattice format, as `cabocha -f1` does. It
+needs a model file with a chunker and a parser, trained
+[as below](#training-the-parser).
 
 ```shell
-cargo build --release -p lindera-dependency --features cli,embed-ipadic
-echo "彼は赤い花を見た。" | target/release/lindera-dependency parse \
+cargo build --release -p lindera-cli --features embed-ipadic
+echo "彼は赤い花を見た。" | target/release/lindera dependency parse \
     --model ipadic.model --dict embedded://ipadic
 ```
 
@@ -92,20 +95,21 @@ writes about 6,600 sentences per second
 ## Training data
 
 The parser is trained on bunsetsu dependencies, on the morphemes of the
-dictionary it runs with. The `lindera-dependency` command, behind the `train`
-feature, makes such data from a corpus that has word dependencies and
+dictionary it runs with. `lindera dependency convert`, in a build of the
+`lindera` command with the `train` feature, which its default build has,
+makes such data from a corpus that has word dependencies and
 bunsetsu boundaries: a CoNLL-U file with `BunsetuBILabel` in its last column,
 as UD Japanese-GSD and UD Japanese-PUD have it.
 
 ```shell
-cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
 ```
 
 `--dict` also takes the directory of a dictionary built for Lindera; the
-`train` feature alone is then enough. The schema is the one of the
+default build is then enough. The schema is the one of the
 dictionary, by the name in its metadata: there are schemas for `ipadic`,
 `unidic`, `unidic-cwj` and `unidic-csj`, and another dictionary is refused.
 The commands that train read no dictionary: `train-chunker`, `train-parser`
@@ -264,9 +268,9 @@ word.
 Training is behind the `train` feature and uses `lindera-crf`:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- train-chunker \
+cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
-cargo run --release -p lindera-dependency --features train -- chunk \
+cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 
@@ -709,7 +713,7 @@ The `instances` command writes them for a file in the lattice format, with
 the schema of IPADIC, or of the dictionary that `--dictionary-name` names:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- instances \
+cargo run --release -p lindera-cli -- dependency instances \
     --input train.lattice --output train.instances
 ```
 
@@ -737,11 +741,11 @@ goes into it, which makes the whole model of the dictionary. `parse` with
 chunker of the model, which is the analysis from the morphemes.
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- train-parser \
+cargo run --release -p lindera-cli -- dependency train-parser \
     --input train.lattice --chunker chunker.model --output ipadic.model
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 ```
 
@@ -950,7 +954,7 @@ and the model for JUMAN (`chunk.juman.txt`, `dep.juman.txt`) into one for
 `jumandic`:
 
 ```sh
-lindera-dependency convert-cabocha \
+lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.ipa.txt \
     --parser cabocha/model/dep.ipa.txt \
     --output cabocha-ipa.model
@@ -996,12 +1000,12 @@ terms of the models in full, the numbers and the limits.
 
 ## Evaluation
 
-`lindera-dependency evaluate`, also behind the `train` feature, compares an
+`lindera dependency evaluate`, also behind the `train` feature, compares an
 output with the answer, both in the lattice format with the same sentences
 in the same order:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- evaluate \
+cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice \
     --system output.lattice
 ```
@@ -1057,7 +1061,7 @@ p-value is the one of McNemar's exact test, two-sided, on the two discordant
 counts. The segmentations compare two chunkers, whatever the heads.
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- evaluate \
+cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 ```
 
@@ -1082,12 +1086,12 @@ difference under a point cannot be told on them alone.
 - **The dev file chooses between settings.**
 - **The test file and UD Japanese-PUD are for the reported result only.**
 
-`lindera-dependency split` writes the folds. Sentence `i` of the input,
+`lindera dependency split` writes the folds. Sentence `i` of the input,
 from 0, is in the test file of fold `i mod k` and in the training file of
 every other fold, so the folds are the same wherever the command runs:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- split \
+cargo run --release -p lindera-cli -- dependency split \
     --input train.lattice --folds 10 --output-dir folds
 ```
 

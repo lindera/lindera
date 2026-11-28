@@ -28,7 +28,7 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 - **CaboCha が配布する 3 つのモデル（IPA・JUMAN・UniDic）を変換し**、CaboCha と同じ解析をするモデルファイルにする。そのモデルの利用は、CaboCha のモデルと同じく、研究目的と個人利用に限られる。
 - 文節の区切りと係り受けの精度を、CaboCha・J.DepP と同じ数え方で**評価し**、2 つの出力を対の検定で比べる。
 
-既定のビルドは依存がなく、`wasm32-unknown-unknown` 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。コマンドは `cli` feature の裏に、学習と評価は `train` feature の裏にあります。
+既定のビルドは依存がなく、`wasm32-unknown-unknown` 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。学習と評価は `train` feature の裏にあります。このクレートはライブラリで、コマンドは `lindera` コマンドの [`lindera dependency`](./lindera-dependency/command_line.md) です。
 
 ## 目次
 
@@ -40,7 +40,7 @@ Lindera Dependency（`lindera-dependency`）は、日本語の文節の係り受
 - [係り受けの解析](./lindera-dependency/parsing.md) -- 文節の係り先を求める。ループ、素性、モデルの学習、精度
 - [モデルファイル](./lindera-dependency/model_file.md) -- 辞書のファイル。その場で読む、辞書を照合する、形式
 - [CaboCha のモデル](./lindera-dependency/cabocha_models.md) -- CaboCha が配布するモデルを変換する。利用条件、コマンド、変換するもの、CaboCha との一致
-- [コマンドライン](./lindera-dependency/command_line.md) -- `lindera-dependency` コマンドでテキストを解析する。オプション、入力の層、速度
+- [コマンドライン](./lindera-dependency/command_line.md) -- `lindera dependency parse` でテキストを解析する。オプション、入力の層、速度
 - [トークンフィルター](./lindera-dependency/token_filter.md) -- Lindera のトークナイザーのフィルター `japanese_dependency`。ビルド、トークンに書かれるもの、文、フィルターの順、速度
 - [主辞と機能語](./lindera-dependency/head_and_function_word.md) -- 辞書のスキーマと、文節の 2 つの語
 - [学習データ](./lindera-dependency/training_data.md) -- UD Japanese-GSD から学習データを作る

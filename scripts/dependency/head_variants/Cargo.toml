@@ -18,5 +18,5 @@ publish = false
 [workspace]
 
 [dependencies]
-lindera-dependency = { path = "../../../lindera-dependency", features = ["train", "embed-ipadic"] }
-lindera-segmenter = { path = "../../../lindera-segmenter" }
+lindera-dependency = { path = "../../../lindera-dependency", features = ["train"] }
+lindera-segmenter = { path = "../../../lindera-segmenter", features = ["embed-ipadic"] }

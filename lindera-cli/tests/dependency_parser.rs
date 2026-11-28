@@ -1,10 +1,21 @@
-//! The `lindera-dependency instances` command. It needs no dictionary.
+//! The `lindera dependency instances` command. It needs no dictionary.
 
-#![cfg(feature = "train")]
+#![cfg(all(feature = "train", feature = "dependency"))]
 
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// Three sentences in the lattice format: 彼は / 本を / 静かに / 読んだ。
 /// with 彼は depending on the last bunsetsu, 本を / 読む, and 読む.
@@ -36,7 +47,7 @@ EOS
 
 /// Runs the command.
 fn run(arguments: &[&str], paths: &[(&str, &Path)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"));
+    let mut command = dependency();
     command.args(arguments);
     for (option, path) in paths {
         command.arg(option).arg(path);

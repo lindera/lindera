@@ -1,6 +1,6 @@
 # Commands
 
-The Lindera CLI provides six main commands:
+The Lindera CLI provides seven main commands:
 
 - **list** - List the morphological analysis dictionaries and their status
 - **tokenize** - Perform morphological analysis on text
@@ -8,6 +8,7 @@ The Lindera CLI provides six main commands:
 - **download** - Download a pre-built dictionary from the GitHub releases page
 - **train** - Train a CRF model from annotated corpus data
 - **export** - Export a trained model to dictionary format
+- **dependency** - Analyze bunsetsu dependencies, and train and evaluate the models of the analysis
 
 ## Warnings and log messages
 
@@ -26,6 +27,7 @@ When the program that reads the standard output of a command exits first, as `he
 
 - `tokenize`, `list` and `download` write their result there, so they stop at the first write that has no reader. `tokenize` reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.
 - `train` and `export` only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.
+- `dependency parse` and `dependency evaluate` write their result there, and stop at the first write that has no reader, as `tokenize` does. The other subcommands of `dependency` write files, and report on them on standard error.
 
 When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of `download` and the notices of `list`, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.
 
@@ -1193,3 +1195,39 @@ When the `--metadata` option is provided, the export command will:
    - `default_word_cost`: Calculated from feature weight median
    - `model_info`: Training statistics including feature count, label count, matrix size (`connection_matrix_size`, the size of `matrix.def` as rows x columns), the number of training iterations that ran (`training_iterations`, at most `--max-iterations`), the regularization coefficient (`regularization`), its type (`regularization_type`: `l1`, `l2` or `elasticnet`) and, for Elastic Net only, its L1 ratio (`elastic_net_l1_ratio`), and the model format version. No timestamp is written, so exporting the same model twice produces identical output
 3. **Preserve existing settings** such as dictionary name, character encoding, schema definitions, and other user-defined configuration
+
+## dependency
+
+Analyzes bunsetsu dependencies, with the library of [`lindera-dependency`](../lindera-dependency.md), from 7.1.0 on. The command has subcommands of its own:
+
+```text
+lindera dependency <SUBCOMMAND>
+```
+
+| Subcommand | What it does | Page |
+| --- | --- | --- |
+| `parse` | Parses plain text, or input that is tokenized or segmented already, and writes the lattice format | [Command Line](../lindera-dependency/command_line.md) |
+| `chunk` | Segments the morphemes of a file again with a model file | [Chunking](../lindera-dependency/chunking.md) |
+| `convert` | Makes training data from a CoNLL-U file with bunsetsu labels | [Training Data](../lindera-dependency/training_data.md) |
+| `evaluate` | Compares an output with the answer | [Evaluation](../lindera-dependency/evaluation.md) |
+| `split` | Writes the folds of a cross-validation | [Evaluation](../lindera-dependency/evaluation.md) |
+| `train-chunker` | Trains the chunker and writes a model file | [Chunking](../lindera-dependency/chunking.md) |
+| `instances` | Writes the training instances of the parser | [Parsing](../lindera-dependency/parsing.md) |
+| `train-parser` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](../lindera-dependency/parsing.md) |
+| `convert-cabocha` | Converts the chunker and parser models of CaboCha into a model file | [CaboCha's Models](../lindera-dependency/cabocha_models.md) |
+
+`parse` and `chunk` are in a build with the `dependency` feature, and the seven others in a build that has `train` as well. Both features are in the default build.
+
+### Dependency usage
+
+`parse` needs the model for the dictionary it tokenizes with, which `download` gets:
+
+```bash
+DICT=$(lindera download ipadic)
+MODEL=$(lindera download dependency-ipadic)
+echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
+```
+
+It writes the bunsetsu of each sentence and their dependencies in the lattice format, which is what `cabocha -f1` writes. [Quick Start](../lindera-dependency/quickstart.md) has the output, and [Reading and Using the Result](../lindera-dependency/reading_the_result.md) says how to read it.
+
+`tokenize` gives the same analysis on the tokens of its output, with the token filter `japanese_dependency`: see [Token Filter](../lindera-dependency/token_filter.md).

@@ -78,7 +78,7 @@ echo '彼は赤い花を見た。' | lindera tokenize --dict embedded://ipadic -
 。    {"bunsetsu": 3, "head": null, "role": "other", "score": 0.0, "sentence": 0}
 ```
 
-彼は → 見た。、赤い → 花を、花を → 見た。 という解析で、同じ文に `lindera-dependency parse` が書き出すものと同じです。
+彼は → 見た。、赤い → 花を、花を → 見た。 という解析で、同じ文に `lindera dependency parse` が書き出すものと同じです。
 
 ## 設定ファイルから
 

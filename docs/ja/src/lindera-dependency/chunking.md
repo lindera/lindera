@@ -77,7 +77,7 @@ EOS
 Lindera が公開する [IPADIC のモデル](./model_file.md#ipadic-のモデル)には、区切りが入っています。[UniDic のモデル](./model_file.md#unidic-のモデル)も同じです。自分のモデルは、[学習データ](./training_data.md)から学習します。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- train-chunker \
+cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
 ```
 
@@ -107,7 +107,7 @@ bytes: 261857
 `chunk` は、モデルでファイルの形態素を区切り直します。[`evaluate`](./evaluation.md) で正解と比べるためのものです。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- chunk \
+cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 

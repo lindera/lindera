@@ -156,12 +156,12 @@ A `Parser` finds the head of each bunsetsu with shift-reduce. The features of a 
 
 ### The command
 
-With the `cli` feature the crate builds the `lindera-dependency` command, which tokenizes with `lindera-segmenter` and has no training code. The `train` feature adds the subcommands that make training data, train and evaluate:
+The crate has no binary. Its command is `lindera dependency`, in `lindera-cli`, behind the `dependency` feature of that crate, which is in its default build. With the `train` feature of `lindera-cli`, also in the default build, it has the subcommands that make training data, train and evaluate:
 
 | Subcommand | Feature | What it does | Page |
 | --- | --- | --- | --- |
-| `parse` | `cli` | Parses plain text, or input that is tokenized or segmented already, and writes the lattice format | [Command Line](./command_line.md) |
-| `chunk` | `cli` | Segments the morphemes of a file again with a model file | [Chunking](./chunking.md) |
+| `parse` | `dependency` | Parses plain text, or input that is tokenized or segmented already, and writes the lattice format | [Command Line](./command_line.md) |
+| `chunk` | `dependency` | Segments the morphemes of a file again with a model file | [Chunking](./chunking.md) |
 | `convert` | `train` | Makes training data from a CoNLL-U file with bunsetsu labels | [Training Data](./training_data.md) |
 | `evaluate` | `train` | Compares an output with the answer | [Evaluation](./evaluation.md) |
 | `split` | `train` | Writes the folds of a cross-validation | [Evaluation](./evaluation.md) |
@@ -170,16 +170,14 @@ With the `cli` feature the crate builds the `lindera-dependency` command, which 
 | `train-parser` | `train` | Trains the parser and writes a model file, with the chunker of another one | [Parsing](./parsing.md) |
 | `convert-cabocha` | `train` | Converts the chunker and parser models of CaboCha into a model file | [CaboCha's Models](./cabocha_models.md) |
 
-The command is in this crate, not in `lindera-cli`: it writes the lattice format and holds the training, which a user of the tokenizer does not need. `lindera-cli` runs the parser as a [token filter](./token_filter.md).
+The command is in `lindera-cli`, not in this crate ([#1482](https://github.com/lindera/lindera/issues/1482)): a user has one command to install, the one that also downloads the dictionary and the model, and this crate depends on no tokenizer with any feature. `lindera-cli` also runs the parser as a [token filter](./token_filter.md).
 
 ## Feature Flags
 
 | Feature | Description | Default |
 | --- | --- | --- |
 | (none) | The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for `wasm32-unknown-unknown` | Yes |
-| `cli` | The `lindera-dependency` command with `parse` and `chunk`, which tokenizes with `lindera-segmenter`. No training code | No |
-| `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser, and their subcommands (implies `cli`) | No |
-| `embed-ipadic` | Embeds IPADIC in the command, for `--dict embedded://ipadic` (implies `cli`) | No |
+| `train` | The `corpus` and `evaluation` modules, the training of the chunker with `lindera-crf` and of the parser | No |
 | `embed-model-ipadic` | Embeds the [model for IPADIC](./model_file.md#embedding-it), for `embedded::model("ipadic")` and `--model embedded://ipadic`. A build dependency, and none of the library | No |
 | `embed-model-unidic`, `embed-model-unidic-cwj`, `embed-model-unidic-csj` | Embed the [models for UniDic](./model_file.md#the-models-for-unidic), for `embedded::model("unidic")` and `--model embedded://unidic`, and the same with the two other names | No |
 

@@ -59,11 +59,11 @@ if [ ! -f "$lattice/ja_gsd-ud-train.lattice" ]; then
     exit 1
 fi
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train
-bin="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli
+bin="$root/target/release/lindera"
 if [ ! -d "$work/folds" ]; then
     mkdir -p "$work"
-    "$bin" split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
+    "$bin" dependency split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
         --output-dir "$work/folds" > /dev/null
 fi
 
@@ -93,7 +93,7 @@ for fold in 0 1 2 3 4 5 6 7 8 9; do
     rm -r "$model" "$out/fold$fold.train.JDP" "$out/fold$fold.test.JDP" "$out/fold$fold.out" \
         "$out/fold$fold.out.lattice"
 done
-"$bin" evaluate --gold "$out/gold.lattice" --system "$out/system.lattice" --json > "$out/evaluation.json"
+"$bin" dependency evaluate --gold "$out/gold.lattice" --system "$out/system.lattice" --json > "$out/evaluation.json"
 python3 -I -B - "$out/evaluation.json" << 'EOF'
 import json
 import sys

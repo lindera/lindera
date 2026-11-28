@@ -16,7 +16,7 @@
 //! for IPADIC, which the feature `embed-model-ipadic` embeds, and the models
 //! for the three UniDic dictionaries (`embed-model-unidic`,
 //! `embed-model-unidic-cwj`, `embed-model-unidic-csj`); the two steps can
-//! also be trained with the commands of the crate.
+//! also be trained with the `lindera dependency` command.
 //!
 //! - [`Morpheme`], the trait of a morpheme: a surface and the feature columns
 //!   of its dictionary. The crate depends on no tokenizer, and a type outside
@@ -51,22 +51,22 @@
 //!   loop, and the classifier of a model file, which reads its weights
 //!   where they are.
 //!
-//! With the `cli` feature the crate builds the `lindera-dependency` command:
-//! `lindera-dependency parse` tokenizes plain text with a Lindera
-//! dictionary, and writes its bunsetsu and their dependencies in the
-//! lattice format. That build has no training code.
+//! The crate is a library only. Its command is `lindera dependency`, of the
+//! `lindera-cli` crate: `lindera dependency parse` tokenizes plain text
+//! with a Lindera dictionary, and writes its bunsetsu and their
+//! dependencies in the lattice format.
 //!
-//! With the `train` feature, the `corpus` module and the
-//! `lindera-dependency convert` command make training data from a dependency
-//! corpus such as UD Japanese-GSD: bunsetsu dependencies on the morphemes of
-//! a dictionary, in the lattice format. The `evaluation` module and the
-//! `lindera-dependency evaluate` command count the accuracy of chunking and
-//! of dependency as CaboCha and J.DepP do, and compare two outputs. The
-//! model of the chunker is trained with `lindera-crf`
-//! (`lindera-dependency train-chunker`, which writes a model file). The
+//! With the `train` feature, the `corpus` module makes training data from a
+//! dependency corpus such as UD Japanese-GSD: bunsetsu dependencies on the
+//! morphemes of a dictionary, in the lattice format
+//! (`lindera dependency convert`). The `evaluation` module counts the
+//! accuracy of chunking and of dependency as CaboCha and J.DepP do, and
+//! compares two outputs (`lindera dependency evaluate`). The model of the
+//! chunker is trained with `lindera-crf`
+//! (`lindera dependency train-chunker`, which writes a model file). The
 //! classifier of the parser is trained by dual coordinate descent, as
 //! CaboCha, or passive-aggressive, as J.DepP
-//! (`lindera-dependency train-parser`).
+//! (`lindera dependency train-parser`).
 //!
 //! # Examples
 //!

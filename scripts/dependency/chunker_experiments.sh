@@ -67,8 +67,8 @@ lattice=$data/lattice
 work=$data/chunker
 experiment=(python3 -I -B "$here/chunker_experiment.py")
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train
-bin="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli
+bin="$root/target/release/lindera"
 mkdir -p "$work"
 python3 -I -B "$here/make_templates.py" "$work/templates"
 
@@ -97,7 +97,7 @@ cross_validate() {
     local columns template
     read -r columns template <<< "$(columns_of "$1")"
     if [ ! -d "$work/folds" ]; then
-        "$bin" split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
+        "$bin" dependency split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
             --output-dir "$work/folds" > /dev/null
     fi
     "${experiment[@]}" cv "$bin" "$work/folds" "$work" "$1-$2-$3" \
@@ -217,7 +217,7 @@ jdepp() {
 default() {
     "${experiment[@]}" full "$bin" "$lattice" "$work" default \
         ja_gsd-ud-dev,ja_gsd-ud-test,ja_pud-ud-test "${named[@]}"
-    "$bin" train-chunker --input "$lattice/ja_gsd-ud-train.lattice" \
+    "$bin" dependency train-chunker --input "$lattice/ja_gsd-ud-train.lattice" \
         --output "$work/full/default/again.model" "${named[@]}" 2> /dev/null
     if cmp -s "$work/full/default/chunker.model" "$work/full/default/again.model"; then
         echo "default: trained twice, the same bytes"

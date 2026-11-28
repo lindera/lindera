@@ -1,13 +1,24 @@
-//! The `lindera-dependency evaluate` and `lindera-dependency split`
+//! The `lindera dependency evaluate` and `lindera dependency split`
 //! commands. They need no dictionary.
 
-#![cfg(feature = "train")]
+#![cfg(all(feature = "train", feature = "dependency"))]
 
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
 
 use lindera_dependency::{Morpheme, lattice};
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// A sentence in the lattice format, of bunsetsu given as
 /// `(surfaces of the morphemes, head)`, with `-1` for the root.
@@ -44,7 +55,7 @@ fn merged() -> String {
 
 /// Runs the command.
 fn run(arguments: &[&str], paths: &[(&str, &Path)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"));
+    let mut command = dependency();
     command.args(arguments);
     for (option, path) in paths {
         command.arg(option).arg(path);
@@ -220,14 +231,17 @@ fn evaluate_fails_with_the_cause() {
 
     // No file.
     let error = failure(run(&["evaluate"], &paths));
-    assert!(error.contains("Error: cannot open"), "{error}");
+    assert!(
+        error.contains("Error: LinderaError { kind: Content, source: cannot open"),
+        "{error}"
+    );
 
     // Files with different numbers of sentences.
     fs::write(&gold_path, gold()).unwrap();
     fs::write(&system_path, sentence(&[(&["a"], -1)])).unwrap();
     let error = failure(run(&["evaluate"], &paths));
     assert!(
-        error.contains("Error: the answer has 2 sentences and the output 1"),
+        error.contains("Error: LinderaError { kind: Content, source: the answer has 2 sentences and the output 1"),
         "{error}"
     );
 
@@ -298,7 +312,9 @@ fn split_refuses_fewer_than_two_folds() {
 
     let error = failure(run(&["split", "--folds", "1"], &paths));
     assert!(
-        error.contains("Error: a cross-validation needs at least 2 folds"),
+        error.contains(
+            "Error: LinderaError { kind: Content, source: a cross-validation needs at least 2 folds"
+        ),
         "{error}"
     );
     let error = failure(run(&["split", "--folds", "0"], &paths));

@@ -102,7 +102,7 @@ FEATURES_lindera-segmenter      := --features embed-ipadic,embed-ko-dic,train
 FEATURES_lindera                := --features embed-ipadic,embed-ko-dic,train
 FEATURES_lindera-analysis       := --features embed-ipadic,embed-ko-dic
 FEATURES_lindera-cli            := --features train
-FEATURES_lindera-dependency     := --features train,embed-ipadic
+FEATURES_lindera-dependency     := --features train
 
 # Per-target feature overrides (where test/build differ). Lint uses the test
 # features, as it lints the test code too (see test_features).
@@ -112,7 +112,7 @@ FEATURES_lindera-dependency     := --features train,embed-ipadic
 # model of lindera-dependency (#1440, #1441), which the test and lint
 # targets take from the small models of the tests (see below).
 TEST_FEATURES_lindera-analysis  := --features embed-ipadic,embed-ko-dic,embed-dependency-ipadic,embed-dependency-unidic,embed-dependency-unidic-cwj,embed-dependency-unidic-csj
-TEST_FEATURES_lindera-dependency := --features train,embed-ipadic,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj
+TEST_FEATURES_lindera-dependency := --features train,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj
 TEST_FEATURES_lindera-cli       := --features train,embed-ipadic,dependency
 # lindera-binding's dictionary features exist only for its tests and benches,
 # so build-lindera-binding keeps building without embedded dictionaries.
@@ -336,7 +336,7 @@ check-docs: ## Check rustdoc warnings in the cargo crates (public and private it
 check-memmap2: ## Check that memmap2 is linked only into the builds with the mmap feature, as CI does
 	scripts/check_memmap2.sh
 
-check-lindera-dependency: ## Check that lindera-dependency builds for wasm32, needs no tokenizer or dictionary, has no training code with cli, and is linked by the libraries behind the dependency feature only and by the command and the bindings by default, as CI does
+check-lindera-dependency: ## Check that lindera-dependency builds for wasm32, needs no tokenizer or dictionary, is a library that depends on no tokenizer with any feature, and is linked by the libraries behind the dependency feature only and by the command and the bindings by default, as CI does
 	scripts/check_dependency_crate.sh
 
 # The language bindings are left out of check-docs because building each one

@@ -16,6 +16,8 @@ mod commands;
 mod dictionary_registry;
 
 use commands::build::BuildArgs;
+#[cfg(feature = "dependency")]
+use commands::dependency::DependencyArgs;
 use commands::download::DownloadArgs;
 #[cfg(feature = "train")]
 use commands::export::ExportArgs;
@@ -46,6 +48,8 @@ enum Commands {
     Train(TrainArgs),
     #[cfg(feature = "train")]
     Export(ExportArgs),
+    #[cfg(feature = "dependency")]
+    Dependency(DependencyArgs),
 }
 
 /// Installs the logger, so that the warnings of the library crates reach
@@ -72,6 +76,8 @@ fn main() -> ExitCode {
         Commands::Train(args) => commands::train::train(args),
         #[cfg(feature = "train")]
         Commands::Export(args) => commands::export::export(args),
+        #[cfg(feature = "dependency")]
+        Commands::Dependency(args) => commands::dependency::dependency(args),
     };
 
     match result {

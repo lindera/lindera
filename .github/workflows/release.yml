@@ -41,7 +41,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dependency
-      features: "--features train,embed-ipadic,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj"
+      features: "--features train,embed-model-ipadic,embed-model-unidic,embed-model-unidic-cwj,embed-model-unidic-csj"
       cache: true
 
   test-lindera-dictionary:
@@ -1240,7 +1240,7 @@ jobs:
             dict=(--dict "$RUNNER_TEMP/dictionaries/lindera-$DICTIONARY")
           fi
           python3 -I -B scripts/dependency/model_accuracy.py \
-            target/release/lindera-dependency \
+            target/release/lindera \
             "$RUNNER_TEMP/model/lindera-dependency-$DICTIONARY/dependency.model" \
             "$RUNNER_TEMP/model/work/corpora" "$RUNNER_TEMP/model/work/accuracy" \
             "${dict[@]}" --expect "scripts/dependency/model_accuracy_$DICTIONARY.json"

@@ -254,10 +254,10 @@ for instance in parser::instances(&Schema::ipadic(), &set, sentence)? {
 
 ### コマンド
 
-`train` feature を付けると、`lindera-dependency instances` が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。`--dictionary-name` で辞書を指定すると、その辞書のスキーマを使います。
+`train` feature を付けると、`lindera dependency instances` が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。`--dictionary-name` で辞書を指定すると、その辞書のスキーマを使います。
 
 ```shell
-lindera-dependency instances --input train.lattice --output train.instances
+lindera dependency instances --input train.lattice --output train.instances
 ```
 
 1 行が 1 件の事例です。`+1` か `-1` の後に、素性の文字列がタブ区切りで続きます。文ごとに空行が 1 つ入るので、ファイルを文の境目で分割できます。`--features` は素性の集合を受け取り、既定は全部の群です。
@@ -288,9 +288,9 @@ negative: 32488
 学習は `train` feature の裏にあります。`train-parser` は、[学習データ](./training_data.md)から IPADIC のスキーマで解析器を学習し、[モデルファイル](./model_file.md)を書き出します。`--dictionary-name` で辞書を指定すると、その辞書のスキーマを使います。`--chunker` を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。そのファイルは、同じ辞書のものでなければなりません。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- train-chunker \
+cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
-cargo run --release -p lindera-dependency --features train -- train-parser \
+cargo run --release -p lindera-cli -- dependency train-parser \
     --input train.lattice --chunker chunker.model --output ipadic.model
 ```
 
@@ -328,9 +328,9 @@ bytes: 6258554
 [`parse`](./command_line.md) に `--input-layer` を付けると、モデルで、ラティス形式のファイルの係り先を求めます。[`evaluate`](./evaluation.md) で正解と比べるためのものです。
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 ```
 

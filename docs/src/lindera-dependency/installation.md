@@ -26,12 +26,12 @@ Error: LinderaError { kind: FeatureDisabled, source: the token filter japanese_d
 lindera-dependency = "7.1"
 ```
 
-The default build has no dependency and builds for `wasm32-unknown-unknown`: it takes any sequence of morphemes, from Lindera or not. The [feature flags](./architecture.md#feature-flags) add the command, the training and the embedded model.
+The default build has no dependency and builds for `wasm32-unknown-unknown`: it takes any sequence of morphemes, from Lindera or not. The [feature flags](./architecture.md#feature-flags) add the training and the embedded model.
 
-The `lindera-dependency` command, which parses plain text and writes the lattice format, is behind `cli`:
+The crate is a library. Its command, which parses plain text and writes the lattice format, is `lindera dependency`, a part of the `lindera` command, in its default build:
 
 ```shell
-cargo install lindera-dependency --features cli
+cargo install lindera-cli
 ```
 
 ## The model

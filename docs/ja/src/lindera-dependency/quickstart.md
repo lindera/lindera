@@ -41,13 +41,12 @@ JSON の出力の各トークンに、`dependency` が入ります。各トー�
 
 この文には、文節が 4 つあります。彼は (0) と 花を (2) は 見た。 (3) に係り、赤い (1) は 花を に係り、最後の文節はどこにも係りません。欄の意味、テキストを文に分ける規則、設定ファイルやバインディングからの使い方は、[トークンフィルター](./token_filter.md)にあります。
 
-## `lindera-dependency` コマンドで
+## `lindera dependency parse` で
 
-クレートのコマンドは、ラティス形式を書き出します。`cabocha -f1` が書く形式です。
+同じコマンドの `lindera dependency parse` は、ラティス形式を書き出します。`cabocha -f1` が書く形式です。
 
 ```shell
-% cargo install lindera-dependency --features cli
-% echo "彼は赤い花を見た。" | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+% echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
 
 ```text

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Converts the word dependencies of UD Japanese to bunsetsu dependencies and counts.
 
-An implementation in Python of the steps `lindera-dependency convert` takes
+An implementation in Python of the steps `lindera dependency convert` takes
 before it tokenizes (lindera-dependency/src/corpus/convert.rs), written
 independently of it, to check the numbers:
 

@@ -1,25 +1,25 @@
 # Command Line
 
-The `lindera-dependency` command takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the [lattice format](./architecture.md#the-lattice-format), which is what `cabocha -f1` writes.
+`lindera dependency parse` takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the [lattice format](./architecture.md#the-lattice-format), which is what `cabocha -f1` writes.
 
 It needs a [model file](./model_file.md) with a chunker and a parser: the [model for IPADIC](./model_file.md#the-model-for-ipadic) or one of the [models for UniDic](./model_file.md#the-models-for-unidic), which a release of Lindera publishes from 7.1.0 on, or one you [train](./parsing.md#training-a-model).
 
 ## Building
 
-The command is behind the `cli` feature, which brings `clap` and `lindera-segmenter` and no training code. `embed-ipadic` embeds IPADIC in it, and `embed-model-ipadic` the [model for IPADIC](./model_file.md#embedding-it), which `--model embedded://ipadic` then names (`embed-model-unidic-cwj` and `--model embedded://unidic-cwj` for UniDic CWJ, and the same for `unidic` and `unidic-csj`, with the dictionary given as a directory):
+`lindera dependency` is a part of the [`lindera` command](../lindera-cli/installation.md), in its default build: the binaries of a release have it, and so does `cargo install lindera-cli`. It is behind the `dependency` feature of `lindera-cli`. `embed-ipadic` embeds IPADIC in the command, and `embed-dependency-ipadic` the [model for IPADIC](./model_file.md#embedding-it), which `--model embedded://ipadic` then names (`embed-dependency-unidic-cwj` and `--model embedded://unidic-cwj` for UniDic CWJ, and the same for `unidic` and `unidic-csj`, with the dictionary given as a directory):
 
 ```shell
-cargo build --release -p lindera-dependency --features cli,embed-ipadic
+cargo build --release -p lindera-cli --features embed-ipadic
 ```
 
-The binary is `target/release/lindera-dependency`. A build with `cli` has two subcommands, `parse` and [`chunk`](./chunking.md); the `train` feature adds the ones that make training data, train and evaluate.
+The binary is `target/release/lindera`. `lindera dependency` has two subcommands for a user, `parse` and [`chunk`](./chunking.md); the `train` feature, which is in the default build too, adds the ones that make training data, train and evaluate. The crate `lindera-dependency` itself is a library, and has no command.
 
 ## Parsing text
 
 One line of the input is one sentence:
 
 ```shell
-echo "彼は赤い花を見た。" | lindera-dependency parse \
+echo "彼は赤い花を見た。" | lindera dependency parse \
     --model ipadic.model --dict embedded://ipadic
 ```
 
@@ -61,7 +61,7 @@ A line that starts with `*` opens a bunsetsu: its number, the number of the buns
 A model is trained on the morphemes of one dictionary, and gives wrong answers on those of another one without failing. The command therefore compares the name of the dictionary it loaded with the name in the model file, and stops when they differ:
 
 ```text
-Error: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic"
+Error: LinderaError { kind: Content, source: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic" }
 ```
 
 ## Input that is tokenized already
@@ -75,9 +75,9 @@ Error: embedded://ipadic: the model is for the dictionary "unidic", and the morp
 | `bunsetsu` | Morphemes and bunsetsu in the lattice format | Parses the bunsetsu of the input | `-I2` |
 
 ```shell
-lindera-dependency parse --model ipadic.model --input-layer morphemes \
+lindera dependency parse --model ipadic.model --input-layer morphemes \
     --input tokens.lattice --output output.lattice
-lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
+lindera dependency parse --model ipadic.model --input-layer bunsetsu \
     --input dev.lattice --output output.lattice
 ```
 
@@ -99,6 +99,6 @@ CaboCha's own tools read the output ([#1433](https://github.com/lindera/lindera/
 
 On the text of the test file of UD Japanese-GSD (543 sentences), with the default model and the embedded IPADIC, the command writes about 6,600 sentences per second, from the text to the lattice format. Loading the dictionary and the model takes about 5 ms. The numbers depend on the machine; `scripts/dependency/parse_speed.sh` measures them.
 
-## The `lindera` command
+## `lindera tokenize`
 
-`lindera tokenize` runs the parser as a token filter: see [Token Filter](./token_filter.md). It writes the result on the tokens of its JSON output, not the lattice format. The `lindera` command has the filter in its default build, from 7.1.0 on.
+`lindera tokenize` runs the parser as a token filter: see [Token Filter](./token_filter.md). It writes the result on the tokens of its JSON output, not the lattice format. The `lindera` command has the filter in its default build, from 7.1.0 on, as it has `lindera dependency`.

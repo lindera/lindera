@@ -1,102 +1,28 @@
-//! The `lindera-dependency` command.
-//!
-//! `parse` reads plain text, one sentence per line, tokenizes it with a
-//! Lindera dictionary, and writes the bunsetsu of each sentence and their
-//! dependencies in the lattice format, which is what `cabocha -f1` writes:
-//!
-//! ```text
-//! lindera-dependency parse --model ipadic.model --dict /path/to/ipadic < text.txt
-//! ```
-//!
-//! With `--input-layer` it takes input that is tokenized already
-//! (`morphemes`), or segmented into bunsetsu as well (`bunsetsu`), in the
-//! lattice format. `chunk` segments the morphemes of a file into bunsetsu
-//! and does not parse them.
-//!
-//! These two are in the build with the `cli` feature, which has no training
-//! code. With the `train` feature the command also makes training data
-//! (`convert`, `instances`, `split`), trains the chunker and the parser
-//! (`train-chunker`, `train-parser`) and evaluates (`evaluate`):
-//!
-//! ```text
-//! lindera-dependency convert --dict /path/to/ipadic \
-//!     --input ja_gsd-ud-train.conllu --output train.lattice
-//! lindera-dependency train-chunker --input train.lattice --output chunker.model
-//! lindera-dependency train-parser --input train.lattice --chunker chunker.model \
-//!     --output ipadic.model
-//! lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
-//!     --input dev.lattice --output output.lattice
-//! lindera-dependency evaluate --gold dev.lattice --system output.lattice
-//! ```
-
-#[cfg(feature = "train")]
-#[path = "lindera-dependency/train.rs"]
-mod train;
+//! `lindera dependency parse` and `lindera dependency chunk`: the two
+//! subcommands for a user, in a build without training code.
 
 use std::borrow::Cow;
-use std::fs::{self, File};
+use std::cell::Cell;
+use std::fs::File;
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
-use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::path::PathBuf;
+use std::rc::Rc;
 
-use clap::{Parser as _, Subcommand};
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
 use lindera_dependency::chunker::{Chunker, ChunkerData};
-use lindera_dependency::embedded;
-use lindera_dependency::lattice::{self, LatticeMorpheme};
+use lindera_dependency::lattice;
 use lindera_dependency::model::Model;
 use lindera_dependency::parser::{Classifier, Parser};
 use lindera_dependency::{Bunsetsu, DictionaryMorpheme, Morpheme, Sentence};
-use lindera_segmenter::dictionary::load_dictionary;
-use lindera_segmenter::mode::Mode;
-use lindera_segmenter::segmenter::Segmenter;
 
-/// The arguments of the command.
-#[derive(Debug, clap::Parser)]
-#[clap(
-    name = "lindera-dependency",
-    author,
-    about = "The bunsetsu dependency parser of Lindera",
-    version
-)]
-struct Args {
-    /// The subcommand.
-    #[clap(subcommand)]
-    command: Command,
-}
-
-/// The subcommands.
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Finds the bunsetsu of each sentence and their dependencies.
-    Parse(ParseArgs),
-    /// Segments the morphemes of a file into bunsetsu with a model.
-    Chunk(ChunkArgs),
-    /// Makes training data in the lattice format from a dependency corpus.
-    #[cfg(feature = "train")]
-    Convert(train::ConvertArgs),
-    /// Evaluates an output against the answer.
-    #[cfg(feature = "train")]
-    Evaluate(train::EvaluateArgs),
-    /// Splits a file into the folds of a cross-validation.
-    #[cfg(feature = "train")]
-    Split(train::SplitArgs),
-    /// Trains the model of the chunker.
-    #[cfg(feature = "train")]
-    TrainChunker(train::TrainChunkerArgs),
-    /// Writes the training instances of the parser.
-    #[cfg(feature = "train")]
-    Instances(train::InstancesArgs),
-    /// Trains the parser and writes a model file.
-    #[cfg(feature = "train")]
-    TrainParser(train::TrainParserArgs),
-    /// Converts a model of CaboCha into a model file.
-    #[cfg(feature = "train")]
-    ConvertCabocha(train::ConvertCabochaArgs),
-}
+use super::{CommandError, read_lattice, read_model};
+use crate::commands::stdout_err;
 
 /// What the input of `parse` holds already.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-enum InputLayer {
+pub(super) enum InputLayer {
     /// Plain text, one sentence per line: it is tokenized, segmented and
     /// parsed.
     Text,
@@ -112,7 +38,7 @@ enum InputLayer {
 #[clap(
     about = "Read sentences, one per line, tokenize them with a dictionary, and write their bunsetsu and dependencies in the lattice format (what `cabocha -f1` writes); or take input that is tokenized or segmented already"
 )]
-struct ParseArgs {
+pub(super) struct ParseArgs {
     /// The model.
     #[clap(
         short = 'm',
@@ -157,7 +83,7 @@ struct ParseArgs {
 #[clap(
     about = "Segment the morphemes of a file in the lattice format into bunsetsu with a chunker model; the bunsetsu of the input are not read, and each bunsetsu written depends on the next"
 )]
-struct ChunkArgs {
+pub(super) struct ChunkArgs {
     /// The model.
     #[clap(
         short = 'm',
@@ -181,48 +107,45 @@ struct ChunkArgs {
     output: PathBuf,
 }
 
-/// The error type of the command.
-type CommandError = Box<dyn std::error::Error + Send + Sync>;
-
-/// Reads the sentences of a file in the lattice format.
+/// The standard output, which remembers that its reader has exited.
 ///
-/// # Arguments
-///
-/// * `path` - The file.
-///
-/// # Returns
-///
-/// The sentences, or an error that names the file.
-fn read_lattice(path: &Path) -> Result<Vec<Sentence<LatticeMorpheme>>, CommandError> {
-    let file =
-        File::open(path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
-    lattice::Reader::new(BufReader::new(file))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| format!("{}: {error}", path.display()).into())
+/// A write that fails goes through the messages of the subcommand, which
+/// name the sentence; the flag is what tells `parse` that the failure was a
+/// standard output without a reader.
+struct StandardOutput<W> {
+    /// The standard output.
+    inner: W,
+    /// Set once a write or a flush failed with a broken pipe.
+    closed: Rc<Cell<bool>>,
 }
 
-/// Reads the bytes of a model: of the build, or of a file.
-///
-/// # Arguments
-///
-/// * `model` - What `--model` was given: `embedded://<dictionary>`, or a
-///   path.
-///
-/// # Returns
-///
-/// The bytes embedded in the build for the dictionary, without a copy, or
-/// the content of the file; or an error for a build that embeds no such
-/// model, and for a file that cannot be read.
-fn read_model(model: &str) -> Result<Cow<'static, [u8]>, CommandError> {
-    match embedded::dictionary_of(model) {
-        Some(dictionary) => Ok(Cow::Borrowed(
-            embedded::bytes(dictionary).map_err(|error| format!("{model}: {error}"))?,
-        )),
-        None => {
-            Ok(Cow::Owned(fs::read(model).map_err(|error| {
-                format!("cannot read {model}: {error}")
-            })?))
+impl<W> StandardOutput<W> {
+    /// Notes a broken pipe, and gives the result back.
+    ///
+    /// # Arguments
+    ///
+    /// * `result` - The result of a write or of a flush.
+    ///
+    /// # Returns
+    ///
+    /// `result`, unchanged.
+    fn note<T>(&self, result: io::Result<T>) -> io::Result<T> {
+        if matches!(&result, Err(error) if error.kind() == io::ErrorKind::BrokenPipe) {
+            self.closed.set(true);
         }
+        result
+    }
+}
+
+impl<W: Write> Write for StandardOutput<W> {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        let result = self.inner.write(buffer);
+        self.note(result)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let result = self.inner.flush();
+        self.note(result)
     }
 }
 
@@ -236,7 +159,7 @@ fn read_model(model: &str) -> Result<Cow<'static, [u8]>, CommandError> {
 ///
 /// `Ok(())` once the output is written, or the first error: a model or an
 /// input that cannot be read, or an output that cannot be written.
-fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
+pub(super) fn chunk(args: ChunkArgs) -> Result<(), CommandError> {
     let bytes = read_model(&args.model)?;
     let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model))?;
     let chunker = model
@@ -318,6 +241,10 @@ fn write_parsed<D: ChunkerData, C: Classifier, M: Morpheme, W: Write>(
 /// the command can stand in a pipe and its memory does not grow with the
 /// input. When a sentence fails, what was written before it stays.
 ///
+/// When the reader of the standard output has exited, as `head` does once
+/// it has its lines, the command stops and returns the error `main` ends
+/// quietly on, as the other commands of `lindera` do (#1316).
+///
 /// # Arguments
 ///
 /// * `args` - The arguments.
@@ -329,7 +256,7 @@ fn write_parsed<D: ChunkerData, C: Classifier, M: Morpheme, W: Write>(
 /// that is needed or for another dictionary, a sentence that cannot be
 /// parsed (the message names its line), or an output that cannot be
 /// written.
-fn parse(args: ParseArgs) -> Result<(), CommandError> {
+pub(super) fn parse(args: ParseArgs) -> Result<(), CommandError> {
     let bytes = read_model(&args.model)?;
     let model = Model::new(bytes).map_err(|error| format!("{}: {error}", args.model))?;
     let parser = model
@@ -377,16 +304,64 @@ fn parse(args: ParseArgs) -> Result<(), CommandError> {
         )),
         None => Box::new(io::stdin().lock()),
     };
+    // Set by a write to the standard output that found no reader.
+    let closed = Rc::new(Cell::new(false));
     let mut output: Box<dyn Write> = match &args.output {
         Some(path) => {
             Box::new(BufWriter::new(File::create(path).map_err(|error| {
                 format!("cannot create {}: {error}", path.display())
             })?))
         }
-        None => Box::new(BufWriter::new(io::stdout().lock())),
+        None => Box::new(BufWriter::new(StandardOutput {
+            inner: io::stdout().lock(),
+            closed: Rc::clone(&closed),
+        })),
     };
 
-    match &segmenter {
+    let result = write_sentences(
+        segmenter.as_ref(),
+        chunker.as_ref(),
+        &parser,
+        &name,
+        input,
+        &mut *output,
+    );
+    if closed.get() {
+        // Whatever message the failed write got on its way, the cause is
+        // that nobody reads the output.
+        return Err(Box::new(stdout_err(io::Error::from(
+            io::ErrorKind::BrokenPipe,
+        ))));
+    }
+    result
+}
+
+/// Reads the sentences of the input, parses each and writes it, one at a
+/// time.
+///
+/// # Arguments
+///
+/// * `segmenter` - The segmenter that tokenizes the lines of a text input,
+///   or `None` for an input in the lattice format.
+/// * `chunker` - The chunker, or `None` to parse the bunsetsu of the input.
+/// * `parser` - The parser.
+/// * `name` - The name of the input, for the messages.
+/// * `input` - The input.
+/// * `output` - Where the sentences are written.
+///
+/// # Returns
+///
+/// `Ok(())` once the output is written and flushed, or the first error,
+/// which names the line or the sentence.
+fn write_sentences<D: ChunkerData, C: Classifier>(
+    segmenter: Option<&Segmenter>,
+    chunker: Option<&Chunker<D>>,
+    parser: &Parser<C>,
+    name: &str,
+    input: Box<dyn BufRead>,
+    mut output: &mut dyn Write,
+) -> Result<(), CommandError> {
+    match segmenter {
         Some(segmenter) => {
             for (index, line) in input.lines().enumerate() {
                 let named = |error: CommandError| format!("{name}: line {}: {error}", index + 1);
@@ -403,15 +378,8 @@ fn parse(args: ParseArgs) -> Result<(), CommandError> {
                         DictionaryMorpheme::new(token.surface.to_string(), features)
                     })
                     .collect();
-                write_parsed(
-                    chunker.as_ref(),
-                    &parser,
-                    morphemes,
-                    &[],
-                    Vec::new(),
-                    &mut output,
-                )
-                .map_err(named)?;
+                write_parsed(chunker, parser, morphemes, &[], Vec::new(), &mut output)
+                    .map_err(named)?;
             }
         }
         None => {
@@ -420,8 +388,8 @@ fn parse(args: ParseArgs) -> Result<(), CommandError> {
                     |error: CommandError| format!("{name}: sentence {}: {error}", index + 1);
                 let sentence = sentence.map_err(|error| format!("{name}: {error}"))?;
                 write_parsed(
-                    chunker.as_ref(),
-                    &parser,
+                    chunker,
+                    parser,
                     sentence.morphemes,
                     &sentence.bunsetsu,
                     sentence.comments,
@@ -435,35 +403,4 @@ fn parse(args: ParseArgs) -> Result<(), CommandError> {
         .flush()
         .map_err(|error| format!("cannot write the output: {error}"))?;
     Ok(())
-}
-
-fn main() -> ExitCode {
-    let args = Args::parse();
-    let result = match args.command {
-        Command::Parse(args) => parse(args),
-        Command::Chunk(args) => chunk(args),
-        #[cfg(feature = "train")]
-        Command::Convert(args) => train::convert(args),
-        #[cfg(feature = "train")]
-        Command::Evaluate(args) => train::evaluate(args),
-        #[cfg(feature = "train")]
-        Command::Split(args) => train::split(args),
-        #[cfg(feature = "train")]
-        Command::TrainChunker(args) => train::train_chunker(args),
-        #[cfg(feature = "train")]
-        Command::Instances(args) => train::instances(args),
-        #[cfg(feature = "train")]
-        Command::TrainParser(args) => train::train_parser(args),
-        #[cfg(feature = "train")]
-        Command::ConvertCabocha(args) => train::convert_cabocha(args),
-    };
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            // A failure to write the error is ignored, as Rust's default for
-            // `main` does.
-            let _ = writeln!(io::stderr(), "Error: {error}");
-            ExitCode::FAILURE
-        }
-    }
 }

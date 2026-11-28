@@ -77,7 +77,7 @@ EOS
 The [model for IPADIC](./model_file.md#the-model-for-ipadic) that Lindera releases has a chunker, and so have the [models for UniDic](./model_file.md#the-models-for-unidic). To train one of your own from [training data](./training_data.md):
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- train-chunker \
+cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
 ```
 
@@ -107,7 +107,7 @@ The output is a [model file](./model_file.md) for the dictionary `ipadic`, with 
 `chunk` segments the morphemes of a file again with a model, for [`evaluate`](./evaluation.md) to compare with the answer:
 
 ```shell
-cargo run --release -p lindera-dependency --features train -- chunk \
+cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 ```
 

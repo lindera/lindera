@@ -1,7 +1,7 @@
-//! The `lindera-dependency train-parser` and `parse` commands. They need no
+//! The `lindera dependency train-parser` and `parse` commands. They need no
 //! dictionary.
 
-#![cfg(feature = "train")]
+#![cfg(all(feature = "train", feature = "dependency"))]
 
 use std::fs;
 use std::path::Path;
@@ -12,6 +12,17 @@ use lindera_dependency::lattice;
 use lindera_dependency::model::{Model, ModelBuilder};
 use lindera_dependency::parser::{FeatureSet, Quantization};
 use lindera_dependency::{Morpheme, Schema};
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// The feature string of a word of the training data.
 fn features_of(surface: &str) -> &'static str {
@@ -73,7 +84,7 @@ fn training_data() -> String {
 /// Runs the command, for a minute at most: a training that does not end is
 /// a failure, not a test that hangs.
 fn run(arguments: &[&str], paths: &[(&str, &Path)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"));
+    let mut command = dependency();
     command.args(arguments);
     for (option, path) in paths {
         command.arg(option).arg(path);
@@ -425,7 +436,9 @@ fn fails_with_the_cause() {
 
     let error = failure(run(&["train-parser", "--features", "source,head"], &train));
     assert!(
-        error.contains("Error: \"head\" is not a group of features"),
+        error.contains(
+            "Error: LinderaError { kind: Content, source: \"head\" is not a group of features"
+        ),
         "{error}"
     );
     let error = failure(run(&["train-parser", "--cost", "0"], &train));
@@ -452,7 +465,10 @@ fn fails_with_the_cause() {
     // chunker.
     let with_chunker: [(&str, &Path); 3] = [train[0], train[1], ("--chunker", &other_path)];
     let error = failure(run(&["train-parser"], &with_chunker));
-    assert!(error.contains("Error: cannot read"), "{error}");
+    assert!(
+        error.contains("Error: LinderaError { kind: Content, source: cannot read"),
+        "{error}"
+    );
     fs::write(&other_path, b"not a model").unwrap();
     let error = failure(run(&["train-parser"], &with_chunker));
     assert!(
@@ -513,7 +529,10 @@ fn fails_with_the_cause() {
         ("--output", &output_path),
     ];
     let error = failure(run(&["parse", "--input-layer", "bunsetsu"], &parse));
-    assert!(error.contains("Error: cannot read"), "{error}");
+    assert!(
+        error.contains("Error: LinderaError { kind: Content, source: cannot read"),
+        "{error}"
+    );
     fs::write(&model_path, b"not a model").unwrap();
     let error = failure(run(&["parse", "--input-layer", "bunsetsu"], &parse));
     assert!(
@@ -636,7 +655,7 @@ fn trains_for_the_dictionary_named() {
         ));
         assert!(
             error.contains(
-                "Error: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj"
+                "Error: LinderaError { kind: Content, source: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj"
             ),
             "{command}: {error}"
         );

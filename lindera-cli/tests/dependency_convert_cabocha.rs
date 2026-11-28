@@ -1,8 +1,8 @@
-//! The `lindera-dependency convert-cabocha` command, with `parse` on what it
+//! The `lindera dependency convert-cabocha` command, with `parse` on what it
 //! writes. The two models are small ones written here in the formats of
 //! CaboCha: no file of CaboCha is used.
 
-#![cfg(feature = "train")]
+#![cfg(all(feature = "train", feature = "dependency"))]
 
 use std::fs;
 use std::path::Path;
@@ -14,6 +14,17 @@ use lindera_dependency::cabocha::{PartOfSpeechSet, schema};
 use lindera_dependency::lattice;
 use lindera_dependency::model::Model;
 use lindera_dependency::parser::Quantization;
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// A chunker model: after `B` and after `I` it goes on with `I`, unless a
 /// noun or a verb follows a case particle.
@@ -67,7 +78,7 @@ type: dep
 
 /// Runs the command, for a minute at most.
 fn run(arguments: &[&str], paths: &[(&str, &Path)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera-dependency"));
+    let mut command = dependency();
     command.args(arguments);
     for (option, path) in paths {
         command.arg(option).arg(path);

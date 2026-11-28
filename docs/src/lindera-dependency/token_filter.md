@@ -78,7 +78,7 @@ And all eight, as the surface and the `dependency` of each:
 。    {"bunsetsu": 3, "head": null, "role": "other", "score": 0.0, "sentence": 0}
 ```
 
-That is 彼は → 見た。, 赤い → 花を and 花を → 見た。, the analysis `lindera-dependency parse` writes for the same sentence.
+That is 彼は → 見た。, 赤い → 花を and 花を → 見た。, the analysis `lindera dependency parse` writes for the same sentence.
 
 ## From a configuration file
 

@@ -40,15 +40,15 @@ Run everything from the root of the repository.
 | Script | What it reproduces |
 | --- | --- |
 | `fetch_corpora.sh` | Gets the two corpora |
-| `convert_corpora.sh` | The reports of `lindera-dependency convert` for GSD train, dev, test and PUD: the sentences kept and dropped, the bunsetsu merged, the agreement of the head word with the content head of the corpus. `--dictionary unidic`, `unidic-cwj` or `unidic-csj` converts with that dictionary, into `data/<name>/` |
+| `convert_corpora.sh` | The reports of `lindera dependency convert` for GSD train, dev, test and PUD: the sentences kept and dropped, the bunsetsu merged, the agreement of the head word with the content head of the corpus. `--dictionary unidic`, `unidic-cwj` or `unidic-csj` converts with that dictionary, into `data/<name>/` |
 | `dictionary.sh` | The arguments `--dictionary` and `--dict` of the scripts that take them; it is sourced, not run |
 | `compare_dictionaries.py` | How much the output of two dictionaries differs on the same sentences: the sentences with the same morphemes, with the same part of speech too, and with the same bunsetsu and heads |
 | `conversion_stats.py` | The conversion of word dependencies to bunsetsu dependencies, written independently in Python: the bunsetsu, the sentences kept, the arcs of type `P`, the causes of the sentences dropped |
 | `projection_stats.py` | The projection onto the morphemes of IPADIC, written independently in Python: the boundaries that fit, the bunsetsu merged. It writes lattice files |
 | `compare_outputs.py` | Compares the lattice files of `projection_stats.py` with those of `convert`, line by line |
-| `baseline_next.py` | The baseline "every bunsetsu depends on the next one", counted independently of `lindera-dependency evaluate` |
+| `baseline_next.py` | The baseline "every bunsetsu depends on the next one", counted independently of `lindera dependency evaluate` |
 | `build_baselines.sh` | Builds the tools of the baselines from source, at fixed versions: CRF++ c603ea6, MeCab 61b90ba with its IPA dictionary and its JUMAN dictionary, CaboCha 96e100a, J.DepP 2022-03-18. Its header says what each needs to build with a current compiler |
-| `baselines.sh` | The baselines: CaboCha and J.DepP trained on the train file with the morphemes of IPADIC, and run on dev, test and PUD. For each, the dependency accuracy with the bunsetsu of the answer, the one from the morphemes and the F of the chunking, counted by `lindera-dependency evaluate`, next to what `cabocha-system-eval` and J.DepP report; and the arcs on which the two differ |
+| `baselines.sh` | The baselines: CaboCha and J.DepP trained on the train file with the morphemes of IPADIC, and run on dev, test and PUD. For each, the dependency accuracy with the bunsetsu of the answer, the one from the morphemes and the F of the chunking, counted by `lindera dependency evaluate`, next to what `cabocha-system-eval` and J.DepP report; and the arcs on which the two differ |
 | `cabocha_chunker_cost.sh` | The cost of CaboCha's chunker, which the baseline takes at 4: the F of the chunking for each candidate, on dev and test and over a 10-fold cross-validation of train |
 | `jdepp_format.py` | The input of J.DepP from a lattice file, and its outputs back in the lattice format. J.DepP takes a line by its first character, so a morpheme that starts with `*` or `#` is given to it with the full-width character |
 | `baseline_numbers.py` | The lines `baselines.sh` prints, from the JSON of `evaluate` |
@@ -60,10 +60,10 @@ Run everything from the root of the repository.
 | `chunker_experiment.py`, `make_templates.py` | The driver and the feature templates of `chunker_experiments.sh` |
 | `chunker_differences.py` | The morpheme boundaries two chunkers decide differently, against the answer: the wrong boundaries of each, the boundaries only one of the two has right with McNemar's exact test, and with `--kinds` the parts of speech before and after them (#1464) |
 | `jdepp_chunker_cv.sh` | The chunker of J.DepP trained and run in the 10 folds of the cross-validation of `chunker_experiments.sh`, and left where its stage `jdepp` and `chunker_differences.py` compare it with the chunker here (#1464) |
-| `parser_instances.sh` | The training instances of the parser for the four files, with `lindera-dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back. `--dictionary` as for `convert_corpora.sh` |
+| `parser_instances.sh` | The training instances of the parser for the four files, with `lindera dependency instances`: the sentences, the instances, and that the answer of every sentence gives its tree back. `--dictionary` as for `convert_corpora.sh` |
 | `parser_experiments.sh` | The experiments behind the defaults of the parser: the cross-validations of the algorithm, the feature set, the pairs, their table and the quantization, the pairs of settings, the result on dev, test and PUD, and the speed. `--dictionary <name>` runs them with a UniDic dictionary |
 | `parser_experiment.py` | The driver of `parser_experiments.sh` |
-| `parse_speed.sh` | The sentences per second of `lindera-dependency parse` on plain text, in the build with `cli,embed-ipadic`: the text of the test file of UD Japanese-GSD, with and without the time to load the dictionary and the model. `--dict` gives another dictionary than the embedded IPADIC |
+| `parse_speed.sh` | The sentences per second of `lindera dependency parse` on plain text, in the build with `cli,embed-ipadic`: the text of the test file of UD Japanese-GSD, with and without the time to load the dictionary and the model. `--dict` gives another dictionary than the embedded IPADIC |
 | `filter_speed.sh` | What the token filter `japanese_dependency` costs in `lindera tokenize`, in the build with `embed-ipadic,dependency`: the tokens per second without and with the filter on the text of the test file of UD Japanese-GSD, and the time the filter adds to a token. `--dict` as for `parse_speed.sh` |
 | `build_model.sh` | The model for IPADIC as a release of Lindera publishes it: the directory `lindera-dependency-ipadic` with the model file, `model.json` and `NOTICE.txt`, and its archive, from the train file of UD Japanese-GSD and the sources of the repository, with the dependencies of `Cargo.lock`. `--check <sha256>` compares the model with a known digest. `release.yml` runs it for a release; a build from the repository embeds its model through `LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE`. `--dictionary unidic`, `unidic-cwj` or `unidic-csj` builds the model for that dictionary, `lindera-dependency-<name>`, with the dictionary of `--dict` or the one `lindera download` installs |
 | `model_notice.txt` | The template of the notice `build_model.sh` writes, for any dictionary |
@@ -100,7 +100,7 @@ python3 -I -B scripts/dependency/compare_outputs.py $data/python $data/lattice \
 python3 -I -B scripts/dependency/baseline_next.py --write $data/next \
     $data/lattice/ja_gsd-ud-dev.lattice $data/lattice/ja_gsd-ud-test.lattice \
     $data/lattice/ja_pud-ud-test.lattice
-target/release/lindera-dependency evaluate \
+target/release/lindera dependency evaluate \
     --gold $data/lattice/ja_gsd-ud-dev.lattice --system $data/next/ja_gsd-ud-dev.lattice
 
 # The baselines of CaboCha and J.DepP: the tools (about a minute and a
@@ -150,7 +150,7 @@ cargo run --release --manifest-path scripts/dependency/model_speed/Cargo.toml --
 # The model as a release publishes it: its directory and its archive go
 # to $data/model. It needs a tree without uncommitted changes.
 scripts/dependency/build_model.sh
-python3 -I -B scripts/dependency/model_accuracy.py target/release/lindera-dependency \
+python3 -I -B scripts/dependency/model_accuracy.py target/release/lindera \
     $data/model/lindera-dependency-ipadic/dependency.model $data/model/work/corpora \
     $data/model/work/accuracy --expect scripts/dependency/model_accuracy_ipadic.json
 
@@ -162,7 +162,7 @@ scripts/dependency/chunker_experiments.sh --dictionary unidic-cwj all
 scripts/dependency/parser_experiments.sh --dictionary unidic-cwj all
 scripts/dependency/build_model.sh --dictionary unidic-cwj \
     --dict $data/dictionaries/unidic-cwj $data/model-unidic-cwj
-python3 -I -B scripts/dependency/model_accuracy.py target/release/lindera-dependency \
+python3 -I -B scripts/dependency/model_accuracy.py target/release/lindera \
     $data/model-unidic-cwj/lindera-dependency-unidic-cwj/dependency.model \
     $data/model-unidic-cwj/work/corpora $data/model-unidic-cwj/work/accuracy \
     --dict $data/dictionaries/unidic-cwj \

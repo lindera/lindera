@@ -1527,6 +1527,7 @@ dependencies = [
  "flate2",
  "lindera",
  "lindera-crf",
+ "lindera-dependency",
  "log",
  "num_cpus",
  "serde_json",
@@ -1549,11 +1550,8 @@ dependencies = [
 name = "lindera-dependency"
 version = "7.0.0"
 dependencies = [
- "clap",
  "lindera-crf",
  "lindera-dictionary",
- "lindera-segmenter",
- "serde_json",
  "tempfile",
 ]
 

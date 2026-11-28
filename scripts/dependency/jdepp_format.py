@@ -23,7 +23,7 @@ input    The file for J.DepP: the lattice file with the surfaces escaped.
          With `--morphemes`, without its bunsetsu lines: the input of
          `jdepp -I 0`.
 chunked  The bunsetsu of J.DepP's chunker in the lattice format, each
-         depending on the next, as `lindera-dependency chunk` writes them.
+         depending on the next, as `lindera dependency chunk` writes them.
 parsed   The bunsetsu and the heads J.DepP wrote, in the lattice format.
 
 `<lattice>` is the file `input` was made from: its morphemes are written,

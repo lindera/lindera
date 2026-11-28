@@ -1,11 +1,22 @@
-//! The `lindera-dependency convert` command, with the embedded IPADIC.
+//! The `lindera dependency convert` command, with the embedded IPADIC.
 
-#![cfg(all(feature = "train", feature = "embed-ipadic"))]
+#![cfg(all(feature = "train", feature = "embed-ipadic", feature = "dependency"))]
 
 use std::fs;
 use std::process::Command;
 
 use lindera_dependency::{Morpheme, lattice};
+
+/// The `lindera dependency` command.
+///
+/// # Returns
+///
+/// The command, with `dependency` as its first argument.
+fn dependency() -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_lindera"));
+    command.arg("dependency");
+    command
+}
 
 /// A word line of CoNLL-U with the columns the conversion reads. A word
 /// that starts a bunsetsu is its content head.
@@ -44,7 +55,7 @@ fn corpus() -> String {
 
 /// The command.
 fn command() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_lindera-dependency"))
+    dependency()
 }
 
 #[test]
@@ -141,7 +152,10 @@ fn fails_with_the_cause_on_bad_arguments_and_input() {
 
     // No input file.
     let error = run("embedded://ipadic");
-    assert!(error.contains("Error: cannot open"), "{error}");
+    assert!(
+        error.contains("Error: LinderaError { kind: Content, source: cannot open"),
+        "{error}"
+    );
 
     // A file that is not CoNLL-U with bunsetsu labels: the line is named.
     fs::write(&input, "1\t彼\t_\t_\t_\t_\t0\troot\t_\t_\n").unwrap();
@@ -154,7 +168,7 @@ fn fails_with_the_cause_on_bad_arguments_and_input() {
     // No such dictionary.
     let error = run("/no/such/dictionary");
     assert!(
-        error.contains("Error: cannot load the dictionary /no/such/dictionary"),
+        error.contains("Error: LinderaError { kind: Content, source: cannot load the dictionary /no/such/dictionary"),
         "{error}"
     );
 }

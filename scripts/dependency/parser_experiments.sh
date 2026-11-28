@@ -70,8 +70,8 @@ lattice=$data/lattice
 work=$data/parser
 experiment=(python3 -I -B "$here/parser_experiment.py")
 
-cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-dependency --features train
-bin="$root/target/release/lindera-dependency"
+cargo build --manifest-path "$root/Cargo.toml" --release -p lindera-cli
+bin="$root/target/release/lindera"
 mkdir -p "$work"
 
 # The feature set of CaboCha, and the same with the morpheme after the head.
@@ -115,7 +115,7 @@ cross_validate() {
     local name=$1
     shift
     if [ ! -d "$work/folds" ]; then
-        "$bin" split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
+        "$bin" dependency split --input "$lattice/ja_gsd-ud-train.lattice" --folds 10 \
             --output-dir "$work/folds" > /dev/null
     fi
     settings "$@"
@@ -227,7 +227,7 @@ compare() {
 final() {
     # No option: the defaults of the command.
     "${experiment[@]}" full "$bin" "$lattice" "$work" default "$files" "${named[@]}"
-    "$bin" train-parser --input "$lattice/ja_gsd-ud-train.lattice" \
+    "$bin" dependency train-parser --input "$lattice/ja_gsd-ud-train.lattice" \
         --chunker "$work/full/default/chunker.model" \
         --output "$work/full/default/again" "${named[@]}" 2> /dev/null
     if cmp -s "$work/full/default/model" "$work/full/default/again"; then
