@@ -197,7 +197,7 @@
 <code>lindera-analysis</code> クレートを再エクスポートします。v5.x・v6.x では別の依存として
 追加する必要がありました。</li>
 <li><code>train</code> は <code>lindera-cli</code>・<code>lindera-python</code>・<code>lindera-nodejs</code>・<code>lindera-ruby</code>・<code>lindera-php</code> ではデフォルトで有効です。<code>lindera</code> ライブラリクレートではデフォルトで無効なので、ライブラリとして使用する場合は <code>features = ["train"]</code> で明示的に有効にしてください。<code>lindera-wasm</code> では利用できません。</li>
-<li><code>dependency</code> は、7.1.0 から、<code>lindera-cli</code>・<code>lindera-python</code>・<code>lindera-nodejs</code>・<code>lindera-ruby</code>・<code>lindera-php</code>・<code>lindera-wasm</code> でデフォルトで有効です。パッケージにフィルターが入っています。モデルは入っておらず、利用者がダウンロードします（<code>lindera download dependency-ipadic</code>）。ライブラリクレートの <code>lindera</code> と <code>lindera-analysis</code> では、デフォルトで無効です。</li>
+<li><code>dependency</code> は、7.1.0 から、<code>lindera-cli</code>・<code>lindera-python</code>・<code>lindera-nodejs</code>・<code>lindera-ruby</code>・<code>lindera-php</code>・<code>lindera-wasm</code> でデフォルトで有効です。パッケージにフィルターが入っています。モデルは入っておらず、利用者がダウンロードします（<code>lindera dependency download ipadic</code>）。ライブラリクレートの <code>lindera</code> と <code>lindera-analysis</code> では、デフォルトで無効です。</li>
 </ul>
 <h2 id="外部辞書の使用推奨"><a class="header" href="#外部辞書の使用推奨">外部辞書の使用（推奨）</a></h2>
 <p>推奨される方法は、ビルド済み辞書を外部ファイルとして使用することです。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、実行時にそのパスを指定してください：</p>

@@ -198,7 +198,7 @@
 <ul>
 <li><code>tokenize</code>・<code>list</code>・<code>download</code> は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。<code>tokenize</code> は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。</li>
 <li><code>train</code>・<code>export</code> は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。</li>
-<li><code>dependency parse</code> と <code>dependency evaluate</code> は結果を標準出力に書き、<code>tokenize</code> と同じく、読み手のいない最初の書き込みで止まります。<code>dependency</code> のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。</li>
+<li><code>dependency parse</code>・<code>dependency evaluate</code>・<code>dependency list</code>・<code>dependency download</code> は結果を標準出力に書き、<code>tokenize</code> と同じく、読み手のいない最初の書き込みで止まります。<code>dependency</code> のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。</li>
 </ul>
 <p>標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（<code>download</code> の進捗や通知、<code>list</code> の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。</p>
 <p>v6.2.0 までは、コマンドは失敗していました。<a href="../migration_v6_to_v7.html#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF%E6%A8%99%E6%BA%96%E5%87%BA%E5%8A%9B%E3%81%AB%E8%AA%AD%E3%81%BF%E6%89%8B%E3%81%8C%E3%81%84%E3%81%AA%E3%81%84%E3%81%A8%E3%81%8D%E9%9D%99%E3%81%8B%E3%81%AB%E7%B5%82%E3%82%8F%E3%82%8B">移行ガイド</a>を参照してください。</p>
@@ -221,20 +221,8 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 <li><code>STATUS</code> は <code>ok</code>、必要なファイルが欠けている場合は <code>incomplete</code>（<code>lindera download &lt;name&gt; --force</code> で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では <code>other version</code>（ダウンロードできる辞書なら <code>lindera download &lt;name&gt;</code> で置き換わります）になります。</li>
 <li><code>DICT</code> は <code>--dict</code> に渡す値です。</li>
 </ul>
+<p>同じディレクトリにインストールされる係り受け解析のモデルは、この表には出ません。<a href="#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB"><code>lindera dependency list</code></a> が表示します。</p>
 <p>メッセージは標準エラー出力に出ます。上の例の <code>6.2.0/</code>（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように <code>metadata.json</code> も <code>model.json</code> もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、<code>lindera download</code> の案内を出します。名前が <code>.</code> で始まる項目は、メッセージなしで飛ばします。</p>
-<h3 id="係り受け解析のモデル"><a class="header" href="#係り受け解析のモデル">係り受け解析のモデル</a></h3>
-<p><a href="../lindera-dependency/token_filter.html">係り受け解析</a>のモデルがあるときは、別の表が続きます。バイナリに埋め込んだモデル（feature フラグ <code>embed-dependency-ipadic</code> と、<code>embed-dependency-unidic</code>・<code>embed-dependency-unidic-cwj</code>・<code>embed-dependency-unidic-csj</code>）と、<code>lindera download dependency-ipadic</code> などがインストールしたモデル（<code>model.json</code> のあるサブディレクトリ）です。</p>
-<pre><code class="language-text">NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-
-NAME               VERSION  STATUS  MODEL
-dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-</code></pre>
-<ul>
-<li><code>VERSION</code> は、そのモデルをビルドした Lindera のバージョン（<code>model.json</code> の <code>lindera_version</code>）です。埋め込みのモデルはバージョンの記録を持たないので、<code>unknown</code> になります。</li>
-<li><code>STATUS</code> は辞書と同じで、<code>ok</code>、<code>incomplete</code>、<code>other version</code> のどれかです。<code>other version</code> のモデルは、<code>lindera download dependency-ipadic</code> で置き換わります。</li>
-<li><code>MODEL</code> は、トークンフィルター <code>japanese_dependency</code> の <code>model</code> に渡す値です。モデルファイルか、<code>embedded://ipadic</code> になります。</li>
-</ul>
 <h2 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h2>
 <p>様々な辞書を使用して、日本語、中国語、または韓国語のテキストに対して形態素解析（トークナイズ）を行います。</p>
 <h3 id="パラメータ"><a class="header" href="#パラメータ">パラメータ</a></h3>
@@ -916,11 +904,11 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
   --user
 </code></pre>
 <h2 id="download"><a class="header" href="#download">download</a></h2>
-<p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、辞書ディレクトリにインストールします。同じコマンドで、リリースが辞書と並べて公開する、係り受け解析のモデルも取得できます。<a href="#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89">係り受け解析のモデルのダウンロード</a>を見てください。</p>
+<p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、辞書ディレクトリにインストールします。リリースが辞書と並べて公開する、係り受け解析のモデルは、<code>lindera dependency download</code> で取得します。<a href="#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89">係り受け解析のモデルのダウンロード</a>を見てください。</p>
 <h3 id="download-パラメータ"><a class="header" href="#download-パラメータ">download パラメータ</a></h3>
 <ul>
-<li>名前（必須）: 辞書なら <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>jumandic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか。係り受け解析のモデルなら <code>dependency-ipadic</code>, <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code>, <code>dependency-unidic-csj</code> のいずれか。その名前の辞書用のモデル</li>
-<li><code>--force</code>: CLI のバージョンがビルドした辞書やモデルでも、再ダウンロードして置き換える</li>
+<li>名前（必須）: 辞書の名前。<code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>jumandic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか</li>
+<li><code>--force</code>: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える</li>
 </ul>
 <h3 id="保存場所"><a class="header" href="#保存場所">保存場所</a></h3>
 <p><code>lindera download &lt;辞書名&gt;</code> は辞書を <code>&lt;辞書ディレクトリ&gt;/&lt;辞書名&gt;/</code> にインストールし、そのパス（<code>--dict</code> に渡す値）を表示します。辞書ディレクトリは環境変数 <code>LINDERA_DICTIONARIES_DIR</code> で指定し、デフォルトは OS のローカルデータディレクトリの <code>lindera/dictionaries</code> です。OS ごとのデフォルトの場所と、v7.0.0 より前の変数 <code>LINDERA_DATA_DIR</code> については <a href="../getting_started/environment_variables.html#lindera_dictionaries_dir">LINDERA_DICTIONARIES_DIR</a> を参照してください。</p>
@@ -942,23 +930,6 @@ Downloaded dictionary 'ipadic'
 <li>整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。</li>
 <li>最大の辞書（<code>ipadic-neologd</code>）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。</li>
 </ul>
-<h3 id="係り受け解析のモデルのダウンロード"><a class="header" href="#係り受け解析のモデルのダウンロード">係り受け解析のモデルのダウンロード</a></h3>
-<p><code>lindera download dependency-ipadic</code> は、トークンフィルター <code>japanese_dependency</code> の <a href="../lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を取得します。CLI のバージョンのリリースのページにある <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> で、7.1.0 以降のリリースにあります。辞書と並べて <code>&lt;辞書ディレクトリ&gt;/dependency-ipadic/</code> にインストールし、その中のモデルファイルのパスを表示します。フィルターの <code>model</code> に渡す値です。<code>dependency-unidic</code>・<code>dependency-unidic-cwj</code>・<code>dependency-unidic-csj</code> は、同じやり方で <a href="../lindera-dependency/model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を取得します。</p>
-<pre><code class="language-shell">% MODEL=$(lindera download dependency-ipadic)
-% DICT_DIR=$(lindera download ipadic)
-% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
-    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
-</code></pre>
-<p>ディレクトリには、<code>dependency.model</code>、<code>model.json</code>、モデルのライセンスを書いた <code>NOTICE.txt</code> が入ります。すでに置いてあるモデルは、<code>model.json</code> の <code>lindera_version</code> が CLI のバージョンと同じならそのまま使い、違えば置き換えます。辞書と同じ扱いです。モデルがすでにある場合は、次のようになります。</p>
-<pre><code class="language-shell">% lindera download dependency-ipadic
-</code></pre>
-<pre><code class="language-text">Model 'dependency-ipadic' is already downloaded; use --force to re-download it
-/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-</code></pre>
-<p>リリースが無いバージョンや、7.1.0 より前のリリースには、ダウンロードできるモデルがありません。</p>
-<pre><code class="language-text">Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
-</code></pre>
-<p>フィルターを使うには、<code>dependency</code> feature を付けてビルドした CLI が必要です。モデルは IPADIC 用なので、IPADIC と一緒に使います。</p>
 <h2 id="train"><a class="header" href="#train">train</a></h2>
 <p>注釈付きコーパスデータから新しい形態素解析モデルを学習します。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。（<code>train</code> 機能フラグはデフォルトで有効になっています。）</p>
 <h3 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h3>
@@ -1119,6 +1090,8 @@ EOS
 <div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>内容</th><th>ページ</th></tr></thead><tbody>
 <tr><td><code>parse</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="../lindera-dependency/command_line.html">コマンドライン</a></td></tr>
 <tr><td><code>chunk</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="../lindera-dependency/chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>download</code></td><td>辞書に合ったモデルをダウンロードする</td><td><a href="#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89">下の節</a></td></tr>
+<tr><td><code>list</code></td><td>インストール済みのモデルと、バイナリに埋め込んだモデルを一覧にする</td><td><a href="#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">下の節</a></td></tr>
 <tr><td><code>convert</code></td><td>文節のラベルを持つ CoNLL-U のファイルから、学習データを作る</td><td><a href="../lindera-dependency/training_data.html">学習データ</a></td></tr>
 <tr><td><code>evaluate</code></td><td>出力を正解と比べる</td><td><a href="../lindera-dependency/evaluation.html">評価</a></td></tr>
 <tr><td><code>split</code></td><td>交差検証の分割を書き出す</td><td><a href="../lindera-dependency/evaluation.html">評価</a></td></tr>
@@ -1128,15 +1101,54 @@ EOS
 <tr><td><code>convert-cabocha</code></td><td>CaboCha の区切りと解析器のモデルを、モデルファイルに変換する</td><td><a href="../lindera-dependency/cabocha_models.html">CaboCha のモデル</a></td></tr>
 </tbody></table>
 </div>
-<p><code>parse</code> と <code>chunk</code> は <code>dependency</code> feature のあるビルドに、ほかの 7 つは、さらに <code>train</code> もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。</p>
+<p><code>parse</code>・<code>chunk</code>・<code>download</code>・<code>list</code> は <code>dependency</code> feature のあるビルドに、ほかの 7 つは、さらに <code>train</code> もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。</p>
 <h3 id="dependency-の使用例"><a class="header" href="#dependency-の使用例">dependency の使用例</a></h3>
-<p><code>parse</code> には、分かち書きに使う辞書に合ったモデルが要ります。モデルは <code>download</code> で取得します。</p>
+<p><code>parse</code> には、分かち書きに使う辞書に合ったモデルが要ります。モデルは <code>dependency download</code> で取得します。</p>
 <pre><code class="language-bash">DICT=$(lindera download ipadic)
-MODEL=$(lindera download dependency-ipadic)
+MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <p>各文の文節とその係り受けを、ラティス形式で書き出します。<code>cabocha -f1</code> が書く形式です。出力は<a href="../lindera-dependency/quickstart.html">クイックスタート</a>に、読み方は<a href="../lindera-dependency/reading_the_result.html">結果の読み方と使い方</a>にあります。</p>
 <p><code>tokenize</code> は、トークンフィルター <code>japanese_dependency</code> で、同じ解析の結果を出力のトークンに書きます。<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を参照してください。</p>
+<h3 id="係り受け解析のモデルのダウンロード"><a class="header" href="#係り受け解析のモデルのダウンロード">係り受け解析のモデルのダウンロード</a></h3>
+<p><code>lindera dependency download ipadic</code> は、トークンフィルター <code>japanese_dependency</code> の <a href="../lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を取得します。CLI のバージョンのリリースのページにある <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> で、7.1.0 以降のリリースにあります。辞書と並べて <code>&lt;辞書ディレクトリ&gt;/dependency-ipadic/</code> にインストールし、その中のモデルファイルのパスを表示します。<code>lindera dependency parse</code> の <code>--model</code> と、フィルターの <code>model</code> に渡す値です。<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> は、同じやり方で <a href="../lindera-dependency/model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を取得します。</p>
+<pre><code class="language-shell">% MODEL=$(lindera dependency download ipadic)
+% DICT_DIR=$(lindera download ipadic)
+% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
+    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
+</code></pre>
+<p>ディレクトリには、<code>dependency.model</code>、<code>model.json</code>、モデルのライセンスを書いた <code>NOTICE.txt</code> が入ります。すでに置いてあるモデルは、<code>model.json</code> の <code>lindera_version</code> が CLI のバージョンと同じならそのまま使い、違えば置き換えます。辞書と同じ扱いです。モデルがすでにある場合は、次のようになります。</p>
+<pre><code class="language-shell">% lindera dependency download ipadic
+</code></pre>
+<pre><code class="language-text">Model 'ipadic' is already downloaded; use --force to re-download it
+/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+</code></pre>
+<p>リリースが無いバージョンや、7.1.0 より前のリリースには、ダウンロードできるモデルがありません。</p>
+<pre><code class="language-text">Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
+</code></pre>
+<p>フィルターを使うには、<code>dependency</code> feature を付けてビルドした CLI が必要です。モデルは IPADIC 用なので、IPADIC と一緒に使います。</p>
+<h3 id="係り受け解析のモデル"><a class="header" href="#係り受け解析のモデル">係り受け解析のモデル</a></h3>
+<p><code>lindera dependency list</code> は、<a href="../lindera-dependency/token_filter.html">係り受け解析</a>のモデルの表を書き出します。バイナリに埋め込んだモデル（feature フラグ <code>embed-dependency-ipadic</code> と、<code>embed-dependency-unidic</code>・<code>embed-dependency-unidic-cwj</code>・<code>embed-dependency-unidic-csj</code>）と、<code>lindera dependency download ipadic</code> などがインストールしたモデル（<code>model.json</code> のあるサブディレクトリ）です。</p>
+<pre><code class="language-shell">% lindera dependency list
+</code></pre>
+<pre><code class="language-text">DICTIONARY  VERSION  STATUS  MODEL
+ipadic      7.1.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+</code></pre>
+<ul>
+<li>
+<p><code>DICTIONARY</code> は、そのモデルが対応する辞書です。<code>lindera dependency download</code> に渡す名前です。</p>
+</li>
+<li>
+<p><code>VERSION</code> は、そのモデルをビルドした Lindera のバージョン（<code>model.json</code> の <code>lindera_version</code>）です。埋め込みのモデルはバージョンの記録を持たないので、<code>unknown</code> になります。</p>
+</li>
+<li>
+<p><code>STATUS</code> は辞書と同じで、<code>ok</code>、<code>incomplete</code>、<code>other version</code> のどれかです。<code>other version</code> のモデルは、<code>lindera dependency download ipadic</code> で置き換わります。</p>
+</li>
+<li>
+<p><code>MODEL</code> は、<code>lindera dependency parse</code> の <code>--model</code> と、トークンフィルター <code>japanese_dependency</code> の <code>model</code> に渡す値です。モデルファイルか、<code>embedded://ipadic</code> になります。</p>
+</li>
+</ul>
+<p>モデルが 1 つもないときは、表は見出しだけになり、ダウンロードの方法を標準エラー出力に 1 行で案内します。</p>
 
                     </main>
 

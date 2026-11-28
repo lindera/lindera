@@ -182,14 +182,14 @@
 <p>IPADIC のモデルは、IPADIC の辞書と一緒に使います。<code>lindera download</code> で両方をインストールでき、次に渡すパスが表示されます。</p>
 <pre><code class="language-shell">% lindera download ipadic
 /home/user/.local/share/lindera/dictionaries/ipadic
-% lindera download dependency-ipadic
+% lindera dependency download ipadic
 /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
 </code></pre>
 <p>1 つ目は辞書のディレクトリ、2 つ目はモデルファイルです。スクリプトでは、<code>$(lindera download &lt;name&gt;)</code> で受け取れます。</p>
 <h2 id="lindera-コマンドで"><a class="header" href="#lindera-コマンドで"><code>lindera</code> コマンドで</a></h2>
 <p>トークンフィルター <code>japanese_dependency</code> が、すべてのトークンに、その文節と、その文節の係り先の文節を書き込みます。</p>
 <pre><code class="language-shell">% DICT=$(lindera download ipadic)
-% MODEL=$(lindera download dependency-ipadic)
+% MODEL=$(lindera dependency download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 </code></pre>
@@ -240,7 +240,7 @@ use lindera::segmenter::Segmenter;
 
 fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");

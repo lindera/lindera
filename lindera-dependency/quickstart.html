@@ -182,14 +182,14 @@
 <p>The model for IPADIC goes with the IPADIC dictionary. <code>lindera download</code> installs both, and prints the path to pass on:</p>
 <pre><code class="language-shell">% lindera download ipadic
 /home/user/.local/share/lindera/dictionaries/ipadic
-% lindera download dependency-ipadic
+% lindera dependency download ipadic
 /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
 </code></pre>
 <p>The first is the directory of the dictionary, the second the model file. <code>$(lindera download &lt;name&gt;)</code> gives each to a script.</p>
 <h2 id="with-the-lindera-command"><a class="header" href="#with-the-lindera-command">With the <code>lindera</code> command</a></h2>
 <p>The token filter <code>japanese_dependency</code> writes on every token its bunsetsu and the bunsetsu that one depends on:</p>
 <pre><code class="language-shell">% DICT=$(lindera download ipadic)
-% MODEL=$(lindera download dependency-ipadic)
+% MODEL=$(lindera dependency download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 </code></pre>
@@ -240,7 +240,7 @@ use lindera::segmenter::Segmenter;
 
 fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");

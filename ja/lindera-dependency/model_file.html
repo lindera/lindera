@@ -259,7 +259,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <p><code>ModelBuilder::parser</code> は、<code>ParserModel</code> と、重みの書き方（<code>Quantization::F32</code>、<code>I16</code>、<code>I8</code>）を受け取ります。<code>ModelBuilder::from_model</code> は、すでにあるファイルの名前、スキーマ、部分から始めて、部分を足せるようにします。<code>train-parser --chunker</code> は、これで区切りを写します。</p>
 <h2 id="ipadic-のモデル"><a class="header" href="#ipadic-のモデル">IPADIC のモデル</a></h2>
 <p>このプロジェクトは、IPADIC のモデルを学習します。区切りと解析器の両方が入ります。7.1.0 から、Lindera のリリースが <a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh</code></a> でモデルを作り、その版のページに、辞書と並べて置きます。<code>v&lt;version&gt;</code> の <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> です。モデルは、辞書と同じく、リリースの版を持ち、そのリリースに属します。Lindera 7.1.0 のプログラムは、7.1.0 のモデルを使います。</p>
-<p><a href="../lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89"><code>lindera download dependency-ipadic</code></a> が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。</p>
+<p><a href="../lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89"><code>lindera dependency download ipadic</code></a> が、コマンドのバージョンのアーカイブをインストールし、モデルファイルのパスを表示します。</p>
 <p>アーカイブには、ディレクトリ <code>lindera-dependency-ipadic</code> が 1 つ入っていて、中にファイルが 3 つあります。</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>中身</th></tr></thead><tbody>
 <tr><td><code>dependency.model</code></td><td>モデルファイル</td></tr>
@@ -336,7 +336,7 @@ archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  linde
 <p>Lindera のリリースは、7.1.0 から、3 つの UniDic の辞書のモデルも公開します。<code>unidic</code>（unidic-mecab 2.1.2）・<code>unidic-cwj</code>・<code>unidic-csj</code> です。上で IPADIC について述べたことは、<code>ipadic</code> を辞書の名前に置き換えると、そのまま当てはまります。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>アーカイブ</td><td><code>lindera-dependency-unidic-&lt;version&gt;.zip</code>、<code>lindera-dependency-unidic-cwj-&lt;version&gt;.zip</code>、<code>lindera-dependency-unidic-csj-&lt;version&gt;.zip</code>。どれも、同じ 3 つのファイルを持つディレクトリが 1 つ入っている</td></tr>
-<tr><td>ダウンロード</td><td><code>lindera download dependency-unidic</code>、<code>dependency-unidic-cwj</code>、<code>dependency-unidic-csj</code></td></tr>
+<tr><td>ダウンロード</td><td><code>lindera dependency download unidic</code>、<code>unidic-cwj</code>、<code>unidic-csj</code></td></tr>
 <tr><td>埋め込み</td><td><code>lindera-dependency</code> の <code>embed-model-unidic</code>、<code>embed-model-unidic-cwj</code>、<code>embed-model-unidic-csj</code>。<code>embed-dependency-unidic</code> などとして転送される。モデルは <code>embedded://unidic</code>、<code>embedded://unidic-cwj</code>、<code>embedded://unidic-csj</code> で指す</td></tr>
 <tr><td>リポジトリからのビルドで使うファイル</td><td><a href="../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE</code></a>、<code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE</code>、<code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE</code></td></tr>
 <tr><td>作り直す</td><td><a href="#%E4%BD%9C%E3%82%8A%E7%9B%B4%E3%81%99"><code>build_model.sh --dictionary &lt;name&gt;</code></a>。辞書のディレクトリは <code>--dict</code> で渡す</td></tr>

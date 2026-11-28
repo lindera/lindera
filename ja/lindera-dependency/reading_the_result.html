@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="結果の読み方と使い方"><a class="header" href="#結果の読み方と使い方">結果の読み方と使い方</a></h1>
 <p>このページは、<a href="./quickstart.html">クイックスタート</a>を動かしたあとで、結果が何を表しているのかを知りたい人のためのものです。文節と係り受けとは何か、いろいろな種類の文の結果をどう読むか、プログラムからどう使うか、どこまで信じてよいかを説明します。</p>
-<p>このページの出力は、どれも、Lindera のリリースが作る IPADIC 用のモデルと、IPADIC の辞書で作りました。<code>lindera download dependency-ipadic</code> と <code>lindera download ipadic</code> が取得する 2 つです。コマンドの中の <code>$MODEL</code> と <code>$DICT</code> は、クイックスタートと同じく、この 2 つのコマンドが出力するパスです。</p>
+<p>このページの出力は、どれも、Lindera のリリースが作る IPADIC 用のモデルと、IPADIC の辞書で作りました。<code>lindera dependency download ipadic</code> と <code>lindera download ipadic</code> が取得する 2 つです。コマンドの中の <code>$MODEL</code> と <code>$DICT</code> は、クイックスタートと同じく、この 2 つのコマンドが出力するパスです。</p>
 <h2 id="文節と係り受け"><a class="header" href="#文節と係り受け">文節と係り受け</a></h2>
 <p>日本語の文は、<strong>文節</strong>の並びです。文節は、話すときに区切れる最小のまとまりで、1 つの内容語と、それに続く助詞・助動詞からなります。</p>
 <pre><code class="language-text">太郎は | 本を | 読んだ。
@@ -395,7 +395,7 @@ fn print_dependents(bunsetsu: &amp;[Bunsetsu], parts_of_speech: &amp;[&amp;str])
 
 fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");

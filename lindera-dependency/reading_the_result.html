@@ -178,7 +178,7 @@
                     <main>
                         <h1 id="reading-and-using-the-result"><a class="header" href="#reading-and-using-the-result">Reading and Using the Result</a></h1>
 <p>This page is for a reader who has run the <a href="./quickstart.html">Quick Start</a> and wants to know what the result says: what a bunsetsu and a dependency are, how to read the result of several kinds of sentence, how to use it in a program, and how far to trust it.</p>
-<p>Every output on this page was made with the model a release of Lindera builds for IPADIC and the IPADIC dictionary, the two that <code>lindera download dependency-ipadic</code> and <code>lindera download ipadic</code> install. In the commands, <code>$MODEL</code> and <code>$DICT</code> are the two paths those commands print, as in the Quick Start.</p>
+<p>Every output on this page was made with the model a release of Lindera builds for IPADIC and the IPADIC dictionary, the two that <code>lindera dependency download ipadic</code> and <code>lindera download ipadic</code> install. In the commands, <code>$MODEL</code> and <code>$DICT</code> are the two paths those commands print, as in the Quick Start.</p>
 <h2 id="bunsetsu-and-dependencies"><a class="header" href="#bunsetsu-and-dependencies">Bunsetsu and dependencies</a></h2>
 <p>A Japanese sentence is a sequence of <strong>bunsetsu</strong> (文節): the smallest pieces a speaker can pause between. A bunsetsu is one content word, with the particles and auxiliaries that follow it:</p>
 <pre><code class="language-text">太郎は | 本を | 読んだ。
@@ -395,7 +395,7 @@ fn print_dependents(bunsetsu: &amp;[Bunsetsu], parts_of_speech: &amp;[&amp;str])
 
 fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");

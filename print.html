@@ -1958,7 +1958,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <h3 id="japanese_dependency"><a class="header" href="#japanese_dependency">japanese_dependency</a></h3>
 <p>Analyzes the dependencies of the text: groups the tokens into bunsetsu (文節), finds the bunsetsu each one depends on, and writes the result on every token. No token is added, removed or changed, so the MeCab and wakati outputs stay as they are; the JSON output gets a <code>dependency</code> key for each token.</p>
-<p>The filter is in builds with the <code>dependency</code> feature only: the <code>lindera</code> command and the bindings have it by default, from 7.1.0 on, and the libraries <code>lindera</code> and <code>lindera-analysis</code> do not. A build without it refuses the <code>kind</code> with an error that names the feature. The filter needs a model file of <code>lindera-dependency</code> for the dictionary of the tokenizer; Lindera releases one for IPADIC, which <code>lindera download dependency-ipadic</code> installs, and one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<code>lindera download dependency-unidic</code> and the like). See <a href="lindera-analysis/../lindera-dependency/token_filter.html">Token Filter</a> for what is written on a token, how a text is cut into sentences, and how to get or make a model.</p>
+<p>The filter is in builds with the <code>dependency</code> feature only: the <code>lindera</code> command and the bindings have it by default, from 7.1.0 on, and the libraries <code>lindera</code> and <code>lindera-analysis</code> do not. A build without it refuses the <code>kind</code> with an error that names the feature. The filter needs a model file of <code>lindera-dependency</code> for the dictionary of the tokenizer; Lindera releases one for IPADIC, which <code>lindera dependency download ipadic</code> installs, and one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<code>lindera dependency download unidic</code> and the like). See <a href="lindera-analysis/../lindera-dependency/token_filter.html">Token Filter</a> for what is written on a token, how a text is cut into sentences, and how to get or make a model.</p>
 <p>Put this filter before any token filter that removes, joins or rewrites tokens: the model reads the tokens as the dictionary gave them. Tokens removed or joined by an earlier filter are refused with an error.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
@@ -2592,7 +2592,7 @@ lindera-dependency = "7.1"
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
 <p>The analysis needs a <a href="lindera-dependency/./model_file.html">model file</a> for the dictionary of the tokenizer. Lindera publishes four with each release: one for IPADIC (<a href="lindera-dependency/./model_file.html#the-model-for-ipadic">The model for IPADIC</a>) and one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<a href="lindera-dependency/./model_file.html#the-models-for-unidic">The models for UniDic</a>). A model is not part of a package or of a crate, as the dictionaries are not. There are three ways to get one, shown here for IPADIC; for a UniDic dictionary, its name takes the place of <code>ipadic</code>:</p>
 <ul>
-<li><code>lindera download dependency-ipadic</code> installs the model of the version of the command, and prints the path of the model file (<a href="lindera-dependency/../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>download</code></a>).</li>
+<li><code>lindera dependency download ipadic</code> installs the model of the version of the command, and prints the path of the model file (<a href="lindera-dependency/../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>download</code></a>).</li>
 <li><code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of a <a href="https://github.com/lindera/lindera/releases">release</a>, holds the model file <code>dependency.model</code> and its <code>NOTICE.txt</code>.</li>
 <li>The feature <code>embed-dependency-ipadic</code> of <code>lindera</code>, of the command and of the bindings (<code>embed-model-ipadic</code> of <code>lindera-dependency</code>) embeds it in the build (<a href="lindera-dependency/./model_file.html#embedding-it">Embedding it</a>).</li>
 </ul>
@@ -2603,14 +2603,14 @@ lindera-dependency = "7.1"
 <p>The model for IPADIC goes with the IPADIC dictionary. <code>lindera download</code> installs both, and prints the path to pass on:</p>
 <pre><code class="language-shell">% lindera download ipadic
 /home/user/.local/share/lindera/dictionaries/ipadic
-% lindera download dependency-ipadic
+% lindera dependency download ipadic
 /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
 </code></pre>
 <p>The first is the directory of the dictionary, the second the model file. <code>$(lindera download &lt;name&gt;)</code> gives each to a script.</p>
 <h2 id="with-the-lindera-command"><a class="header" href="#with-the-lindera-command">With the <code>lindera</code> command</a></h2>
 <p>The token filter <code>japanese_dependency</code> writes on every token its bunsetsu and the bunsetsu that one depends on:</p>
 <pre><code class="language-shell">% DICT=$(lindera download ipadic)
-% MODEL=$(lindera download dependency-ipadic)
+% MODEL=$(lindera dependency download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 </code></pre>
@@ -2661,7 +2661,7 @@ use lindera::segmenter::Segmenter;
 
 fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");
@@ -2699,7 +2699,7 @@ fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
 <p>For what the result says, on more kinds of sentence, and for a program that uses it, see <a href="lindera-dependency/./reading_the_result.html">Reading and Using the Result</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="reading-and-using-the-result"><a class="header" href="#reading-and-using-the-result">Reading and Using the Result</a></h1>
 <p>This page is for a reader who has run the <a href="lindera-dependency/./quickstart.html">Quick Start</a> and wants to know what the result says: what a bunsetsu and a dependency are, how to read the result of several kinds of sentence, how to use it in a program, and how far to trust it.</p>
-<p>Every output on this page was made with the model a release of Lindera builds for IPADIC and the IPADIC dictionary, the two that <code>lindera download dependency-ipadic</code> and <code>lindera download ipadic</code> install. In the commands, <code>$MODEL</code> and <code>$DICT</code> are the two paths those commands print, as in the Quick Start.</p>
+<p>Every output on this page was made with the model a release of Lindera builds for IPADIC and the IPADIC dictionary, the two that <code>lindera dependency download ipadic</code> and <code>lindera download ipadic</code> install. In the commands, <code>$MODEL</code> and <code>$DICT</code> are the two paths those commands print, as in the Quick Start.</p>
 <h2 id="bunsetsu-and-dependencies"><a class="header" href="#bunsetsu-and-dependencies">Bunsetsu and dependencies</a></h2>
 <p>A Japanese sentence is a sequence of <strong>bunsetsu</strong> (文節): the smallest pieces a speaker can pause between. A bunsetsu is one content word, with the particles and auxiliaries that follow it:</p>
 <pre><code class="language-text">太郎は | 本を | 読んだ。
@@ -2916,7 +2916,7 @@ fn print_dependents(bunsetsu: &amp;[Bunsetsu], parts_of_speech: &amp;[&amp;str])
 
 fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
     // The paths that `lindera download ipadic` and
-    // `lindera download dependency-ipadic` print.
+    // `lindera dependency download ipadic` print.
     let mut args = std::env::args().skip(1);
     let dictionary = args.next().expect("the directory of the dictionary");
     let model = args.next().expect("the model file");
@@ -3690,7 +3690,7 @@ assert_eq!(model.dictionary(), "ipadic");
 <p><code>ModelBuilder::parser</code> takes a <code>ParserModel</code> and how its weights are written (<code>Quantization::F32</code>, <code>I16</code> or <code>I8</code>). <code>ModelBuilder::from_model</code> starts from the name, the schema and the parts of a file that exists, to add a part to it; <code>train-parser --chunker</code> does this with the chunker.</p>
 <h2 id="the-model-for-ipadic"><a class="header" href="#the-model-for-ipadic">The model for IPADIC</a></h2>
 <p>The project trains a model for IPADIC, with a chunker and a parser. A release of Lindera builds it with <a href="lindera-dependency/model_file.html#building-it-again"><code>build_model.sh</code></a> and puts it on the page of its version, next to the dictionaries, from 7.1.0 on: <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> in <code>v&lt;version&gt;</code>. The model has the version of the release, as the dictionaries have, and belongs to it: a program of Lindera 7.1.0 takes the model of 7.1.0.</p>
-<p><a href="lindera-dependency/../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>lindera download dependency-ipadic</code></a> installs the archive of the version of the command, and prints the path of the model file.</p>
+<p><a href="lindera-dependency/../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>lindera dependency download ipadic</code></a> installs the archive of the version of the command, and prints the path of the model file.</p>
 <p>The archive holds one directory, <code>lindera-dependency-ipadic</code>, with three files:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody>
 <tr><td><code>dependency.model</code></td><td>The model file</td></tr>
@@ -3767,7 +3767,7 @@ archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  linde
 <p>A release of Lindera publishes a model for each of the three UniDic dictionaries too, from 7.1.0 on: <code>unidic</code> (unidic-mecab 2.1.2), <code>unidic-cwj</code> and <code>unidic-csj</code>. What is said above for IPADIC holds with the name of the dictionary in place of <code>ipadic</code>:</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>Archive</td><td><code>lindera-dependency-unidic-&lt;version&gt;.zip</code>, <code>lindera-dependency-unidic-cwj-&lt;version&gt;.zip</code>, <code>lindera-dependency-unidic-csj-&lt;version&gt;.zip</code>, each with one directory of the same three files</td></tr>
-<tr><td>Download</td><td><code>lindera download dependency-unidic</code>, <code>dependency-unidic-cwj</code> or <code>dependency-unidic-csj</code></td></tr>
+<tr><td>Download</td><td><code>lindera dependency download unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code></td></tr>
 <tr><td>Embedding</td><td><code>embed-model-unidic</code>, <code>embed-model-unidic-cwj</code> or <code>embed-model-unidic-csj</code> of <code>lindera-dependency</code>, forwarded as <code>embed-dependency-unidic</code> and the like; the model is then <code>embedded://unidic</code>, <code>embedded://unidic-cwj</code> or <code>embedded://unidic-csj</code></td></tr>
 <tr><td>File for a build from the repository</td><td><a href="lindera-dependency/../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_FILE</code></a>, <code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CWJ_FILE</code> or <code>LINDERA_BUILD_DEPENDENCY_MODEL_UNIDIC_CSJ_FILE</code></td></tr>
 <tr><td>Building it again</td><td><a href="lindera-dependency/model_file.html#building-it-again"><code>build_model.sh --dictionary &lt;name&gt;</code></a>, with <code>--dict</code> for the directory of the dictionary</td></tr>
@@ -4211,7 +4211,7 @@ lindera = { version = "7.1", features = ["dependency"] }
 <h2 id="from-the-bindings"><a class="header" href="#from-the-bindings">From the bindings</a></h2>
 <p>Python, Node.js, Ruby and PHP append the filter as the others, by its <code>kind</code> and the path of the model, and a token has a <code>dependency</code>: an object with the five fields below, or nothing (<code>None</code>, <code>nil</code>, <code>null</code>, no property) without the filter. In WebAssembly a path cannot be read, and <code>appendDependencyFilter</code> takes the bytes of the model. The distributed packages have the filter, from 7.1.0 on. The API page of each binding has an example: <a href="lindera-dependency/../lindera-python/tokenizer_api.html#tokendependency">Python</a>, <a href="lindera-dependency/../lindera-nodejs/tokenizer_api.html#tokendependency">Node.js</a>, <a href="lindera-dependency/../lindera-ruby/tokenizer_api.html#tokendependency">Ruby</a>, <a href="lindera-dependency/../lindera-php/tokenizer_api.html#tokendependency">PHP</a>, <a href="lindera-dependency/../lindera-wasm/tokenizer_api.html#tokendependency">WebAssembly</a>.</p>
 <h2 id="the-model-1"><a class="header" href="#the-model-1">The model</a></h2>
-<p>The filter takes one argument, <code>model</code>: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer; or <code>embedded://ipadic</code>, the model that a build with the feature <code>embed-dependency-ipadic</code> holds. A release of Lindera publishes the <a href="lindera-dependency/./model_file.html#the-model-for-ipadic">model for IPADIC</a>, from 7.1.0 on, and <a href="lindera-dependency/../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>lindera download dependency-ipadic</code></a> installs it and prints its path. The same goes for the three UniDic dictionaries, with <code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code> in place of <code>ipadic</code> (<a href="lindera-dependency/./model_file.html#the-models-for-unidic">The models for UniDic</a>). <a href="lindera-dependency/./parsing.html">Parsing</a> shows how to train one, and <a href="lindera-dependency/./model_file.html">Model File</a> what the file holds.</p>
+<p>The filter takes one argument, <code>model</code>: the path of a model file with a chunker and a parser, for the dictionary of the tokenizer; or <code>embedded://ipadic</code>, the model that a build with the feature <code>embed-dependency-ipadic</code> holds. A release of Lindera publishes the <a href="lindera-dependency/./model_file.html#the-model-for-ipadic">model for IPADIC</a>, from 7.1.0 on, and <a href="lindera-dependency/../lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser"><code>lindera dependency download ipadic</code></a> installs it and prints its path. The same goes for the three UniDic dictionaries, with <code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code> in place of <code>ipadic</code> (<a href="lindera-dependency/./model_file.html#the-models-for-unidic">The models for UniDic</a>). <a href="lindera-dependency/./parsing.html">Parsing</a> shows how to train one, and <a href="lindera-dependency/./model_file.html">Model File</a> what the file holds.</p>
 <p>The model is read once, when the filter is made, and shared by the copies of the tokenizer. A file that cannot be read, that is not a model file, or that lacks the chunker or the parser is an error then, before any text is read.</p>
 <h2 id="from-the-command-line"><a class="header" href="#from-the-command-line">From the command line</a></h2>
 <pre><code class="language-shell">echo '彼は赤い花を見た。' | lindera tokenize --dict embedded://ipadic --output json \
@@ -4781,7 +4781,7 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <ul>
 <li><code>tokenize</code>, <code>list</code> and <code>download</code> write their result there, so they stop at the first write that has no reader. <code>tokenize</code> reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.</li>
 <li><code>train</code> and <code>export</code> only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.</li>
-<li><code>dependency parse</code> and <code>dependency evaluate</code> write their result there, and stop at the first write that has no reader, as <code>tokenize</code> does. The other subcommands of <code>dependency</code> write files, and report on them on standard error.</li>
+<li><code>dependency parse</code>, <code>dependency evaluate</code>, <code>dependency list</code> and <code>dependency download</code> write their result there, and stop at the first write that has no reader, as <code>tokenize</code> does. The other subcommands of <code>dependency</code> write files, and report on them on standard error.</li>
 </ul>
 <p>When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of <code>download</code> and the notices of <code>list</code>, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.</p>
 <p>Up to v6.2.0, the commands failed instead; see the <a href="lindera-cli/../migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">migration guide</a>.</p>
@@ -4804,20 +4804,8 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 <li><code>STATUS</code> is <code>ok</code>; <code>incomplete</code> when required files are missing (download it again with <code>lindera download &lt;name&gt; --force</code>); or <code>other version</code> when another version of Lindera built the dictionary, or one that does not say (for a downloadable dictionary, <code>lindera download &lt;name&gt;</code> replaces it).</li>
 <li><code>DICT</code> is the value to pass to <code>--dict</code>.</li>
 </ul>
+<p>The models of the dependency parser, which are installed in the same directory, are not in this table: <a href="lindera-cli/commands.html#models-of-the-dependency-parser"><code>lindera dependency list</code></a> shows them.</p>
 <p>Messages go to stderr: a subdirectory with neither <code>metadata.json</code> nor <code>model.json</code>, such as the <code>6.2.0/</code> above, where a CLI before v7.0.0 put its downloads, is skipped with a line, and a dictionaries directory without dictionaries is reported with a hint to run <code>lindera download</code>. Entries whose name starts with <code>.</code> are skipped silently.</p>
-<h3 id="models-of-the-dependency-parser"><a class="header" href="#models-of-the-dependency-parser">Models of the dependency parser</a></h3>
-<p>The models of the <a href="lindera-cli/../lindera-dependency/token_filter.html">dependency parser</a> follow in a table of their own, when there is one: the models embedded in the binary (the <code>embed-dependency-ipadic</code> feature flag, and <code>embed-dependency-unidic</code>, <code>embed-dependency-unidic-cwj</code> and <code>embed-dependency-unidic-csj</code>) and those that <code>lindera download dependency-ipadic</code> and the like installed, which are the subdirectories with a <code>model.json</code>.</p>
-<pre><code class="language-text">NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-
-NAME               VERSION  STATUS  MODEL
-dependency-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-</code></pre>
-<ul>
-<li><code>VERSION</code> is the version of Lindera that built the model (<code>lindera_version</code> in its <code>model.json</code>), or <code>unknown</code> for the embedded model, which does not say.</li>
-<li><code>STATUS</code> is as for a dictionary: <code>ok</code>, <code>incomplete</code>, or <code>other version</code>, which <code>lindera download dependency-ipadic</code> replaces.</li>
-<li><code>MODEL</code> is the value to pass as <code>model</code> to the token filter <code>japanese_dependency</code>: the model file, or <code>embedded://ipadic</code>.</li>
-</ul>
 <h2 id="tokenize-1"><a class="header" href="#tokenize-1">tokenize</a></h2>
 <p>Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean text using various dictionaries.</p>
 <h3 id="parameters-1"><a class="header" href="#parameters-1">Parameters</a></h3>
@@ -5499,11 +5487,11 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
   --user
 </code></pre>
 <h2 id="download"><a class="header" href="#download">download</a></h2>
-<p>Download the pre-built dictionary archive matching the CLI version from the <a href="https://github.com/lindera/lindera/releases">GitHub releases page</a> and install it in the dictionaries directory. The same command gets the model of the dependency parser, which a release publishes next to the dictionaries: see <a href="lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser">Downloading the model of the dependency parser</a>.</p>
+<p>Download the pre-built dictionary archive matching the CLI version from the <a href="https://github.com/lindera/lindera/releases">GitHub releases page</a> and install it in the dictionaries directory. The model of the dependency parser, which a release publishes next to the dictionaries, is downloaded with <code>lindera dependency download</code>: see <a href="lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser">Downloading the model of the dependency parser</a>.</p>
 <h3 id="download-parameters"><a class="header" href="#download-parameters">Download parameters</a></h3>
 <ul>
-<li>Name (required): a dictionary, one of <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>jumandic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code>; or a model of the dependency parser, one of <code>dependency-ipadic</code>, <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code>, <code>dependency-unidic-csj</code>: the one for the dictionary of that name</li>
-<li><code>--force</code>: Re-download and replace the dictionary or the model even when the CLI's version built it</li>
+<li>Name (required): a dictionary, one of <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>jumandic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code></li>
+<li><code>--force</code>: Re-download and replace the dictionary even when the CLI's version built it</li>
 </ul>
 <h3 id="storage-location"><a class="header" href="#storage-location">Storage location</a></h3>
 <p><code>lindera download &lt;name&gt;</code> installs the dictionary in <code>&lt;dictionaries directory&gt;/&lt;name&gt;/</code> and prints that path, the value to pass to <code>--dict</code>. The <code>LINDERA_DICTIONARIES_DIR</code> environment variable names the dictionaries directory, by default <code>lindera/dictionaries</code> in the OS's local data directory; see <a href="lindera-cli/../getting_started/environment_variables.html#lindera_dictionaries_dir">LINDERA_DICTIONARIES_DIR</a> for the default location on each OS and for <code>LINDERA_DATA_DIR</code>, the variable before v7.0.0.</p>
@@ -5525,23 +5513,6 @@ Downloaded dictionary 'ipadic'
 <li>Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.</li>
 <li>The largest dictionary (<code>ipadic-neologd</code>) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.</li>
 </ul>
-<h3 id="downloading-the-model-of-the-dependency-parser"><a class="header" href="#downloading-the-model-of-the-dependency-parser">Downloading the model of the dependency parser</a></h3>
-<p><code>lindera download dependency-ipadic</code> gets the <a href="lindera-cli/../lindera-dependency/model_file.html#the-model-for-ipadic">model for IPADIC</a> of the token filter <code>japanese_dependency</code>, <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> on the page of the release of the CLI's version, from 7.1.0 on. It installs it in <code>&lt;dictionaries directory&gt;/dependency-ipadic/</code>, next to the dictionaries, and prints the path of the model file in it, which is what the filter takes as <code>model</code>. <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code> and <code>dependency-unidic-csj</code> get the <a href="lindera-cli/../lindera-dependency/model_file.html#the-models-for-unidic">models for UniDic</a> the same way:</p>
-<pre><code class="language-shell">% MODEL=$(lindera download dependency-ipadic)
-% DICT_DIR=$(lindera download ipadic)
-% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
-    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
-</code></pre>
-<p>The directory holds <code>dependency.model</code>, <code>model.json</code> and <code>NOTICE.txt</code>, which has the license of the model. A model in place is kept when the CLI's version built it, as the <code>lindera_version</code> of its <code>model.json</code> says, and replaced otherwise, as a dictionary is. With the model in place:</p>
-<pre><code class="language-shell">% lindera download dependency-ipadic
-</code></pre>
-<pre><code class="language-text">Model 'dependency-ipadic' is already downloaded; use --force to re-download it
-/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
-</code></pre>
-<p>A version without a release, or with a release before 7.1.0, has no model to download:</p>
-<pre><code class="language-text">Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
-</code></pre>
-<p>The filter needs a build of the CLI with the <code>dependency</code> feature. The model belongs to IPADIC: use it with that dictionary.</p>
 <h2 id="train"><a class="header" href="#train">train</a></h2>
 <p>Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the <code>train</code> feature flag enabled. (The <code>train</code> feature flag is enabled by default.)</p>
 <h3 id="train-parameters"><a class="header" href="#train-parameters">Train parameters</a></h3>
@@ -5702,6 +5673,8 @@ EOS
 <div class="table-wrapper"><table><thead><tr><th>Subcommand</th><th>What it does</th><th>Page</th></tr></thead><tbody>
 <tr><td><code>parse</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="lindera-cli/../lindera-dependency/command_line.html">Command Line</a></td></tr>
 <tr><td><code>chunk</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="lindera-cli/../lindera-dependency/chunking.html">Chunking</a></td></tr>
+<tr><td><code>download</code></td><td>Downloads the model for a dictionary</td><td><a href="lindera-cli/commands.html#downloading-the-model-of-the-dependency-parser">Below</a></td></tr>
+<tr><td><code>list</code></td><td>Lists the models in place and those embedded in the binary</td><td><a href="lindera-cli/commands.html#models-of-the-dependency-parser">Below</a></td></tr>
 <tr><td><code>convert</code></td><td>Makes training data from a CoNLL-U file with bunsetsu labels</td><td><a href="lindera-cli/../lindera-dependency/training_data.html">Training Data</a></td></tr>
 <tr><td><code>evaluate</code></td><td>Compares an output with the answer</td><td><a href="lindera-cli/../lindera-dependency/evaluation.html">Evaluation</a></td></tr>
 <tr><td><code>split</code></td><td>Writes the folds of a cross-validation</td><td><a href="lindera-cli/../lindera-dependency/evaluation.html">Evaluation</a></td></tr>
@@ -5711,15 +5684,54 @@ EOS
 <tr><td><code>convert-cabocha</code></td><td>Converts the chunker and parser models of CaboCha into a model file</td><td><a href="lindera-cli/../lindera-dependency/cabocha_models.html">CaboCha's Models</a></td></tr>
 </tbody></table>
 </div>
-<p><code>parse</code> and <code>chunk</code> are in a build with the <code>dependency</code> feature, and the seven others in a build that has <code>train</code> as well. Both features are in the default build.</p>
+<p><code>parse</code>, <code>chunk</code>, <code>download</code> and <code>list</code> are in a build with the <code>dependency</code> feature, and the seven others in a build that has <code>train</code> as well. Both features are in the default build.</p>
 <h3 id="dependency-usage"><a class="header" href="#dependency-usage">Dependency usage</a></h3>
-<p><code>parse</code> needs the model for the dictionary it tokenizes with, which <code>download</code> gets:</p>
+<p><code>parse</code> needs the model for the dictionary it tokenizes with, which <code>dependency download</code> gets:</p>
 <pre><code class="language-bash">DICT=$(lindera download ipadic)
-MODEL=$(lindera download dependency-ipadic)
+MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <p>It writes the bunsetsu of each sentence and their dependencies in the lattice format, which is what <code>cabocha -f1</code> writes. <a href="lindera-cli/../lindera-dependency/quickstart.html">Quick Start</a> has the output, and <a href="lindera-cli/../lindera-dependency/reading_the_result.html">Reading and Using the Result</a> says how to read it.</p>
 <p><code>tokenize</code> gives the same analysis on the tokens of its output, with the token filter <code>japanese_dependency</code>: see <a href="lindera-cli/../lindera-dependency/token_filter.html">Token Filter</a>.</p>
+<h3 id="downloading-the-model-of-the-dependency-parser"><a class="header" href="#downloading-the-model-of-the-dependency-parser">Downloading the model of the dependency parser</a></h3>
+<p><code>lindera dependency download ipadic</code> gets the <a href="lindera-cli/../lindera-dependency/model_file.html#the-model-for-ipadic">model for IPADIC</a> of the token filter <code>japanese_dependency</code>, <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> on the page of the release of the CLI's version, from 7.1.0 on. It installs it in <code>&lt;dictionaries directory&gt;/dependency-ipadic/</code>, next to the dictionaries, and prints the path of the model file in it, which is what <code>lindera dependency parse</code> takes as <code>--model</code> and the filter as <code>model</code>. <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> get the <a href="lindera-cli/../lindera-dependency/model_file.html#the-models-for-unidic">models for UniDic</a> the same way:</p>
+<pre><code class="language-shell">% MODEL=$(lindera dependency download ipadic)
+% DICT_DIR=$(lindera download ipadic)
+% echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
+    --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
+</code></pre>
+<p>The directory holds <code>dependency.model</code>, <code>model.json</code> and <code>NOTICE.txt</code>, which has the license of the model. A model in place is kept when the CLI's version built it, as the <code>lindera_version</code> of its <code>model.json</code> says, and replaced otherwise, as a dictionary is. With the model in place:</p>
+<pre><code class="language-shell">% lindera dependency download ipadic
+</code></pre>
+<pre><code class="language-text">Model 'ipadic' is already downloaded; use --force to re-download it
+/home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+</code></pre>
+<p>A version without a release, or with a release before 7.1.0, has no model to download:</p>
+<pre><code class="language-text">Error: LinderaError { kind: NotFound, source: model archive not found: https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-dependency-ipadic-7.0.0.zip (HTTP 404). Version 7.0.0 may not have a published release yet; see https://github.com/lindera/lindera/releases }
+</code></pre>
+<p>The filter needs a build of the CLI with the <code>dependency</code> feature. The model belongs to IPADIC: use it with that dictionary.</p>
+<h3 id="models-of-the-dependency-parser"><a class="header" href="#models-of-the-dependency-parser">Models of the dependency parser</a></h3>
+<p><code>lindera dependency list</code> writes a table of the models of the <a href="lindera-cli/../lindera-dependency/token_filter.html">dependency parser</a>: the models embedded in the binary (the <code>embed-dependency-ipadic</code> feature flag, and <code>embed-dependency-unidic</code>, <code>embed-dependency-unidic-cwj</code> and <code>embed-dependency-unidic-csj</code>) and those that <code>lindera dependency download ipadic</code> and the like installed, which are the subdirectories with a <code>model.json</code>.</p>
+<pre><code class="language-shell">% lindera dependency list
+</code></pre>
+<pre><code class="language-text">DICTIONARY  VERSION  STATUS  MODEL
+ipadic      7.1.0    ok      /home/user/.local/share/lindera/dictionaries/dependency-ipadic/dependency.model
+</code></pre>
+<ul>
+<li>
+<p><code>DICTIONARY</code> is the dictionary the model is for: the name <code>lindera dependency download</code> takes.</p>
+</li>
+<li>
+<p><code>VERSION</code> is the version of Lindera that built the model (<code>lindera_version</code> in its <code>model.json</code>), or <code>unknown</code> for the embedded model, which does not say.</p>
+</li>
+<li>
+<p><code>STATUS</code> is as for a dictionary: <code>ok</code>, <code>incomplete</code>, or <code>other version</code>, which <code>lindera dependency download ipadic</code> replaces.</p>
+</li>
+<li>
+<p><code>MODEL</code> is the value to pass as <code>--model</code> to <code>lindera dependency parse</code> and as <code>model</code> to the token filter <code>japanese_dependency</code>: the model file, or <code>embedded://ipadic</code>.</p>
+</li>
+</ul>
+<p>Without a model, the table has its header alone, and a line on stderr says how to download one.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="tutorial"><a class="header" href="#tutorial">Tutorial</a></h1>
 <p>This tutorial walks you through the basic usage of the Lindera CLI, from installation to advanced text processing.</p>
 <h2 id="1-install-the-cli"><a class="header" href="#1-install-the-cli">1. Install the CLI</a></h2>
@@ -6317,7 +6329,7 @@ json.dumps([token.to_dict() for token in tokens])
 </ul>
 <h2 id="tokendependency"><a class="header" href="#tokendependency">TokenDependency</a></h2>
 <p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-python/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
-<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera download dependency-ipadic</code> also installs (<a href="lindera-python/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
+<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera dependency download ipadic</code> also installs (<a href="lindera-python/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>sentence</code></td><td><code>int</code></td><td>The number of the sentence in the text, from 0</td></tr>
 <tr><td><code>bunsetsu</code></td><td><code>int</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
@@ -7298,7 +7310,7 @@ const reading = token.details[7];  // e.g., "トウキョウ"
 </ul>
 <h2 id="tokendependency-1"><a class="header" href="#tokendependency-1">TokenDependency</a></h2>
 <p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-nodejs/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
-<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera download dependency-ipadic</code> also installs (<a href="lindera-nodejs/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
+<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera dependency download ipadic</code> also installs (<a href="lindera-nodejs/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>sentence</code></td><td><code>number</code></td><td>The number of the sentence in the text, from 0</td></tr>
 <tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
@@ -8409,7 +8421,7 @@ JSON.generate(tokens.map(&amp;:to_h))
 </ul>
 <h2 id="tokendependency-2"><a class="header" href="#tokendependency-2">TokenDependency</a></h2>
 <p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-ruby/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
-<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera download dependency-ipadic</code> also installs (<a href="lindera-ruby/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
+<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera dependency download ipadic</code> also installs (<a href="lindera-ruby/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>sentence</code></td><td><code>Integer</code></td><td>The number of the sentence in the text, from 0</td></tr>
 <tr><td><code>bunsetsu</code></td><td><code>Integer</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
@@ -9452,7 +9464,7 @@ object straight to <code>json_encode</code> does not produce these fields -- cal
 </ul>
 <h2 id="tokendependency-3"><a class="header" href="#tokendependency-3">TokenDependency</a></h2>
 <p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>$dependency</code> of every token; see <a href="lindera-php/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
-<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera download dependency-ipadic</code> also installs (<a href="lindera-php/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
+<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the path of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera dependency download ipadic</code> also installs (<a href="lindera-php/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>$sentence</code></td><td><code>int</code></td><td>The number of the sentence in the text, from 0</td></tr>
 <tr><td><code>$bunsetsu</code></td><td><code>int</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
@@ -10610,7 +10622,7 @@ const reading = token.details[7]; // e.g., "トウキョウ"
 </code></pre>
 <h2 id="tokendependency-4"><a class="header" href="#tokendependency-4">TokenDependency</a></h2>
 <p>The bunsetsu of a token and the bunsetsu it depends on. The token filter <code>japanese_dependency</code> puts it in the <code>dependency</code> of every token; see <a href="lindera-wasm/../lindera-dependency/token_filter.html">Token Filter</a> for the filter, its model, and how a text is cut into sentences.</p>
-<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the bytes of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera download dependency-ipadic</code> also installs (<a href="lindera-wasm/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
+<p>The distributed packages have the filter, from 7.1.0 on: the <code>dependency</code> feature is in the default build. They have no model. The filter takes the bytes of a model file: the one Lindera releases for IPADIC is <code>dependency.model</code> in <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code>, on the page of each <a href="https://github.com/lindera/lindera/releases">release</a>, which <code>lindera dependency download ipadic</code> also installs (<a href="lindera-wasm/../lindera-dependency/installation.html#the-model">Installation</a>). There is one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> too, with the name of the dictionary in place of <code>ipadic</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>sentence</code></td><td><code>number</code></td><td>The number of the sentence in the text, from 0</td></tr>
 <tr><td><code>bunsetsu</code></td><td><code>number</code></td><td>The number of the bunsetsu of the token in its sentence, from 0</td></tr>
@@ -16908,7 +16920,7 @@ CLI warning items.</li>
 <li><code>Token::details</code> holds the fields of the dictionary, as before: the result of a dependency analysis is not written there.</li>
 <li>A token grows by the size of one pointer.</li>
 <li>The <code>lindera</code> command and the bindings have the <code>dependency</code> feature in their default builds: the token filter <code>japanese_dependency</code> is in the packages, and they depend on the <code>lindera-dependency</code> crate, which has no dependency of its own. The command grows by 134 kB. <code>default-features = false</code> gives the build without it. The libraries <code>lindera</code> and <code>lindera-analysis</code> have the feature only when it is named.</li>
-<li>No model is in a package or embedded by default; <code>lindera download dependency-ipadic</code> gets the one for IPADIC, and <code>dependency-unidic</code>, <code>dependency-unidic-cwj</code> and <code>dependency-unidic-csj</code> the ones for UniDic.</li>
+<li>No model is in a package or embedded by default; <code>lindera dependency download ipadic</code> gets the one for IPADIC, and <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> the ones for UniDic.</li>
 <li>There is a tenth dictionary, the <a href="./lindera-jumandic.html">JUMAN dictionary</a> (<code>jumandic</code>, the crate <code>lindera-jumandic</code>, the feature <code>embed-jumandic</code>), built from mecab-jumandic 7.0-20130310 (<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>). No default build embeds it, and <code>lindera download jumandic</code> gets it. No model of the dependency parser is published for it; the model CaboCha distributes for JUMAN <a href="./lindera-dependency/cabocha_models.html">can be converted</a> into one.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
@@ -17032,7 +17044,7 @@ CLI warning items.</li>
 re-exports the <code>lindera-analysis</code> crate. In v5.x and v6.x it had to be added
 as a separate dependency.</li>
 <li><code>train</code> is enabled by default in <code>lindera-cli</code>, <code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, and <code>lindera-php</code>. It is disabled by default in the <code>lindera</code> library crate -- enable it explicitly with <code>features = ["train"]</code> for library usage. It is not available in <code>lindera-wasm</code>.</li>
-<li><code>dependency</code> is enabled by default in <code>lindera-cli</code>, <code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, <code>lindera-php</code> and <code>lindera-wasm</code>, from 7.1.0 on: the packages have the filter, and no model, which a user downloads (<code>lindera download dependency-ipadic</code>). It is disabled by default in the <code>lindera</code> and <code>lindera-analysis</code> library crates.</li>
+<li><code>dependency</code> is enabled by default in <code>lindera-cli</code>, <code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, <code>lindera-php</code> and <code>lindera-wasm</code>, from 7.1.0 on: the packages have the filter, and no model, which a user downloads (<code>lindera dependency download ipadic</code>). It is disabled by default in the <code>lindera</code> and <code>lindera-analysis</code> library crates.</li>
 </ul>
 <h2 id="using-external-dictionaries-recommended"><a class="header" href="#using-external-dictionaries-recommended">Using External Dictionaries (Recommended)</a></h2>
 <p>The recommended approach is to use pre-built dictionaries as external files. Download a dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify its path at runtime:</p>
@@ -17566,7 +17578,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <h2 id="source-archives"><a class="header" href="#source-archives">Source archives</a></h2>
 <p>The source archives of five dictionaries are hosted on lindera.dev. UniDic's, UniDic CWJ's and UniDic CSJ's are NINJAL's own packages, <code>unidic-mecab-2.1.2_src.zip</code> (134 MiB), <code>unidic-cwj-202512_full.zip</code> (2.77 GiB) and <code>unidic-csj-202512_full.zip</code> (2.81 GiB), downloaded from NINJAL's official URL (<a href="https://github.com/lindera/lindera/issues/216">#216</a>, <a href="https://github.com/lindera/lindera/issues/1358">#1358</a>, <a href="https://github.com/lindera/lindera/issues/1384">#1384</a>). The source of ko-dic is mecab-ko-dic's official release, <code>mecab-ko-dic-2.1.1-20180720.tar.gz</code> (47 MiB), downloaded from the Downloads of its upstream repository on Bitbucket (<a href="https://github.com/lindera/lindera/issues/1386">#1386</a>). The source of the JUMAN dictionary is mecab-jumandic 7.0-20130310 as the repository of MeCab holds it: the archive GitHub serves for a commit of taku910/mecab, <code>mecab-61b90ba6e669dc2d7d533d4a80d206f3b31d52b1.tar.gz</code> (45 MiB), of which only <code>mecab-jumandic/</code> is read (<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>). Those servers are not run by Lindera, so the <code>build-dictionary</code> job of <code>release.yml</code> does not download these archives each time: it keeps each archive between runs with <code>actions/cache</code> (<code>.github/actions/source-archive-cache</code>), keyed on its file name and SHA-256, and downloads it only for a new source archive, or after the cache entry has been evicted.</p>
 <h2 id="the-model-of-lindera-dependency"><a class="header" href="#the-model-of-lindera-dependency">The model of lindera-dependency</a></h2>
-<p>A release publishes four more archives the same way: the models of <a href="development/../lindera-dependency/model_file.html#the-model-for-ipadic"><code>lindera-dependency</code></a>, one for each dictionary it has a schema for, <code>lindera-dependency-&lt;dictionary&gt;-&lt;version&gt;.zip</code> for <code>ipadic</code>, <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>, <a href="https://github.com/lindera/lindera/issues/1441">#1441</a>). What follows is said for IPADIC, and holds for each of them. It holds one directory named <code>lindera-dependency-ipadic</code>, with <code>dependency.model</code>, <code>model.json</code>, which names the release's version as <code>lindera_version</code>, and <code>NOTICE.txt</code>. <code>lindera download dependency-ipadic</code> installs it, and takes an installed model for current only when that version equals the version of the CLI, as it does a dictionary.</p>
+<p>A release publishes four more archives the same way: the models of <a href="development/../lindera-dependency/model_file.html#the-model-for-ipadic"><code>lindera-dependency</code></a>, one for each dictionary it has a schema for, <code>lindera-dependency-&lt;dictionary&gt;-&lt;version&gt;.zip</code> for <code>ipadic</code>, <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<a href="https://github.com/lindera/lindera/issues/1440">#1440</a>, <a href="https://github.com/lindera/lindera/issues/1441">#1441</a>). What follows is said for IPADIC, and holds for each of them. It holds one directory named <code>lindera-dependency-ipadic</code>, with <code>dependency.model</code>, <code>model.json</code>, which names the release's version as <code>lindera_version</code>, and <code>NOTICE.txt</code>. <code>lindera dependency download ipadic</code> installs it, and takes an installed model for current only when that version equals the version of the CLI, as it does a dictionary.</p>
 <p>The <code>build-dependency-model</code> job of <code>release.yml</code> makes it, with <code>scripts/dependency/build_model.sh</code>: it gets UD Japanese-GSD and UD Japanese-PUD at their fixed commits from GitHub, trains the model on the train file, and measures it on the files it was not trained on (<code>scripts/dependency/model_accuracy.py</code>). The counts have to be those of <code>scripts/dependency/model_accuracy_&lt;dictionary&gt;.json</code>, which are the numbers of the documentation: a release whose model measures differently stops there, before anything is uploaded. The job runs once for each dictionary. The model for IPADIC is trained with the IPADIC the command embeds; a model for UniDic is trained with the dictionary the <code>build-dictionary</code> job of the same run has built, taken from its artifact and read from a directory, so that nothing embeds UniDic CWJ or UniDic CSJ for it. The bytes of the model are those of the runner; they are not promised to be those of another machine.</p>
 <p><code>lindera-dependency</code> pins each archive as a dictionary crate pins its own: the release writes a pin for each model, <code>prebuilt-&lt;dictionary&gt;.json</code> (<code>scripts/write_dependency_model_pin.sh</code>), and a build of the published crate with <code>embed-model-&lt;dictionary&gt;</code> downloads the archive of that model and checks it. There is one difference. A dictionary crate without a pin builds its dictionary from source; the model cannot be trained by a build script, so a build without a pin, which is every build from the repository, embeds the file that <a href="development/../getting_started/environment_variables.html#lindera_build_dependency_model_ipadic_file"><code>LINDERA_BUILD_DEPENDENCY_MODEL_IPADIC_FILE</code></a> names.</p>
 <h2 id="releasing-lindera"><a class="header" href="#releasing-lindera">Releasing Lindera</a></h2>
