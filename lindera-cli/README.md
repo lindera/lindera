@@ -23,14 +23,14 @@ Alternatively, you can download a binary from the following release page:
 
 ## Dictionary
 
-The easiest way to obtain a dictionary is the `download` subcommand, which installs the pre-built dictionary matching the CLI version in the dictionaries directory (`LINDERA_DICTIONARIES_DIR`, by default `~/.local/share/lindera/dictionaries` on Linux) and prints its path, which `--dict` takes:
+The easiest way to obtain a dictionary is the `dictionary download` command, which installs the pre-built dictionary matching the CLI version in the dictionaries directory (`LINDERA_DICTIONARIES_DIR`, by default `~/.local/share/lindera/dictionaries` on Linux) and prints its path, which `--dict` takes:
 
 ```shell script
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
 ```
 
-`lindera list` shows the dictionaries in place and those embedded in the binary.
+`lindera dictionary list` shows the dictionaries in place and those embedded in the binary.
 
 `lindera dependency parse` writes the bunsetsu of each sentence and their dependencies, from 7.1.0 on: see the chapter of [`lindera-dependency`](https://lindera.github.io/lindera/lindera-dependency/command_line.html).
 

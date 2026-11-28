@@ -1,5 +1,7 @@
 # Migrating from v5 to v6
 
+> **Note:** From v7.1.0 on, the commands on dictionaries are subcommands of `lindera dictionary`: `lindera dictionary build` for `lindera build`, and likewise for `list`, `download`, `train` and `export`. This guide keeps the names of the version it describes, which run through v7.x with a deprecation warning and are removed in v8.0.0. See [Migrating from v7.0 to v7.1](./migration_v7_0_to_v7_1.md#the-commands-on-dictionaries-are-under-lindera-dictionary).
+
 Lindera v6.0.0 rebuilds prebuilt user dictionaries, changes tokenization
 output in two targeted ways (a Decompose-mode accuracy fix and a new
 default-on unknown-word feature), reshapes the JavaScript bindings' token

@@ -225,7 +225,7 @@ impl CharacterDefinitionBuilder {
                     format!(
                         " ({category} is the syntax of Sudachi's char.def, which a dictionary \
                          selects with \"char_def_format\": \"sudachi\" in its metadata.json; \
-                         lindera train reads MeCab's format only)"
+                         lindera dictionary train reads MeCab's format only)"
                     )
                 } else {
                     String::new()
@@ -1325,7 +1325,7 @@ KANJINUMERIC    0 1 0  #change INVOKE 1->0
                     "char.def: line 4: category {name} is not defined; a range line can only \
                      name a category defined on an earlier line ({name} is the syntax of \
                      Sudachi's char.def, which a dictionary selects with \"char_def_format\": \
-                     \"sudachi\" in its metadata.json; lindera train reads MeCab's format only)"
+                     \"sudachi\" in its metadata.json; lindera dictionary train reads MeCab's format only)"
                 )),
                 "{message}"
             );

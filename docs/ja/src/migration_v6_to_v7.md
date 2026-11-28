@@ -1,5 +1,7 @@
 # v6 から v7 への移行
 
+> **注意:** v7.1.0 から、辞書のコマンドは `lindera dictionary` のサブコマンドです（`lindera build` は `lindera dictionary build`。`list`・`download`・`train`・`export` も同じ）。このガイドは、対象の版での名前のまま書いています。これらの名前は、v7.x の間は非推奨の警告つきで動き、v8.0.0 で削除します。[v7.0 から v7.1 への移行](./migration_v7_0_to_v7_1.md#辞書のコマンドは-lindera-dictionary-の下に)を参照してください。
+
 Lindera v7.0.0 では `lindera` クレートがファサード（facade）になりました。
 形態素セグメンター（`lindera-segmenter` として公開）を再エクスポートし、
 新しくデフォルト有効になった `analysis` feature を通じて `lindera-analysis` の

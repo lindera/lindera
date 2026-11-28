@@ -14,6 +14,8 @@ Code that reads the tokens a tokenizer returns is not affected: `surface`, `byte
 
 v7.1 adds bunsetsu dependency analysis ([Lindera Dependency](./lindera-dependency.md)), and the change of `Token` comes with it. The rest of what v7.1 adds needs no change of existing code; [What does not change](#what-does-not-change) lists what a user may notice.
 
+v7.1 also deprecates the names of five commands, without breaking them: see [The commands on dictionaries are under `lindera dictionary`](#the-commands-on-dictionaries-are-under-lindera-dictionary).
+
 ## `Token` is built with `Token::new`
 
 `Token` gets a field for the result of a dependency analysis, read with `Token::dependency()`, which is `None` unless a token filter that analyzes dependencies ran ([#1438](https://github.com/lindera/lindera/issues/1438)). Adding a field breaks every struct expression of the type, so the type is `#[non_exhaustive]` from now on: a field that is added later will not break code again.
@@ -66,7 +68,7 @@ The compiler names each place: `cannot create non-exhaustive struct using struct
 error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
 ```
 
-Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; [`lindera build`](./lindera-cli/commands.md) makes one from its sources, and [`lindera download`](./lindera-cli/commands.md) installs a published one.
+Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; [`lindera dictionary build`](./lindera-cli/commands.md) makes one from its sources, and [`lindera dictionary download`](./lindera-cli/commands.md) installs a published one.
 
 ## `Metadata` has a new field
 
@@ -78,6 +80,34 @@ error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_d
 
 Add `skip_invalid_encoding: false`, which is what every build did before, or end the expression with `..Default::default()`, which later fields then do not break. Code that reads a `metadata.json`, that starts from `Metadata::default()` or that calls `Metadata::new` is not affected: a `metadata.json` without the field reads as `false`, and one that has `false` is written without it.
 
+## The commands on dictionaries are under `lindera dictionary`
+
+This is a deprecation, not a breaking change: the command lines of v7.0 run as they did.
+
+The command line names the object first and the operation after it ([#1482](https://github.com/lindera/lindera/issues/1482), [#1483](https://github.com/lindera/lindera/issues/1483)): `lindera dependency` has the operations of the dependency analysis, and `lindera dictionary` those on dictionaries, which were subcommands of `lindera` itself.
+
+| v7.0 | v7.1 |
+| --- | --- |
+| `lindera list` | `lindera dictionary list` |
+| `lindera download` | `lindera dictionary download` |
+| `lindera build` | `lindera dictionary build` |
+| `lindera train` | `lindera dictionary train` |
+| `lindera export` | `lindera dictionary export` |
+
+The options, the standard output and the exit codes are the same. `lindera tokenize` keeps its name.
+
+The names of v7.0 still run. Each writes one line to stderr before it does what the new command does:
+
+```text
+Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+```
+
+`lindera --help` does not list them, and v8.0.0 removes them. Change the name where a script calls one of the five; until then, the script sees one more line on stderr, and nothing else differs.
+
+The messages that name one of these commands name the new one, such as the hint of `lindera dictionary list` in an empty dictionaries directory (`run 'lindera dictionary download <name>' to download one`) and the error for a dictionary of another format version (``rebuild it with `lindera dictionary build` ``). The libraries write the same text, so the bindings show it too.
+
+See [Commands](./lindera-cli/commands.md#dictionary).
+
 ## What does not change
 
 - The JSON that `Token::as_value` and `lindera tokenize -o json` write has no new key for a token without a dependency.
@@ -85,4 +115,4 @@ Add `skip_invalid_encoding: false`, which is what every build did before, or end
 - A token grows by the size of one pointer.
 - The `lindera` command and the bindings have the `dependency` feature in their default builds: the token filter `japanese_dependency` is in the packages, and they depend on the `lindera-dependency` crate, which has no dependency of its own. The command grows by 134 kB. `default-features = false` gives the build without it. The libraries `lindera` and `lindera-analysis` have the feature only when it is named.
 - No model is in a package or embedded by default; `lindera dependency download ipadic` gets the one for IPADIC, and `unidic`, `unidic-cwj` and `unidic-csj` the ones for UniDic.
-- There is a tenth dictionary, the [JUMAN dictionary](./lindera-jumandic.md) (`jumandic`, the crate `lindera-jumandic`, the feature `embed-jumandic`), built from mecab-jumandic 7.0-20130310 ([#1466](https://github.com/lindera/lindera/issues/1466)). No default build embeds it, and `lindera download jumandic` gets it. No model of the dependency parser is published for it; the model CaboCha distributes for JUMAN [can be converted](./lindera-dependency/cabocha_models.md) into one.
+- There is a tenth dictionary, the [JUMAN dictionary](./lindera-jumandic.md) (`jumandic`, the crate `lindera-jumandic`, the feature `embed-jumandic`), built from mecab-jumandic 7.0-20130310 ([#1466](https://github.com/lindera/lindera/issues/1466)). No default build embeds it, and `lindera dictionary download jumandic` gets it. No model of the dependency parser is published for it; the model CaboCha distributes for JUMAN [can be converted](./lindera-dependency/cabocha_models.md) into one.

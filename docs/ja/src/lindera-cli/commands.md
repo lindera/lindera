@@ -1,13 +1,14 @@
 # コマンド
 
-Lindera CLI は7つのメインコマンドを提供します：
+Lindera CLI は3つのメインコマンドを提供します：
 
-- **list** - 形態素解析辞書の一覧と状態を表示
 - **tokenize** - テキストに対して形態素解析を実行
-- **build** - ソースCSVファイルから辞書をビルド
-- **download** - GitHub リリースページから学習済み辞書をダウンロード
-- **train** - 注釈付きコーパスデータからCRFモデルを学習
-- **export** - 学習済みモデルを辞書フォーマットにエクスポート
+- **dictionary** - 辞書を扱う。操作ごとにサブコマンドがあります：
+  - **list** - 形態素解析辞書の一覧と状態を表示
+  - **download** - GitHub リリースページから学習済み辞書をダウンロード
+  - **build** - ソースCSVファイルから辞書をビルド
+  - **train** - 注釈付きコーパスデータからCRFモデルを学習
+  - **export** - 学習済みモデルを辞書フォーマットにエクスポート
 - **dependency** - 文節の係り受けを解析し、解析のモデルを学習・評価
 
 ## 警告とログメッセージ
@@ -25,45 +26,13 @@ Lindera CLI は7つのメインコマンドを提供します：
 
 コマンドの標準出力を読むプログラムが先に終わると（`head` は欲しい行を読むと終わります）、コマンドは終了コード 0 で、メッセージを出さずに終わります。
 
-- `tokenize`・`list`・`download` は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。`tokenize` は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。
-- `train`・`export` は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。
+- `tokenize`・`dictionary list`・`dictionary download` は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。`tokenize` は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。
+- `dictionary train`・`dictionary export` は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。
 - `dependency parse`・`dependency evaluate`・`dependency list`・`dependency download` は結果を標準出力に書き、`tokenize` と同じく、読み手のいない最初の書き込みで止まります。`dependency` のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。
 
-標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（`download` の進捗や通知、`list` の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。
+標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（`dictionary download` の進捗や通知、`dictionary list` の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。
 
 v6.2.0 までは、コマンドは失敗していました。[移行ガイド](../migration_v6_to_v7.md#コマンドは標準出力に読み手がいないとき静かに終わる)を参照してください。
-
-## list
-
-`--dict` に渡せる辞書の一覧を表示します。（`embed-*` feature フラグ経由で）バイナリに埋め込まれた辞書と、`lindera download` が辞書を置く辞書ディレクトリにある辞書を、それぞれをビルドした Lindera のバージョンとともに表示します。
-
-### list パラメータ
-
-このコマンドは引数を取りません。`lindera download` と同じく、環境変数 `LINDERA_DICTIONARIES_DIR` が指すディレクトリから辞書を探します（[保存場所](#保存場所) を参照）。
-
-### list の使用方法
-
-```shell
-% lindera list
-```
-
-```text
-Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
-NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
-```
-
-標準出力の表は 1 行につき 1 辞書です。埋め込みの辞書を先に、続けて辞書ディレクトリのサブディレクトリを名前順に並べます。
-
-- `NAME` は、埋め込みの辞書の種類、またはディレクトリの名前です。
-- `VERSION` は、その辞書をビルドした Lindera のバージョン（`metadata.json` の `lindera_version`）です。v7.0.0 より前にビルドした辞書では `unknown` になります。
-- `STATUS` は `ok`、必要なファイルが欠けている場合は `incomplete`（`lindera download <name> --force` で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では `other version`（ダウンロードできる辞書なら `lindera download <name>` で置き換わります）になります。
-- `DICT` は `--dict` に渡す値です。
-
-同じディレクトリにインストールされる係り受け解析のモデルは、この表には出ません。[`lindera dependency list`](#係り受け解析のモデル) が表示します。
-
-メッセージは標準エラー出力に出ます。上の例の `6.2.0/`（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように `metadata.json` も `model.json` もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、`lindera download` の案内を出します。名前が `.` で始まる項目は、メッセージなしで飛ばします。
 
 ## tokenize
 
@@ -72,7 +41,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 ### パラメータ
 
 - `--dict` / `-d`: 辞書の URI またはパス（必須）
-  - ファイルパス: `/path/to/dictionary`（`lindera download` が表示するパスなど）、または `file:///path/to/dictionary`
+  - ファイルパス: `/path/to/dictionary`（`lindera dictionary download` が表示するパスなど）、または `file:///path/to/dictionary`
   - 埋め込み: `embedded://ipadic`, `embedded://unidic`, etc.
   - `ipadic` のような辞書名だけの指定は、同名のディレクトリがない限り受け付けません。エラーは、埋め込みの辞書の指定と、ダウンロードした辞書のディレクトリを案内します：
 
@@ -625,7 +594,7 @@ lindera tokenize --dict embedded://ipadic --max-threads 8 large.txt > large.meca
 - トークナイズする各スレッドは、ユーザー辞書があればそれぞれ複製を持ちます。システム辞書は共有します。
 - 1 スレッドのときと同じく出力はバッファしてから書きます。読めない行（UTF-8 でない行）やトークナイズに失敗した行があると、その前の行の出力を書いてから終了コード 1 で終わります。標準出力を読む側がいなくなると、残りの入力を読まずに終了コード 0 で終わります。
 - [強制的な文の区切り](../lindera/segmenter.md#文分割)などの警告は、その行をトークナイズしたスレッドから出ます。そのため、複数の行の警告が、行とは違う順で標準エラー出力に出ることがあります。
-- 既定値が 1 なのは、既存のスクリプトの CPU の使い方とメモリを変えないためです（`lindera train --max-threads` の既定値は CPU のコア数です）。短い入力では、スレッドを増やしても速くなりません。
+- 既定値が 1 なのは、既存のスクリプトの CPU の使い方とメモリを変えないためです（`lindera dictionary train --max-threads` の既定値は CPU のコア数です）。短い入力では、スレッドを増やしても速くなりません。
 
 ### フィルタを使用した高度なトークナイズ
 
@@ -645,11 +614,111 @@ Linderaは、文字フィルタ、トークナイザー、トークンフィル�
 EOS
 ```
 
-## build
+## dictionary
+
+辞書を扱います。7.1.0 から、辞書の操作は 1 つのコマンドのサブコマンドです。
+
+```text
+lindera dictionary <SUBCOMMAND>
+```
+
+| サブコマンド | すること |
+| --- | --- |
+| [`list`](#list) | 置いてある辞書と、バイナリに埋め込まれた辞書の一覧を表示する |
+| [`download`](#download) | GitHub リリースページからビルド済みの辞書をダウンロードする |
+| [`build`](#build) | ソースの CSV ファイルから辞書をビルドする |
+| [`train`](#train) | 注釈付きコーパスから CRF モデルを学習する |
+| [`export`](#export) | 学習済みモデルを辞書フォーマットにエクスポートする |
+
+`list`・`download`・`build` はどのビルドにも入り、`train`・`export` は `train` feature のあるビルドに入ります。この feature は、既定のビルドに入っています。
+
+### 非推奨の名前
+
+v7.0.0 までは、この 5 つは `lindera` 自身のサブコマンドでした（`lindera list`・`lindera download`・`lindera build`・`lindera train`・`lindera export`）。これらの名前は今も動きます。オプション・標準出力・終了コードは新しいコマンドと同じで、実行の前に標準エラー出力へ 1 行を書きます。
+
+```text
+Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+```
+
+`lindera --help` の一覧には出ません。v8.0.0 で削除します。未知のオプションのように、コマンドが動く前に断られる引数を付けたときは、そのメッセージだけが出て、この警告は出ません。
+
+### list
+
+`--dict` に渡せる辞書の一覧を表示します。（`embed-*` feature フラグ経由で）バイナリに埋め込まれた辞書と、`lindera dictionary download` が辞書を置く辞書ディレクトリにある辞書を、それぞれをビルドした Lindera のバージョンとともに表示します。
+
+#### list パラメータ
+
+このコマンドは引数を取りません。`lindera dictionary download` と同じく、環境変数 `LINDERA_DICTIONARIES_DIR` が指すディレクトリから辞書を探します（[保存場所](#保存場所) を参照）。
+
+#### list の使用方法
+
+```shell
+% lindera dictionary list
+```
+
+```text
+Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
+```
+
+標準出力の表は 1 行につき 1 辞書です。埋め込みの辞書を先に、続けて辞書ディレクトリのサブディレクトリを名前順に並べます。
+
+- `NAME` は、埋め込みの辞書の種類、またはディレクトリの名前です。
+- `VERSION` は、その辞書をビルドした Lindera のバージョン（`metadata.json` の `lindera_version`）です。v7.0.0 より前にビルドした辞書では `unknown` になります。
+- `STATUS` は `ok`、必要なファイルが欠けている場合は `incomplete`（`lindera dictionary download <name> --force` で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では `other version`（ダウンロードできる辞書なら `lindera dictionary download <name>` で置き換わります）になります。
+- `DICT` は `--dict` に渡す値です。
+
+同じディレクトリにインストールされる係り受け解析のモデルは、この表には出ません。[`lindera dependency list`](#係り受け解析のモデル) が表示します。
+
+メッセージは標準エラー出力に出ます。上の例の `6.2.0/`（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように `metadata.json` も `model.json` もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、`lindera dictionary download` の案内を出します。名前が `.` で始まる項目は、メッセージなしで飛ばします。
+
+### download
+
+CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。リリースが辞書と並べて公開する、係り受け解析のモデルは、`lindera dependency download` で取得します。[係り受け解析のモデルのダウンロード](#係り受け解析のモデルのダウンロード)を見てください。
+
+#### download パラメータ
+
+- 名前（必須）: 辞書の名前。`ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
+- `--force`: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える
+
+#### 保存場所
+
+`lindera dictionary download <辞書名>` は辞書を `<辞書ディレクトリ>/<辞書名>/` にインストールし、そのパス（`--dict` に渡す値）を表示します。辞書ディレクトリは環境変数 `LINDERA_DICTIONARIES_DIR` で指定し、デフォルトは OS のローカルデータディレクトリの `lindera/dictionaries` です。OS ごとのデフォルトの場所と、v7.0.0 より前の変数 `LINDERA_DATA_DIR` については [LINDERA_DICTIONARIES_DIR](../getting_started/environment_variables.md#lindera_dictionaries_dir) を参照してください。
+
+すでに置いてある完全な辞書は、`metadata.json` の `lindera_version` が CLI のバージョンと同じなら、そのまま使います。別のバージョンの Lindera がビルドした辞書や、v7.0.0 より前にビルドした辞書のように `metadata.json` にバージョンの記録がない辞書は、`--force` がなくても再ダウンロードし、標準エラー出力にそう表示します（例: `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`）。
+
+#### download の使用方法
+
+```shell
+% lindera dictionary download ipadic
+```
+
+```text
+Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/ipadic
+```
+
+端末では、1 行目の後に進捗の行が出ます。インストール先のパスは、辞書がすでにある場合も標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで受け取って `tokenize` に渡せます：
+
+```shell
+% DICT_DIR=$(lindera dictionary download ipadic)
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
+```
+
+注意事項：
+
+- アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。
+- 整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。
+- 最大の辞書（`ipadic-neologd`）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。
+
+### build
 
 Linderaで使用するための形態素解析辞書をCSVソースファイルからビルド（コンパイル）します。
 
-### ビルドパラメータ
+#### ビルドパラメータ
 
 - `--src` / `-s`: 辞書CSVファイルを含むソースディレクトリ（ユーザー辞書の場合は単一CSVファイル）
 - `--dest` / `-d`: コンパイルされた辞書の出力先ディレクトリ
@@ -658,9 +727,9 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
 - `--system-dict`: ユーザー辞書を組み合わせるシステム辞書。URI かディレクトリのパスで、`tokenize --dict` と同じ形で指定する（オプション。`--user` のときだけ）。指定すると、各行の文脈 ID をそのシステム辞書の接続コスト行列と照らし合わせて確認します（[文脈 ID の確認](#文脈-id-の確認) を参照）
 - `--context-id-freq` / `-f`: 接続コストIDの並び替えに使用するコンテキストID アクセス頻度ファイル（オプション。辞書の `metadata.json` で `connection_id_mapping: true` が設定されている場合にのみ意味を持ちます）
 
-### 辞書の種類
+#### 辞書の種類
 
-#### システム辞書 (System dictionary)
+##### システム辞書 (System dictionary)
 
 以下を含む完全な形態素解析辞書です：
 
@@ -669,13 +738,13 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
 - 未知語処理ルール
 - 文字種定義
 
-#### ユーザー辞書 (User dictionary)
+##### ユーザー辞書 (User dictionary)
 
 システム辞書と一緒に動作する、カスタム単語のための補助辞書です。
 
-### 文脈 ID の確認
+#### 文脈 ID の確認
 
-システム辞書をビルドするとき、`lindera build` は MeCab の `mecab-dict-index` と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。`lex.csv` の各行と `unk.def` の各行で、右文脈 ID は `matrix.def` のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の `matrix.def` で、`lex.csv` の 2 行目の右文脈 ID が 2 の場合は次のとおりです：
+システム辞書をビルドするとき、`lindera dictionary build` は MeCab の `mecab-dict-index` と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。`lex.csv` の各行と `unk.def` の各行で、右文脈 ID は `matrix.def` のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の `matrix.def` で、`lex.csv` の 2 行目の右文脈 ID が 2 の場合は次のとおりです：
 
 ```text
 Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
@@ -685,18 +754,18 @@ Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: righ
 - ID が軸の範囲外にある `matrix.def` の行もエラーになり、フィールドが 4 つ未満の `unk.def` の行もエラーになります。
 - ユーザー辞書（`--user`）を確認するのは、組み合わせるシステム辞書を `--system-dict` で指定したときだけです（次の段落を参照）。
 
-`--system-dict` を指定すると、`lindera build --user` はユーザー辞書の各行を、そのシステム辞書の接続コスト行列と同じ範囲で照らし合わせて確認します。簡易形式の行は、`metadata.json` の既定の文脈 ID（`default_left_context_id` と `default_right_context_id`）で確認します。行列の範囲外にある最初の行でビルドは失敗し、エラーはその行の CSV の行番号と表層形を示します。`.bin` ファイルは書き出しません。たとえば IPADIC の 1316 x 1316 の行列に対して、`userdic.csv` の 2 行目の左文脈 ID が 60000 の場合は次のとおりです：
+`--system-dict` を指定すると、`lindera dictionary build --user` はユーザー辞書の各行を、そのシステム辞書の接続コスト行列と同じ範囲で照らし合わせて確認します。簡易形式の行は、`metadata.json` の既定の文脈 ID（`default_left_context_id` と `default_right_context_id`）で確認します。行列の範囲外にある最初の行でビルドは失敗し、エラーはその行の CSV の行番号と表層形を示します。`.bin` ファイルは書き出しません。たとえば IPADIC の 1316 x 1316 の行列に対して、`userdic.csv` の 2 行目の左文脈 ID が 60000 の場合は次のとおりです：
 
 ```text
-% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+% lindera dictionary build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 ```
 
 `--system-dict` を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 `lindera tokenize --user-dict` がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（[文脈 ID](../concepts/user_dictionary.md#文脈-id) を参照）。`lindera tokenize --user-dict` に `.csv` を渡すと、読み込むときに `--dict` のシステム辞書に合わせてビルドするため、`--system-dict` と同じく CSV の行番号と表層形を示すエラーになります。
 
-### matrix.def にないセル
+#### matrix.def にないセル
 
-`matrix.def` は、すべてのセルを列挙しなくてもかまいません。`lindera build` は、`matrix.def` が列挙していないセルのコストを、MeCab の `mecab-dict-index` と同じく 0 にします。v6.2.0 までは、そうしたセルのコストは 32767（`i16::MAX`）で、その接続は非常に高いコストになっていました。たとえば次の `matrix.def` では、右文脈 ID 1 から左文脈 ID 0 と 1 への接続のコストが 10 と 20 になり、残りの 7 つのセルのコストは 0 になります。
+`matrix.def` は、すべてのセルを列挙しなくてもかまいません。`lindera dictionary build` は、`matrix.def` が列挙していないセルのコストを、MeCab の `mecab-dict-index` と同じく 0 にします。v6.2.0 までは、そうしたセルのコストは 32767（`i16::MAX`）で、その接続は非常に高いコストになっていました。たとえば次の `matrix.def` では、右文脈 ID 1 から左文脈 ID 0 と 1 への接続のコストが 10 と 20 になり、残りの 7 つのセルのコストは 0 になります。
 
 ```text
 3 3
@@ -704,11 +773,11 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 1 1 20
 ```
 
-同梱の辞書と、`lindera export` が書き出す `matrix.def` は、すべてのセルを列挙しているため、この規則で変わることはありません。
+同梱の辞書と、`lindera dictionary export` が書き出す `matrix.def` は、すべてのセルを列挙しているため、この規則で変わることはありません。
 
-### char.def と unk.def の確認
+#### char.def と unk.def の確認
 
-システム辞書をビルドするとき、`lindera build` は `mecab-dict-index` と同じく、`char.def` と `unk.def` を互いに照らし合わせて確認します：
+システム辞書をビルドするとき、`lindera dictionary build` は `mecab-dict-index` と同じく、`char.def` と `unk.def` を互いに照らし合わせて確認します：
 
 - `char.def` の範囲行が指すカテゴリは、それより前の行で定義されていること
 - 各カテゴリの定義は 1 回だけであること
@@ -721,35 +790,35 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
 ```
 
-`lindera train` も、学習の前に `--char-def` と `--unk-def` を同じように確認します（[学習パイプライン](../development/training_pipeline.md#3-文字定義-chardef)を参照）。
+`lindera dictionary train` も、学習の前に `--char-def` と `--unk-def` を同じように確認します（[学習パイプライン](../development/training_pipeline.md#3-文字定義-chardef)を参照）。
 
-### char.def の形式
+#### char.def の形式
 
 辞書の `metadata.json` は、`char_def_format` で `char.def` の形式を選びます（[#1388](https://github.com/lindera/lindera/issues/1388)）：
 
 - `"mecab"`（省略したときの既定）: MeCab の形式です。コードポイントのカテゴリは、それを覆う最後の行が決めます。その先頭のカテゴリ（既定のカテゴリ）だけが未知語を作ります。
 - `"sudachi"`: Sudachi の形式で、SudachiDict が使います。コードポイントは、それを覆うすべての行のカテゴリを持ちます。範囲行には、ファイルが定義したカテゴリのほかに、`ALL`（すべてのカテゴリ）と、フラグ `NOOOVBOW`（その文字から未知語を始めない）・`NOOOVEOW`（その文字の直後から未知語を始めない）を書けます。BMP の外のコードポイントも書けます。ファイルは `DEFAULT` を定義する必要があり、`ALL`・`NOOOVBOW`・`NOOOVEOW` をカテゴリとして定義することはできず、定義できるカテゴリは 64 個までです。未知語は、文字のすべてのカテゴリから、Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、Sudachi と同じく `DEFAULT` の 1 文字の未知語を置きます。空白（`--keep-whitespace`・`--disable-skip-whitespace`・左空白ペナルティが扱うもの）とみなすのは、カテゴリが `SPACE` だけの文字です。`ALL` がすべてのカテゴリに入れる結合文字や ZWJ などは、空白とみなしません。
 
-`lindera train` は、`--char-def` を MeCab の形式でだけ読みます。
+`lindera dictionary train` は、`--char-def` を MeCab の形式でだけ読みます。
 
-### 語彙の形式
+#### 語彙の形式
 
 辞書の `metadata.json` は、`lexicon_format` で語彙の CSV ファイルの形式を選びます（[#1389](https://github.com/lindera/lindera/issues/1389)）：
 
 - `"mecab"`（省略したときの既定）: MeCab の形式です。すべての欄を、書かれたとおりに読みます。
-- `"sudachi"`: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・`u`・16 進数 4 桁、またはバックスラッシュ・`u`・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、`http://` を `http:\u002f\u002f`、`1,2塁` を `1\u002c2塁` と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（`lindera build --user` にその `metadata.json` を渡したもの、またはその辞書と一緒に読み込む `.csv` ファイル）も、同じように復号します。
+- `"sudachi"`: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・`u`・16 進数 4 桁、またはバックスラッシュ・`u`・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、`http://` を `http:\u002f\u002f`、`1,2塁` を `1\u002c2塁` と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（`lindera dictionary build --user` にその `metadata.json` を渡したもの、またはその辞書と一緒に読み込む `.csv` ファイル）も、同じように復号します。
 
 `unk.def` は、どちらの形式でも書かれたとおりに読みます。Sudachi も同じです。
 
-### 文字コードとして読めない行
+#### 文字コードとして読めない行
 
 `encoding` が UTF-8 の辞書では、語彙の CSV ファイルの行が UTF-8 として読めないと、ビルドは失敗します。`encoding` の誤りには、これで気づけます。`metadata.json` に `"skip_invalid_encoding": true` があると、ビルダーはそういう行を飛ばし、ファイルと行番号を添えて警告します（[#1466](https://github.com/lindera/lindera/issues/1466)）。既定は `false` です。公式の辞書でこれを指定しているのは、JUMAN 辞書だけです。ソースの 6 行が、文字の途中で切れています（[ビルド](../lindera-jumandic/build.md#飛ばされる-6-行)を参照）。
 
 UTF-8 以外の文字コードでは、その文字コードの文字にならないバイト列は、置き換えの文字 U+FFFD になり、ビルドは続きます。この設定があると、そういうバイト列のある行も、同じように飛ばします。
 
-### 例
+#### 例
 
-#### IPADIC（日本語辞書）のビルド
+##### IPADIC（日本語辞書）のビルド
 
 ```shell
 # IPADICソースファイルのダウンロードと展開
@@ -757,84 +826,84 @@ UTF-8 以外の文字コードでは、その文字コードの文字になら�
 % tar zxvf /tmp/mecab-ipadic-2.7.0-20250920.tar.gz -C /tmp
 
 # 辞書のビルド
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ipadic-2.7.0-20250920 \
   --dest /tmp/lindera-ipadic-2.7.0-20250920 \
   --metadata ./lindera-ipadic/metadata.json
 ```
 
-#### IPADIC NEologd（日本語辞書）のビルド
+##### IPADIC NEologd（日本語辞書）のビルド
 
 ```shell
 % curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ipadic-neologd-0.0.7-20200820 \
   --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
   --metadata ./lindera-ipadic-neologd/metadata.json
 ```
 
-#### UniDic（日本語辞書）のビルド
+##### UniDic（日本語辞書）のビルド
 
 ```shell
 % curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
 % unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt
 ```
 
-#### CC-CEDICT（中国語辞書）のビルド
+##### CC-CEDICT（中国語辞書）のビルド
 
 ```shell
 % curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/CC-CEDICT-MeCab-0.1.0-20261021 \
   --dest /tmp/lindera-cc-cedict-0.1.0-20261021 \
   --metadata ./lindera-cc-cedict/metadata.json
 ```
 
-#### Jieba（中国語辞書）のビルド
+##### Jieba（中国語辞書）のビルド
 
 ```shell
 % curl -L -o /tmp/mecab-jieba-0.1.3.tar.gz "https://lindera.dev/mecab-jieba-0.1.3.tar.gz"
 % tar zxvf /tmp/mecab-jieba-0.1.3.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-jieba-0.1.3/dict-src \
   --dest /tmp/lindera-jieba-0.1.3 \
   --metadata ./lindera-jieba/metadata.json
 ```
 
-#### ko-dic（韓国語辞書）のビルド
+##### ko-dic（韓国語辞書）のビルド
 
 ```shell
 % curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
   --metadata ./lindera-ko-dic/metadata.json \
   --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 ```
 
-### ユーザー辞書のビルド
+#### ユーザー辞書のビルド
 
-#### IPADICユーザー辞書（日本語）のビルド
+##### IPADICユーザー辞書（日本語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
 - [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-ipadic#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-ipadic/metadata.json \
@@ -843,121 +912,81 @@ UTF-8 以外の文字コードでは、その文字コードの文字になら�
 
 `--system-dict embedded://ipadic`（またはビルド済みの IPADIC のパス）を加えると、各行の文脈 ID を IPADIC の接続コスト行列と照らし合わせて確認します（[文脈 ID の確認](#文脈-id-の確認) を参照）。
 
-#### UniDicユーザー辞書（日本語）のビルド
+##### UniDicユーザー辞書（日本語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
 - [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-unidic#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-unidic/metadata.json \
   --user
 ```
 
-#### SudachiDictユーザー辞書（日本語）のビルド
+##### SudachiDictユーザー辞書（日本語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
 - [Lindera SudachiDict Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-sudachidict#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/sudachidict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-sudachidict/metadata.json \
   --user
 ```
 
-#### CC-CEDICTユーザー辞書（中国語）のビルド
+##### CC-CEDICTユーザー辞書（中国語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
 - [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-cc-cedict#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
   --user
 ```
 
-#### Jiebaユーザー辞書（中国語）のビルド
+##### Jiebaユーザー辞書（中国語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
 - [Lindera Jieba Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/jieba_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-jieba/metadata.json \
   --user
 ```
 
-#### ko-dicユーザー辞書（韓国語）のビルド
+##### ko-dicユーザー辞書（韓国語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
 - [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-ko-dic#user-dictionary-format-csv)
 
 ```shell
-% lindera build \
+% lindera dictionary build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 ```
 
-## download
-
-CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、辞書ディレクトリにインストールします。リリースが辞書と並べて公開する、係り受け解析のモデルは、`lindera dependency download` で取得します。[係り受け解析のモデルのダウンロード](#係り受け解析のモデルのダウンロード)を見てください。
-
-### download パラメータ
-
-- 名前（必須）: 辞書の名前。`ipadic`, `ipadic-neologd`, `unidic`, `unidic-cwj`, `unidic-csj`, `sudachidict`, `jumandic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
-- `--force`: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える
-
-### 保存場所
-
-`lindera download <辞書名>` は辞書を `<辞書ディレクトリ>/<辞書名>/` にインストールし、そのパス（`--dict` に渡す値）を表示します。辞書ディレクトリは環境変数 `LINDERA_DICTIONARIES_DIR` で指定し、デフォルトは OS のローカルデータディレクトリの `lindera/dictionaries` です。OS ごとのデフォルトの場所と、v7.0.0 より前の変数 `LINDERA_DATA_DIR` については [LINDERA_DICTIONARIES_DIR](../getting_started/environment_variables.md#lindera_dictionaries_dir) を参照してください。
-
-すでに置いてある完全な辞書は、`metadata.json` の `lindera_version` が CLI のバージョンと同じなら、そのまま使います。別のバージョンの Lindera がビルドした辞書や、v7.0.0 より前にビルドした辞書のように `metadata.json` にバージョンの記録がない辞書は、`--force` がなくても再ダウンロードし、標準エラー出力にそう表示します（例: `Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera`）。
-
-### download の使用方法
-
-```shell
-% lindera download ipadic
-```
-
-```text
-Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
-Downloaded dictionary 'ipadic'
-/home/user/.local/share/lindera/dictionaries/ipadic
-```
-
-端末では、1 行目の後に進捗の行が出ます。インストール先のパスは、辞書がすでにある場合も標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで受け取って `tokenize` に渡せます：
-
-```shell
-% DICT_DIR=$(lindera download ipadic)
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
-```
-
-注意事項：
-
-- アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。
-- 整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。
-- 最大の辞書（`ipadic-neologd`）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。
-
-## train
+### train
 
 注釈付きコーパスデータから新しい形態素解析モデルを学習します。この機能を使用するには、`train` 機能フラグを有効にしてビルドする必要があります。（`train` 機能フラグはデフォルトで有効になっています。）
 
-### 学習パラメータ
+#### 学習パラメータ
 
 - `--seed` / `-s`: 重み付けを行うシード語彙ファイル（CSV形式）
 - `--corpus` / `-c`: 学習用コーパス（注釈付きテキスト）
@@ -974,9 +1003,9 @@ Downloaded dictionary 'ipadic'
 - `--max-threads` / `-t`: 最大スレッド数。1 以上 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)
 - `--break-characters <CHARS>` / `--disable-break-characters`: 未知語候補の区切り文字。`lindera tokenize` と同じ意味です（デフォルト: `・`）。辞書を使うときと同じ値で学習してください。コーパス自身のトークンは、境目をまたいでもそのまま使います
 
-### 基本的なワークフロー
+#### 基本的なワークフロー
 
-#### 1. 学習用ファイルの準備
+##### 1. 学習用ファイルの準備
 
 **シード語彙ファイル (seed.csv):**
 
@@ -998,7 +1027,7 @@ Downloaded dictionary 'ipadic'
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 ```
 
-このファイルは、`lindera build` が `lex.csv` を読むのと同じく CSV として読みます。フィールドは引用符で囲め（`",",0,0,0,...`）、`#` で始まる行はコメントではなくエントリです。詳しくは[種辞書](../development/training_pipeline.md#1-種辞書-seedcsv)を参照してください。
+このファイルは、`lindera dictionary build` が `lex.csv` を読むのと同じく CSV として読みます。フィールドは引用符で囲め（`",",0,0,0,...`）、`#` で始まる行はコメントではなくエントリです。詳しくは[種辞書](../development/training_pipeline.md#1-種辞書-seedcsv)を参照してください。
 
 **学習用コーパス (corpus.txt):**
 
@@ -1018,10 +1047,10 @@ EOS
 
 ファイルフォーマットや高度な機能の詳細については、[学習パイプライン](../development/training_pipeline.md) を参照してください。
 
-#### 2. モデルの学習
+##### 2. モデルの学習
 
 ```bash
-lindera train \
+lindera dictionary train \
   --seed ./resources/training/seed.csv \
   --corpus ./resources/training/corpus.txt \
   --unk-def ./resources/training/unk.def \
@@ -1032,9 +1061,9 @@ lindera train \
   --max-iterations 100
 ```
 
-#### 3. 学習結果
+##### 3. 学習結果
 
-`lindera train` はモデルを `--output` のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（[学習のしくみ](../development/training_pipeline.md#学習のしくみ)を参照）。`./resources/training/` のファイルでは次のとおりです：
+`lindera dictionary train` はモデルを `--output` のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（[学習のしくみ](../development/training_pipeline.md#学習のしくみ)を参照）。`./resources/training/` のファイルでは次のとおりです：
 
 ```text
 Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
@@ -1057,18 +1086,18 @@ L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient
 
 シード辞書にないコーパスの語は、語として追加されません。それらは `unk.def` のエントリか、学習されるもののエクスポートされない仮想ラベルを通じて学習されます。
 
-## export
+### export
 
 学習済みモデルファイルをLindera辞書フォーマットのファイルにエクスポートします。この機能を使用するには、`train` 機能フラグを有効にしてビルドする必要があります。
 
-### エクスポートパラメータ
+#### エクスポートパラメータ
 
 - `--model` / `-m`: 学習済みモデルファイル（.dat形式）のパス
 - `--output` / `-o`: 辞書ファイルの出力先ディレクトリ
 - `--metadata`: オプションの metadata.json ファイル（学習済みモデル情報で更新されます）
 - `--cost-factor`: 重みからコストへの変換係数を上書き（デフォルト: 学習済みモデルの値、通常は700）
 
-### 出力ファイル
+#### 出力ファイル
 
 エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：
 
@@ -1082,20 +1111,20 @@ L-BFGS stopped after 8 iterations and 9 evaluations of the loss and its gradient
 - `right-id.def`: 右文脈IDから素性文字列へのマッピング
 - `metadata.json`: 更新されたメタデータファイル（`--metadata` オプションが指定された場合）
 
-### モデルの形式バージョン
+#### モデルの形式バージョン
 
-`lindera export` が読み込めるのは、現在の形式バージョン（3.0.0）のモデルだけです。それより前のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、`lindera train` で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：
+`lindera dictionary export` が読み込めるのは、現在の形式バージョン（3.0.0）のモデルだけです。それより前のバージョンで書かれた `model.dat`（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、`lindera dictionary train` で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：
 
 ```text
-Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera dictionary train` to regenerate it. }
 ```
 
-### 完全なワークフロー例
+#### 完全なワークフロー例
 
-#### 1. モデルの学習
+##### 1. モデルの学習
 
 ```bash
-lindera train \
+lindera dictionary train \
   --seed ./resources/training/seed.csv \
   --corpus ./resources/training/corpus.txt \
   --unk-def ./resources/training/unk.def \
@@ -1106,25 +1135,25 @@ lindera train \
   --max-iterations 100
 ```
 
-#### 2. 辞書フォーマットへのエクスポート
+##### 2. 辞書フォーマットへのエクスポート
 
 ```bash
-lindera export \
+lindera dictionary export \
   --model /tmp/lindera/training/model.dat \
   --metadata ./resources/training/metadata.json \
   --output /tmp/lindera/training/dictionary
 ```
 
-#### 3. 辞書のビルド
+##### 3. 辞書のビルド
 
 ```bash
-lindera build \
+lindera dictionary build \
   --src /tmp/lindera/training/dictionary \
   --dest /tmp/lindera/training/compiled_dictionary \
   --metadata /tmp/lindera/training/dictionary/metadata.json
 ```
 
-#### 4. 学習済み辞書の使用
+##### 4. 学習済み辞書の使用
 
 ```bash
 echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
@@ -1142,7 +1171,7 @@ echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/t
 EOS
 ```
 
-### メタデータ更新機能
+#### メタデータ更新機能
 
 `--metadata` オプションが指定されると、エクスポートコマンドは以下の処理を行います：
 
@@ -1181,7 +1210,7 @@ lindera dependency <SUBCOMMAND>
 `parse` には、分かち書きに使う辞書に合ったモデルが要ります。モデルは `dependency download` で取得します。
 
 ```bash
-DICT=$(lindera download ipadic)
+DICT=$(lindera dictionary download ipadic)
 MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 ```
@@ -1196,7 +1225,7 @@ echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" -
 
 ```shell
 % MODEL=$(lindera dependency download ipadic)
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 ```

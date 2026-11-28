@@ -182,7 +182,7 @@ libc=$(getconf GNU_LIBC_VERSION 2> /dev/null || uname -sr)
 if [ -z "$dict" ] && [ "$dictionary" != ipadic ]; then
     mkdir -p "$work/dictionaries"
     dict=$(env -u LINDERA_DATA_DIR LINDERA_DICTIONARIES_DIR="$work/dictionaries" \
-        "$bin" download "$dictionary")
+        "$bin" dictionary download "$dictionary")
 fi
 if [ "$dictionary" = ipadic ] && [ -z "$dict" ]; then
     dict=embedded://ipadic

@@ -1,5 +1,7 @@
 # Migrating from v6 to v7
 
+> **Note:** From v7.1.0 on, the commands on dictionaries are subcommands of `lindera dictionary`: `lindera dictionary build` for `lindera build`, and likewise for `list`, `download`, `train` and `export`. This guide keeps the names of the version it describes, which run through v7.x with a deprecation warning and are removed in v8.0.0. See [Migrating from v7.0 to v7.1](./migration_v7_0_to_v7_1.md#the-commands-on-dictionaries-are-under-lindera-dictionary).
+
 Lindera v7.0.0 turns the `lindera` crate into a facade: it re-exports the
 morphological segmenter, now published as `lindera-segmenter`, and — through
 the new `analysis` feature, on by default — the analysis chain of

@@ -18,6 +18,7 @@ mod dictionary_registry;
 use commands::build::BuildArgs;
 #[cfg(feature = "dependency")]
 use commands::dependency::DependencyArgs;
+use commands::dictionary::{DictionaryArgs, DictionaryCommand};
 use commands::download::DownloadArgs;
 #[cfg(feature = "train")]
 use commands::export::ExportArgs;
@@ -38,18 +39,35 @@ struct Args {
     command: Commands,
 }
 
+// The subcommands of `lindera`: an operation of its own, `tokenize`, and
+// one command for each object with operations, `dictionary` and
+// `dependency` (#1482, #1483).
+//
+// The five hidden ones are the operations on dictionaries under the names
+// they had as subcommands of `lindera` up to v7.0.0. They run what
+// `lindera dictionary` runs, after a deprecation warning, and are removed
+// in v8.0.0.
+//
+// Not a documentation comment: clap would take it for the help of the
+// command.
 #[derive(Debug, Subcommand)]
 enum Commands {
-    List(ListArgs),
     Tokenize(TokenizeArgs),
-    Build(BuildArgs),
-    Download(DownloadArgs),
-    #[cfg(feature = "train")]
-    Train(TrainArgs),
-    #[cfg(feature = "train")]
-    Export(ExportArgs),
+    Dictionary(DictionaryArgs),
     #[cfg(feature = "dependency")]
     Dependency(DependencyArgs),
+    #[clap(hide = true)]
+    List(ListArgs),
+    #[clap(hide = true)]
+    Download(DownloadArgs),
+    #[clap(hide = true)]
+    Build(BuildArgs),
+    #[cfg(feature = "train")]
+    #[clap(hide = true)]
+    Train(TrainArgs),
+    #[cfg(feature = "train")]
+    #[clap(hide = true)]
+    Export(ExportArgs),
 }
 
 /// Installs the logger, so that the warnings of the library crates reach
@@ -68,16 +86,19 @@ fn main() -> ExitCode {
     let args = Args::parse();
 
     let result = match args.command {
-        Commands::List(args) => commands::list::list(args),
         Commands::Tokenize(args) => commands::tokenize::tokenize(args),
-        Commands::Build(args) => commands::build::build(args),
-        Commands::Download(args) => commands::download::download(args),
-        #[cfg(feature = "train")]
-        Commands::Train(args) => commands::train::train(args),
-        #[cfg(feature = "train")]
-        Commands::Export(args) => commands::export::export(args),
+        Commands::Dictionary(args) => commands::dictionary::dictionary(args),
         #[cfg(feature = "dependency")]
         Commands::Dependency(args) => commands::dependency::dependency(args),
+        Commands::List(args) => commands::dictionary::deprecated(DictionaryCommand::List(args)),
+        Commands::Download(args) => {
+            commands::dictionary::deprecated(DictionaryCommand::Download(args))
+        }
+        Commands::Build(args) => commands::dictionary::deprecated(DictionaryCommand::Build(args)),
+        #[cfg(feature = "train")]
+        Commands::Train(args) => commands::dictionary::deprecated(DictionaryCommand::Train(args)),
+        #[cfg(feature = "train")]
+        Commands::Export(args) => commands::dictionary::deprecated(DictionaryCommand::Export(args)),
     };
 
     match result {

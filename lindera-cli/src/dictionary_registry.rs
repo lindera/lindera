@@ -469,7 +469,7 @@ pub(crate) fn resolve_dictionary_arg(
             let note = if is_complete_dictionary_dir(&dir) || !is_downloadable_dictionary(value) {
                 String::new()
             } else {
-                format!(" (not downloaded yet; run 'lindera download {value}')")
+                format!(" (not downloaded yet; run 'lindera dictionary download {value}')")
             };
             (dir.display().to_string(), note)
         }
@@ -746,7 +746,10 @@ mod tests {
         );
         let dir = dictionary_dir(tmp.path(), "ipadic");
         assert!(message.contains(&dir.display().to_string()), "{message}");
-        assert!(message.contains("lindera download ipadic"), "{message}");
+        assert!(
+            message.contains("lindera dictionary download ipadic"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -765,7 +768,10 @@ mod tests {
         assert!(message.contains("--system-dict"), "{message}");
         assert!(message.contains("embedded://ipadic"), "{message}");
         assert!(!message.contains("does not embed"), "{message}");
-        assert!(!message.contains("lindera download"), "{message}");
+        assert!(
+            !message.contains("lindera dictionary download"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -778,7 +784,10 @@ mod tests {
             tmp.path(),
         );
         assert!(message.contains("embedded://custom-dic"), "{message}");
-        assert!(!message.contains("lindera download"), "{message}");
+        assert!(
+            !message.contains("lindera dictionary download"),
+            "{message}"
+        );
     }
 
     #[test]

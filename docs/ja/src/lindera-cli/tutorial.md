@@ -18,10 +18,10 @@ Lindera CLIをインストールします：
 
 ## 2. 辞書のダウンロード
 
-GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は辞書ディレクトリ（Linux では `~/.local/share/lindera/dictionaries/ipadic`）にインストールされ、`lindera download` がそのパスを表示します。以降の手順のために `DICT_DIR` に受け取ります：
+GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は辞書ディレクトリ（Linux では `~/.local/share/lindera/dictionaries/ipadic`）にインストールされ、`lindera dictionary download` がそのパスを表示します。以降の手順のために `DICT_DIR` に受け取ります：
 
 ```shell
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 ```
 
 利用可能な辞書名と保存場所については[コマンド](commands.md#download)を参照してください。

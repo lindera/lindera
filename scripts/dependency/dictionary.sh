@@ -45,7 +45,7 @@ parse_dictionary_arguments() {
 }
 
 # Sets `dict` when `--dict` did not: the embedded IPADIC, or the dictionary
-# `lindera download` installs into <data directory>/dictionaries.
+# `lindera dictionary download` installs into <data directory>/dictionaries.
 resolve_dictionary() {
     local root=$1 data=$2
     if [ -n "$dict" ]; then
@@ -59,9 +59,9 @@ resolve_dictionary() {
     mkdir -p "$data/dictionaries"
     # The path is the only line of the standard output.
     dict=$(env -u LINDERA_DATA_DIR LINDERA_DICTIONARIES_DIR="$data/dictionaries" \
-        "$root/target/release/lindera" download "$dictionary")
+        "$root/target/release/lindera" dictionary download "$dictionary")
     if [ ! -d "$dict" ]; then
-        echo "lindera download $dictionary did not give a directory: $dict" >&2
+        echo "lindera dictionary download $dictionary did not give a directory: $dict" >&2
         exit 1
     fi
 }
