@@ -177,6 +177,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="migrating-from-v6-to-v7"><a class="header" href="#migrating-from-v6-to-v7">Migrating from v6 to v7</a></h1>
+<blockquote>
+<p><strong>Note:</strong> From v7.1.0 on, the commands on dictionaries are subcommands of <code>lindera dictionary</code>: <code>lindera dictionary build</code> for <code>lindera build</code>, and likewise for <code>list</code>, <code>download</code>, <code>train</code> and <code>export</code>. This guide keeps the names of the version it describes, which run through v7.x with a deprecation warning and are removed in v8.0.0. See <a href="./migration_v7_0_to_v7_1.html#the-commands-on-dictionaries-are-under-lindera-dictionary">Migrating from v7.0 to v7.1</a>.</p>
+</blockquote>
 <p>Lindera v7.0.0 turns the <code>lindera</code> crate into a facade: it re-exports the
 morphological segmenter, now published as <code>lindera-segmenter</code>, and — through
 the new <code>analysis</code> feature, on by default — the analysis chain of

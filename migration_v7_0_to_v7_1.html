@@ -187,6 +187,7 @@
 </div>
 <p>Code that reads the tokens a tokenizer returns is not affected: <code>surface</code>, <code>byte_start</code>, <code>details()</code>, <code>as_value()</code> and the other fields and methods are what they were.</p>
 <p>v7.1 adds bunsetsu dependency analysis (<a href="./lindera-dependency.html">Lindera Dependency</a>), and the change of <code>Token</code> comes with it. The rest of what v7.1 adds needs no change of existing code; <a href="#what-does-not-change">What does not change</a> lists what a user may notice.</p>
+<p>v7.1 also deprecates the names of five commands, without breaking them: see <a href="#the-commands-on-dictionaries-are-under-lindera-dictionary">The commands on dictionaries are under <code>lindera dictionary</code></a>.</p>
 <h2 id="token-is-built-with-tokennew"><a class="header" href="#token-is-built-with-tokennew"><code>Token</code> is built with <code>Token::new</code></a></h2>
 <p><code>Token</code> gets a field for the result of a dependency analysis, read with <code>Token::dependency()</code>, which is <code>None</code> unless a token filter that analyzes dependencies ran (<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>). Adding a field breaks every struct expression of the type, so the type is <code>#[non_exhaustive]</code> from now on: a field that is added later will not break code again.</p>
 <p>Outside the crate of the type, a <code>#[non_exhaustive]</code> struct cannot be built with a struct expression, and a pattern over its fields needs <code>..</code>. This is code that makes tokens by hand, which is mostly the tests of a custom token filter.</p>
@@ -230,12 +231,30 @@
 <p><code>lindera_dictionary::dictionary::Dictionary::save_to_path</code> is gone (<a href="https://github.com/lindera/lindera/issues/1446">#1446</a>). It was in the API since v1.0.0 and never had an implementation: it created the directory it was given and then panicked, in every call. Code that calls it no longer compiles:</p>
 <pre><code class="language-text">error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
 </code></pre>
-<p>Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; <a href="./lindera-cli/commands.html"><code>lindera build</code></a> makes one from its sources, and <a href="./lindera-cli/commands.html"><code>lindera download</code></a> installs a published one.</p>
+<p>Nothing replaces it: Lindera does not write a loaded dictionary. A dictionary is a directory of files, and a copy of the directory is the same dictionary; <a href="./lindera-cli/commands.html"><code>lindera dictionary build</code></a> makes one from its sources, and <a href="./lindera-cli/commands.html"><code>lindera dictionary download</code></a> installs a published one.</p>
 <h2 id="metadata-has-a-new-field"><a class="header" href="#metadata-has-a-new-field"><code>Metadata</code> has a new field</a></h2>
 <p><code>lindera_dictionary::dictionary::metadata::Metadata</code> has the field <code>skip_invalid_encoding: bool</code> (<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>), which the JUMAN dictionary needs: with it, the builder skips a row of a lexicon CSV file that is not text in the encoding of the dictionary, and warns of it (see <a href="./lindera-cli/commands.html#rows-that-are-not-in-the-encoding">the <code>build</code> command</a>). <code>Metadata</code> is not <code>#[non_exhaustive]</code>, so a struct expression that names every field no longer compiles:</p>
 <pre><code class="language-text">error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_dictionary::dictionary::metadata::Metadata`
 </code></pre>
 <p>Add <code>skip_invalid_encoding: false</code>, which is what every build did before, or end the expression with <code>..Default::default()</code>, which later fields then do not break. Code that reads a <code>metadata.json</code>, that starts from <code>Metadata::default()</code> or that calls <code>Metadata::new</code> is not affected: a <code>metadata.json</code> without the field reads as <code>false</code>, and one that has <code>false</code> is written without it.</p>
+<h2 id="the-commands-on-dictionaries-are-under-lindera-dictionary"><a class="header" href="#the-commands-on-dictionaries-are-under-lindera-dictionary">The commands on dictionaries are under <code>lindera dictionary</code></a></h2>
+<p>This is a deprecation, not a breaking change: the command lines of v7.0 run as they did.</p>
+<p>The command line names the object first and the operation after it (<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>, <a href="https://github.com/lindera/lindera/issues/1483">#1483</a>): <code>lindera dependency</code> has the operations of the dependency analysis, and <code>lindera dictionary</code> those on dictionaries, which were subcommands of <code>lindera</code> itself.</p>
+<div class="table-wrapper"><table><thead><tr><th>v7.0</th><th>v7.1</th></tr></thead><tbody>
+<tr><td><code>lindera list</code></td><td><code>lindera dictionary list</code></td></tr>
+<tr><td><code>lindera download</code></td><td><code>lindera dictionary download</code></td></tr>
+<tr><td><code>lindera build</code></td><td><code>lindera dictionary build</code></td></tr>
+<tr><td><code>lindera train</code></td><td><code>lindera dictionary train</code></td></tr>
+<tr><td><code>lindera export</code></td><td><code>lindera dictionary export</code></td></tr>
+</tbody></table>
+</div>
+<p>The options, the standard output and the exit codes are the same. <code>lindera tokenize</code> keeps its name.</p>
+<p>The names of v7.0 still run. Each writes one line to stderr before it does what the new command does:</p>
+<pre><code class="language-text">Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+</code></pre>
+<p><code>lindera --help</code> does not list them, and v8.0.0 removes them. Change the name where a script calls one of the five; until then, the script sees one more line on stderr, and nothing else differs.</p>
+<p>The messages that name one of these commands name the new one, such as the hint of <code>lindera dictionary list</code> in an empty dictionaries directory (<code>run 'lindera dictionary download &lt;name&gt;' to download one</code>) and the error for a dictionary of another format version (<code>rebuild it with `lindera dictionary build` </code>). The libraries write the same text, so the bindings show it too.</p>
+<p>See <a href="./lindera-cli/commands.html#dictionary">Commands</a>.</p>
 <h2 id="what-does-not-change"><a class="header" href="#what-does-not-change">What does not change</a></h2>
 <ul>
 <li>The JSON that <code>Token::as_value</code> and <code>lindera tokenize -o json</code> write has no new key for a token without a dependency.</li>
@@ -243,7 +262,7 @@
 <li>A token grows by the size of one pointer.</li>
 <li>The <code>lindera</code> command and the bindings have the <code>dependency</code> feature in their default builds: the token filter <code>japanese_dependency</code> is in the packages, and they depend on the <code>lindera-dependency</code> crate, which has no dependency of its own. The command grows by 134 kB. <code>default-features = false</code> gives the build without it. The libraries <code>lindera</code> and <code>lindera-analysis</code> have the feature only when it is named.</li>
 <li>No model is in a package or embedded by default; <code>lindera dependency download ipadic</code> gets the one for IPADIC, and <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> the ones for UniDic.</li>
-<li>There is a tenth dictionary, the <a href="./lindera-jumandic.html">JUMAN dictionary</a> (<code>jumandic</code>, the crate <code>lindera-jumandic</code>, the feature <code>embed-jumandic</code>), built from mecab-jumandic 7.0-20130310 (<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>). No default build embeds it, and <code>lindera download jumandic</code> gets it. No model of the dependency parser is published for it; the model CaboCha distributes for JUMAN <a href="./lindera-dependency/cabocha_models.html">can be converted</a> into one.</li>
+<li>There is a tenth dictionary, the <a href="./lindera-jumandic.html">JUMAN dictionary</a> (<code>jumandic</code>, the crate <code>lindera-jumandic</code>, the feature <code>embed-jumandic</code>), built from mecab-jumandic 7.0-20130310 (<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>). No default build embeds it, and <code>lindera dictionary download jumandic</code> gets it. No model of the dependency parser is published for it; the model CaboCha distributes for JUMAN <a href="./lindera-dependency/cabocha_models.html">can be converted</a> into one.</li>
 </ul>
 
                     </main>

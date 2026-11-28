@@ -187,6 +187,7 @@
 </div>
 <p>トークナイザーが返したトークンを読むコードは、影響を受けません。<code>surface</code>、<code>byte_start</code>、<code>details()</code>、<code>as_value()</code> などの欄とメソッドは、これまでどおりです。</p>
 <p>v7.1 は、文節の係り受け解析（<a href="./lindera-dependency.html">Lindera Dependency</a>）を足します。<code>Token</code> の変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、<a href="#%E5%A4%89%E3%82%8F%E3%82%89%E3%81%AA%E3%81%84%E3%81%93%E3%81%A8">変わらないこと</a>に挙げます。</p>
+<p>v7.1 は、5 つのコマンドの名前を非推奨にもします。動かなくなるものはありません。<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF-lindera-dictionary-%E3%81%AE%E4%B8%8B%E3%81%AB">辞書のコマンドは <code>lindera dictionary</code> の下に</a>を参照してください。</p>
 <h2 id="token-は-tokennew-で作る"><a class="header" href="#token-は-tokennew-で作る"><code>Token</code> は <code>Token::new</code> で作る</a></h2>
 <p><code>Token</code> に、係り受け解析の結果を持つ欄が加わりました。<code>Token::dependency()</code> で読み、係り受けを解析するトークンフィルターを使わなければ <code>None</code> です（<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>）。欄を足すと、この型の構造体式がすべて壊れます。そこで、この型を <code>#[non_exhaustive]</code> にしました。今後は、欄を足してもコードが壊れません。</p>
 <p><code>#[non_exhaustive]</code> の構造体は、その型のクレートの外では、構造体式で作れません。欄のパターンには <code>..</code> が必要です。該当するのは、トークンを手で作るコードで、多くは自作のトークンフィルターのテストです。</p>
@@ -230,12 +231,30 @@
 <p><code>lindera_dictionary::dictionary::Dictionary::save_to_path</code> を削除しました（<a href="https://github.com/lindera/lindera/issues/1446">#1446</a>）。v1.0.0 から API にありましたが、実装されたことがありません。渡されたディレクトリを作ったあと、どの呼び出しでも panic していました。これを呼ぶコードは、コンパイルできなくなります。</p>
 <pre><code class="language-text">error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
 </code></pre>
-<p>代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには <a href="./lindera-cli/commands.html"><code>lindera build</code></a> を、公開されている辞書を入れるには <a href="./lindera-cli/commands.html"><code>lindera download</code></a> を使います。</p>
+<p>代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには <a href="./lindera-cli/commands.html"><code>lindera dictionary build</code></a> を、公開されている辞書を入れるには <a href="./lindera-cli/commands.html"><code>lindera dictionary download</code></a> を使います。</p>
 <h2 id="metadata-に欄が増えた"><a class="header" href="#metadata-に欄が増えた"><code>Metadata</code> に欄が増えた</a></h2>
 <p><code>lindera_dictionary::dictionary::metadata::Metadata</code> に、欄 <code>skip_invalid_encoding: bool</code> が増えました（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。JUMAN 辞書に必要な設定です。これがあると、ビルダーは、語彙の CSV ファイルの行が辞書の文字コードのテキストとして読めないときに、その行を飛ばして警告します（<a href="./lindera-cli/commands.html#%E6%96%87%E5%AD%97%E3%82%B3%E3%83%BC%E3%83%89%E3%81%A8%E3%81%97%E3%81%A6%E8%AA%AD%E3%82%81%E3%81%AA%E3%81%84%E8%A1%8C"><code>build</code> コマンド</a>を参照）。<code>Metadata</code> は <code>#[non_exhaustive]</code> ではないので、全部の欄を書いた構造体式は、コンパイルできなくなります。</p>
 <pre><code class="language-text">error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_dictionary::dictionary::metadata::Metadata`
 </code></pre>
 <p><code>skip_invalid_encoding: false</code> を足してください。これまでのビルドと同じ動きです。または、式の最後に <code>..Default::default()</code> を書いてください。こう書くと、今後に欄が増えても影響を受けません。<code>metadata.json</code> を読むコード、<code>Metadata::default()</code> から始めるコード、<code>Metadata::new</code> を呼ぶコードは、影響を受けません。この欄の無い <code>metadata.json</code> は <code>false</code> として読まれ、<code>false</code> のときは、書き出すファイルにこの欄は入りません。</p>
+<h2 id="辞書のコマンドは-lindera-dictionary-の下に"><a class="header" href="#辞書のコマンドは-lindera-dictionary-の下に">辞書のコマンドは <code>lindera dictionary</code> の下に</a></h2>
+<p>これは非推奨で、破壊的変更ではありません。v7.0 のコマンドラインは、これまでどおり動きます。</p>
+<p>コマンドラインは、先に対象を、その後に操作を書く形になりました（<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>、<a href="https://github.com/lindera/lindera/issues/1483">#1483</a>）。係り受け解析の操作は <code>lindera dependency</code> に、辞書の操作は <code>lindera dictionary</code> にあります。辞書の操作は、これまで <code>lindera</code> 自身のサブコマンドでした。</p>
+<div class="table-wrapper"><table><thead><tr><th>v7.0</th><th>v7.1</th></tr></thead><tbody>
+<tr><td><code>lindera list</code></td><td><code>lindera dictionary list</code></td></tr>
+<tr><td><code>lindera download</code></td><td><code>lindera dictionary download</code></td></tr>
+<tr><td><code>lindera build</code></td><td><code>lindera dictionary build</code></td></tr>
+<tr><td><code>lindera train</code></td><td><code>lindera dictionary train</code></td></tr>
+<tr><td><code>lindera export</code></td><td><code>lindera dictionary export</code></td></tr>
+</tbody></table>
+</div>
+<p>オプション・標準出力・終了コードは変わりません。<code>lindera tokenize</code> の名前はそのままです。</p>
+<p>v7.0 の名前は今も動きます。新しいコマンドと同じことをする前に、標準エラー出力へ 1 行を書きます。</p>
+<pre><code class="language-text">Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+</code></pre>
+<p><code>lindera --help</code> の一覧には出ず、v8.0.0 で削除します。スクリプトが 5 つのどれかを呼んでいるなら、名前を変えてください。変えるまでは、標準エラー出力に 1 行増えるだけで、ほかは変わりません。</p>
+<p>これらのコマンドを案内するメッセージは、新しい名前を書きます。たとえば、辞書のディレクトリが空のときの <code>lindera dictionary list</code> の案内（<code>run 'lindera dictionary download &lt;name&gt;' to download one</code>）や、形式の版が違う辞書のエラー（<code>rebuild it with `lindera dictionary build` </code>）です。ライブラリが同じ文を書くので、バインディングにも同じ文が出ます。</p>
+<p><a href="./lindera-cli/commands.html#dictionary">コマンド</a> を参照してください。</p>
 <h2 id="変わらないこと"><a class="header" href="#変わらないこと">変わらないこと</a></h2>
 <ul>
 <li><code>Token::as_value</code> と <code>lindera tokenize -o json</code> が書く JSON は、係り受けを持たないトークンでは、キーが増えません。</li>
@@ -243,7 +262,7 @@
 <li>トークンは、ポインター 1 つ分だけ大きくなります。</li>
 <li><code>lindera</code> コマンドとバインディングは、既定のビルドに <code>dependency</code> feature を持ちます。トークンフィルター <code>japanese_dependency</code> がパッケージに入り、<code>lindera-dependency</code> クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。<code>default-features = false</code> で、入っていないビルドになります。ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は、feature を指定したときだけ持ちます。</li>
 <li>モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、<code>lindera dependency download ipadic</code> で取得します。UniDic のモデルは、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> で取得します。</li>
-<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera download jumandic</code> で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</li>
+<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera dictionary download jumandic</code> で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</li>
 </ul>
 
                     </main>

@@ -4702,10 +4702,10 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 </ul>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
 <p>Lindera はバイナリに辞書を同梱していません。最も簡単な入手方法は <code>download</code> サブコマンドで、CLI と同じバージョンのビルド済み辞書を取得して辞書ディレクトリ（Linux では <code>~/.local/share/lindera/dictionaries/ipadic</code>）にインストールし、<code>--dict</code> に渡すパスを表示します：</p>
-<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+<pre><code class="language-shell">% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 </code></pre>
-<p>利用可能な辞書名と保存場所については<a href="lindera-cli/commands.html#download">コマンド</a>を、置いてある辞書の一覧については <a href="lindera-cli/commands.html#list"><code>lindera list</code></a> を参照してください。</p>
+<p>利用可能な辞書名と保存場所については<a href="lindera-cli/commands.html#download">コマンド</a>を、置いてある辞書の一覧については <a href="lindera-cli/commands.html#list"><code>lindera dictionary list</code></a> を参照してください。</p>
 <p>または、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページからビルド済み辞書を手動でダウンロードすることもできます：</p>
 <pre><code class="language-shell"># 例: IPADIC 辞書のダウンロードと展開
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
@@ -4736,11 +4736,11 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <h4 id="unidic-cwj日本語辞書"><a class="header" href="#unidic-cwj日本語辞書">UniDic CWJ（日本語辞書）</a></h4>
 <pre><code class="language-shell">% cargo build --release --features=embed-unidic-cwj
 </code></pre>
-<p>実行ファイルは 1.2 GB の辞書を含み、ビルドには 11 GiB ほどのメモリを使います。<code>lindera download unidic-cwj</code> なら、埋め込まずに辞書を取得できます。</p>
+<p>実行ファイルは 1.2 GB の辞書を含み、ビルドには 11 GiB ほどのメモリを使います。<code>lindera dictionary download unidic-cwj</code> なら、埋め込まずに辞書を取得できます。</p>
 <h4 id="unidic-csj日本語辞書"><a class="header" href="#unidic-csj日本語辞書">UniDic CSJ（日本語辞書）</a></h4>
 <pre><code class="language-shell">% cargo build --release --features=embed-unidic-csj
 </code></pre>
-<p>実行ファイルは 1.2 GB の辞書を含み、ビルドには、UniDic CWJ と同じく 8〜11 GiB のメモリを使います。<code>lindera download unidic-csj</code> なら、埋め込まずに辞書を取得できます。</p>
+<p>実行ファイルは 1.2 GB の辞書を含み、ビルドには、UniDic CWJ と同じく 8〜11 GiB のメモリを使います。<code>lindera dictionary download unidic-csj</code> なら、埋め込まずに辞書を取得できます。</p>
 <h4 id="sudachidict日本語辞書"><a class="header" href="#sudachidict日本語辞書">SudachiDict（日本語辞書）</a></h4>
 <pre><code class="language-shell">% cargo build --release --features=embed-sudachidict
 </code></pre>
@@ -4764,14 +4764,18 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <p>詳細は <a href="lindera-cli/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="コマンド-2"><a class="header" href="#コマンド-2">コマンド</a></h1>
-<p>Lindera CLI は7つのメインコマンドを提供します：</p>
+<p>Lindera CLI は3つのメインコマンドを提供します：</p>
+<ul>
+<li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
+<li><strong>dictionary</strong> - 辞書を扱う。操作ごとにサブコマンドがあります：
 <ul>
 <li><strong>list</strong> - 形態素解析辞書の一覧と状態を表示</li>
-<li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
-<li><strong>build</strong> - ソースCSVファイルから辞書をビルド</li>
 <li><strong>download</strong> - GitHub リリースページから学習済み辞書をダウンロード</li>
+<li><strong>build</strong> - ソースCSVファイルから辞書をビルド</li>
 <li><strong>train</strong> - 注釈付きコーパスデータからCRFモデルを学習</li>
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
+</ul>
+</li>
 <li><strong>dependency</strong> - 文節の係り受けを解析し、解析のモデルを学習・評価</li>
 </ul>
 <h2 id="警告とログメッセージ"><a class="header" href="#警告とログメッセージ">警告とログメッセージ</a></h2>
@@ -4783,33 +4787,12 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <h2 id="標準出力に読み手がいないとき"><a class="header" href="#標準出力に読み手がいないとき">標準出力に読み手がいないとき</a></h2>
 <p>コマンドの標準出力を読むプログラムが先に終わると（<code>head</code> は欲しい行を読むと終わります）、コマンドは終了コード 0 で、メッセージを出さずに終わります。</p>
 <ul>
-<li><code>tokenize</code>・<code>list</code>・<code>download</code> は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。<code>tokenize</code> は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。</li>
-<li><code>train</code>・<code>export</code> は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。</li>
+<li><code>tokenize</code>・<code>dictionary list</code>・<code>dictionary download</code> は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。<code>tokenize</code> は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。</li>
+<li><code>dictionary train</code>・<code>dictionary export</code> は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。</li>
 <li><code>dependency parse</code>・<code>dependency evaluate</code>・<code>dependency list</code>・<code>dependency download</code> は結果を標準出力に書き、<code>tokenize</code> と同じく、読み手のいない最初の書き込みで止まります。<code>dependency</code> のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。</li>
 </ul>
-<p>標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（<code>download</code> の進捗や通知、<code>list</code> の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。</p>
+<p>標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（<code>dictionary download</code> の進捗や通知、<code>dictionary list</code> の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。</p>
 <p>v6.2.0 までは、コマンドは失敗していました。<a href="lindera-cli/../migration_v6_to_v7.html#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF%E6%A8%99%E6%BA%96%E5%87%BA%E5%8A%9B%E3%81%AB%E8%AA%AD%E3%81%BF%E6%89%8B%E3%81%8C%E3%81%84%E3%81%AA%E3%81%84%E3%81%A8%E3%81%8D%E9%9D%99%E3%81%8B%E3%81%AB%E7%B5%82%E3%82%8F%E3%82%8B">移行ガイド</a>を参照してください。</p>
-<h2 id="list"><a class="header" href="#list">list</a></h2>
-<p><code>--dict</code> に渡せる辞書の一覧を表示します。（<code>embed-*</code> feature フラグ経由で）バイナリに埋め込まれた辞書と、<code>lindera download</code> が辞書を置く辞書ディレクトリにある辞書を、それぞれをビルドした Lindera のバージョンとともに表示します。</p>
-<h3 id="list-パラメータ"><a class="header" href="#list-パラメータ">list パラメータ</a></h3>
-<p>このコマンドは引数を取りません。<code>lindera download</code> と同じく、環境変数 <code>LINDERA_DICTIONARIES_DIR</code> が指すディレクトリから辞書を探します（<a href="lindera-cli/commands.html#%E4%BF%9D%E5%AD%98%E5%A0%B4%E6%89%80">保存場所</a> を参照）。</p>
-<h3 id="list-の使用方法"><a class="header" href="#list-の使用方法">list の使用方法</a></h3>
-<pre><code class="language-shell">% lindera list
-</code></pre>
-<pre><code class="language-text">Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
-NAME    VERSION  STATUS  DICT
-ipadic  7.0.0    ok      embedded://ipadic
-ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
-</code></pre>
-<p>標準出力の表は 1 行につき 1 辞書です。埋め込みの辞書を先に、続けて辞書ディレクトリのサブディレクトリを名前順に並べます。</p>
-<ul>
-<li><code>NAME</code> は、埋め込みの辞書の種類、またはディレクトリの名前です。</li>
-<li><code>VERSION</code> は、その辞書をビルドした Lindera のバージョン（<code>metadata.json</code> の <code>lindera_version</code>）です。v7.0.0 より前にビルドした辞書では <code>unknown</code> になります。</li>
-<li><code>STATUS</code> は <code>ok</code>、必要なファイルが欠けている場合は <code>incomplete</code>（<code>lindera download &lt;name&gt; --force</code> で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では <code>other version</code>（ダウンロードできる辞書なら <code>lindera download &lt;name&gt;</code> で置き換わります）になります。</li>
-<li><code>DICT</code> は <code>--dict</code> に渡す値です。</li>
-</ul>
-<p>同じディレクトリにインストールされる係り受け解析のモデルは、この表には出ません。<a href="lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB"><code>lindera dependency list</code></a> が表示します。</p>
-<p>メッセージは標準エラー出力に出ます。上の例の <code>6.2.0/</code>（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように <code>metadata.json</code> も <code>model.json</code> もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、<code>lindera download</code> の案内を出します。名前が <code>.</code> で始まる項目は、メッセージなしで飛ばします。</p>
 <h2 id="tokenize-1"><a class="header" href="#tokenize-1">tokenize</a></h2>
 <p>様々な辞書を使用して、日本語、中国語、または韓国語のテキストに対して形態素解析（トークナイズ）を行います。</p>
 <h3 id="パラメータ-1"><a class="header" href="#パラメータ-1">パラメータ</a></h3>
@@ -4818,7 +4801,7 @@ ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
 <p><code>--dict</code> / <code>-d</code>: 辞書の URI またはパス（必須）</p>
 <ul>
 <li>
-<p>ファイルパス: <code>/path/to/dictionary</code>（<code>lindera download</code> が表示するパスなど）、または <code>file:///path/to/dictionary</code></p>
+<p>ファイルパス: <code>/path/to/dictionary</code>（<code>lindera dictionary download</code> が表示するパスなど）、または <code>file:///path/to/dictionary</code></p>
 </li>
 <li>
 <p>埋め込み: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</p>
@@ -5277,7 +5260,7 @@ NBEST 3 (cost=18365)
 <li>トークナイズする各スレッドは、ユーザー辞書があればそれぞれ複製を持ちます。システム辞書は共有します。</li>
 <li>1 スレッドのときと同じく出力はバッファしてから書きます。読めない行（UTF-8 でない行）やトークナイズに失敗した行があると、その前の行の出力を書いてから終了コード 1 で終わります。標準出力を読む側がいなくなると、残りの入力を読まずに終了コード 0 で終わります。</li>
 <li><a href="lindera-cli/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">強制的な文の区切り</a>などの警告は、その行をトークナイズしたスレッドから出ます。そのため、複数の行の警告が、行とは違う順で標準エラー出力に出ることがあります。</li>
-<li>既定値が 1 なのは、既存のスクリプトの CPU の使い方とメモリを変えないためです（<code>lindera train --max-threads</code> の既定値は CPU のコア数です）。短い入力では、スレッドを増やしても速くなりません。</li>
+<li>既定値が 1 なのは、既存のスクリプトの CPU の使い方とメモリを変えないためです（<code>lindera dictionary train --max-threads</code> の既定値は CPU のコア数です）。短い入力では、スレッドを増やしても速くなりません。</li>
 </ul>
 <h3 id="フィルタを使用した高度なトークナイズ"><a class="header" href="#フィルタを使用した高度なトークナイズ">フィルタを使用した高度なトークナイズ</a></h3>
 <p>Linderaは、文字フィルタ、トークナイザー、トークンフィルタを組み合わせた分析フレームワークを提供します。フィルタはJSONを使用して構成します。</p>
@@ -5291,9 +5274,75 @@ NBEST 3 (cost=18365)
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 EOS
 </code></pre>
-<h2 id="build"><a class="header" href="#build">build</a></h2>
+<h2 id="dictionary"><a class="header" href="#dictionary">dictionary</a></h2>
+<p>辞書を扱います。7.1.0 から、辞書の操作は 1 つのコマンドのサブコマンドです。</p>
+<pre><code class="language-text">lindera dictionary &lt;SUBCOMMAND&gt;
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>すること</th></tr></thead><tbody>
+<tr><td><a href="lindera-cli/commands.html#list"><code>list</code></a></td><td>置いてある辞書と、バイナリに埋め込まれた辞書の一覧を表示する</td></tr>
+<tr><td><a href="lindera-cli/commands.html#download"><code>download</code></a></td><td>GitHub リリースページからビルド済みの辞書をダウンロードする</td></tr>
+<tr><td><a href="lindera-cli/commands.html#build"><code>build</code></a></td><td>ソースの CSV ファイルから辞書をビルドする</td></tr>
+<tr><td><a href="lindera-cli/commands.html#train"><code>train</code></a></td><td>注釈付きコーパスから CRF モデルを学習する</td></tr>
+<tr><td><a href="lindera-cli/commands.html#export"><code>export</code></a></td><td>学習済みモデルを辞書フォーマットにエクスポートする</td></tr>
+</tbody></table>
+</div>
+<p><code>list</code>・<code>download</code>・<code>build</code> はどのビルドにも入り、<code>train</code>・<code>export</code> は <code>train</code> feature のあるビルドに入ります。この feature は、既定のビルドに入っています。</p>
+<h3 id="非推奨の名前"><a class="header" href="#非推奨の名前">非推奨の名前</a></h3>
+<p>v7.0.0 までは、この 5 つは <code>lindera</code> 自身のサブコマンドでした（<code>lindera list</code>・<code>lindera download</code>・<code>lindera build</code>・<code>lindera train</code>・<code>lindera export</code>）。これらの名前は今も動きます。オプション・標準出力・終了コードは新しいコマンドと同じで、実行の前に標準エラー出力へ 1 行を書きます。</p>
+<pre><code class="language-text">Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+</code></pre>
+<p><code>lindera --help</code> の一覧には出ません。v8.0.0 で削除します。未知のオプションのように、コマンドが動く前に断られる引数を付けたときは、そのメッセージだけが出て、この警告は出ません。</p>
+<h3 id="list"><a class="header" href="#list">list</a></h3>
+<p><code>--dict</code> に渡せる辞書の一覧を表示します。（<code>embed-*</code> feature フラグ経由で）バイナリに埋め込まれた辞書と、<code>lindera dictionary download</code> が辞書を置く辞書ディレクトリにある辞書を、それぞれをビルドした Lindera のバージョンとともに表示します。</p>
+<h4 id="list-パラメータ"><a class="header" href="#list-パラメータ">list パラメータ</a></h4>
+<p>このコマンドは引数を取りません。<code>lindera dictionary download</code> と同じく、環境変数 <code>LINDERA_DICTIONARIES_DIR</code> が指すディレクトリから辞書を探します（<a href="lindera-cli/commands.html#%E4%BF%9D%E5%AD%98%E5%A0%B4%E6%89%80">保存場所</a> を参照）。</p>
+<h4 id="list-の使用方法"><a class="header" href="#list-の使用方法">list の使用方法</a></h4>
+<pre><code class="language-shell">% lindera dictionary list
+</code></pre>
+<pre><code class="language-text">Skipped /home/user/.local/share/lindera/dictionaries/6.2.0: not a dictionary (no metadata.json) and not a model (no model.json)
+NAME    VERSION  STATUS  DICT
+ipadic  7.0.0    ok      embedded://ipadic
+ipadic  7.0.0    ok      /home/user/.local/share/lindera/dictionaries/ipadic
+</code></pre>
+<p>標準出力の表は 1 行につき 1 辞書です。埋め込みの辞書を先に、続けて辞書ディレクトリのサブディレクトリを名前順に並べます。</p>
+<ul>
+<li><code>NAME</code> は、埋め込みの辞書の種類、またはディレクトリの名前です。</li>
+<li><code>VERSION</code> は、その辞書をビルドした Lindera のバージョン（<code>metadata.json</code> の <code>lindera_version</code>）です。v7.0.0 より前にビルドした辞書では <code>unknown</code> になります。</li>
+<li><code>STATUS</code> は <code>ok</code>、必要なファイルが欠けている場合は <code>incomplete</code>（<code>lindera dictionary download &lt;name&gt; --force</code> で再ダウンロードしてください）、別のバージョンの Lindera がビルドした辞書や、バージョンの記録がない辞書では <code>other version</code>（ダウンロードできる辞書なら <code>lindera dictionary download &lt;name&gt;</code> で置き換わります）になります。</li>
+<li><code>DICT</code> は <code>--dict</code> に渡す値です。</li>
+</ul>
+<p>同じディレクトリにインストールされる係り受け解析のモデルは、この表には出ません。<a href="lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB"><code>lindera dependency list</code></a> が表示します。</p>
+<p>メッセージは標準エラー出力に出ます。上の例の <code>6.2.0/</code>（v7.0.0 より前の CLI がダウンロードした辞書を置いたディレクトリ）のように <code>metadata.json</code> も <code>model.json</code> もないサブディレクトリは、1 行のメッセージとともに飛ばします。辞書ディレクトリに辞書が 1 つもない場合は、<code>lindera dictionary download</code> の案内を出します。名前が <code>.</code> で始まる項目は、メッセージなしで飛ばします。</p>
+<h3 id="download"><a class="header" href="#download">download</a></h3>
+<p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、辞書ディレクトリにインストールします。リリースが辞書と並べて公開する、係り受け解析のモデルは、<code>lindera dependency download</code> で取得します。<a href="lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89">係り受け解析のモデルのダウンロード</a>を見てください。</p>
+<h4 id="download-パラメータ"><a class="header" href="#download-パラメータ">download パラメータ</a></h4>
+<ul>
+<li>名前（必須）: 辞書の名前。<code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>jumandic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか</li>
+<li><code>--force</code>: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える</li>
+</ul>
+<h4 id="保存場所"><a class="header" href="#保存場所">保存場所</a></h4>
+<p><code>lindera dictionary download &lt;辞書名&gt;</code> は辞書を <code>&lt;辞書ディレクトリ&gt;/&lt;辞書名&gt;/</code> にインストールし、そのパス（<code>--dict</code> に渡す値）を表示します。辞書ディレクトリは環境変数 <code>LINDERA_DICTIONARIES_DIR</code> で指定し、デフォルトは OS のローカルデータディレクトリの <code>lindera/dictionaries</code> です。OS ごとのデフォルトの場所と、v7.0.0 より前の変数 <code>LINDERA_DATA_DIR</code> については <a href="lindera-cli/../getting_started/environment_variables.html#lindera_dictionaries_dir">LINDERA_DICTIONARIES_DIR</a> を参照してください。</p>
+<p>すでに置いてある完全な辞書は、<code>metadata.json</code> の <code>lindera_version</code> が CLI のバージョンと同じなら、そのまま使います。別のバージョンの Lindera がビルドした辞書や、v7.0.0 より前にビルドした辞書のように <code>metadata.json</code> にバージョンの記録がない辞書は、<code>--force</code> がなくても再ダウンロードし、標準エラー出力にそう表示します（例: <code>Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera</code>）。</p>
+<h4 id="download-の使用方法"><a class="header" href="#download-の使用方法">download の使用方法</a></h4>
+<pre><code class="language-shell">% lindera dictionary download ipadic
+</code></pre>
+<pre><code class="language-text">Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/ipadic
+</code></pre>
+<p>端末では、1 行目の後に進捗の行が出ます。インストール先のパスは、辞書がすでにある場合も標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで受け取って <code>tokenize</code> に渡せます：</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera dictionary download ipadic)
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
+</code></pre>
+<p>注意事項：</p>
+<ul>
+<li>アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。</li>
+<li>整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。</li>
+<li>最大の辞書（<code>ipadic-neologd</code>）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。</li>
+</ul>
+<h3 id="build"><a class="header" href="#build">build</a></h3>
 <p>Linderaで使用するための形態素解析辞書をCSVソースファイルからビルド（コンパイル）します。</p>
-<h3 id="ビルドパラメータ"><a class="header" href="#ビルドパラメータ">ビルドパラメータ</a></h3>
+<h4 id="ビルドパラメータ"><a class="header" href="#ビルドパラメータ">ビルドパラメータ</a></h4>
 <ul>
 <li><code>--src</code> / <code>-s</code>: 辞書CSVファイルを含むソースディレクトリ（ユーザー辞書の場合は単一CSVファイル）</li>
 <li><code>--dest</code> / <code>-d</code>: コンパイルされた辞書の出力先ディレクトリ</li>
@@ -5302,8 +5351,8 @@ EOS
 <li><code>--system-dict</code>: ユーザー辞書を組み合わせるシステム辞書。URI かディレクトリのパスで、<code>tokenize --dict</code> と同じ形で指定する（オプション。<code>--user</code> のときだけ）。指定すると、各行の文脈 ID をそのシステム辞書の接続コスト行列と照らし合わせて確認します（<a href="lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a> を参照）</li>
 <li><code>--context-id-freq</code> / <code>-f</code>: 接続コストIDの並び替えに使用するコンテキストID アクセス頻度ファイル（オプション。辞書の <code>metadata.json</code> で <code>connection_id_mapping: true</code> が設定されている場合にのみ意味を持ちます）</li>
 </ul>
-<h3 id="辞書の種類"><a class="header" href="#辞書の種類">辞書の種類</a></h3>
-<h4 id="システム辞書-system-dictionary"><a class="header" href="#システム辞書-system-dictionary">システム辞書 (System dictionary)</a></h4>
+<h4 id="辞書の種類"><a class="header" href="#辞書の種類">辞書の種類</a></h4>
+<h5 id="システム辞書-system-dictionary"><a class="header" href="#システム辞書-system-dictionary">システム辞書 (System dictionary)</a></h5>
 <p>以下を含む完全な形態素解析辞書です：</p>
 <ul>
 <li>語彙エントリ（単語定義）</li>
@@ -5311,10 +5360,10 @@ EOS
 <li>未知語処理ルール</li>
 <li>文字種定義</li>
 </ul>
-<h4 id="ユーザー辞書-user-dictionary"><a class="header" href="#ユーザー辞書-user-dictionary">ユーザー辞書 (User dictionary)</a></h4>
+<h5 id="ユーザー辞書-user-dictionary"><a class="header" href="#ユーザー辞書-user-dictionary">ユーザー辞書 (User dictionary)</a></h5>
 <p>システム辞書と一緒に動作する、カスタム単語のための補助辞書です。</p>
-<h3 id="文脈-id-の確認"><a class="header" href="#文脈-id-の確認">文脈 ID の確認</a></h3>
-<p>システム辞書をビルドするとき、<code>lindera build</code> は MeCab の <code>mecab-dict-index</code> と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。<code>lex.csv</code> の各行と <code>unk.def</code> の各行で、右文脈 ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の <code>matrix.def</code> で、<code>lex.csv</code> の 2 行目の右文脈 ID が 2 の場合は次のとおりです：</p>
+<h4 id="文脈-id-の確認"><a class="header" href="#文脈-id-の確認">文脈 ID の確認</a></h4>
+<p>システム辞書をビルドするとき、<code>lindera dictionary build</code> は MeCab の <code>mecab-dict-index</code> と同じく、すべての文脈 ID が接続コスト行列の範囲内にあることを確認します。<code>lex.csv</code> の各行と <code>unk.def</code> の各行で、右文脈 ID は <code>matrix.def</code> のヘッダの 1 つ目の値より小さく、左文脈 ID は 2 つ目の値より小さくなければなりません。これに反する辞書はビルドに失敗し、エラーはファイル・行・ID・行列の大きさを示します。たとえば 2 x 2 の <code>matrix.def</code> で、<code>lex.csv</code> の 2 行目の右文脈 ID が 2 の場合は次のとおりです：</p>
 <pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/lex.csv: line 2: right context id 2 is out of range for the connection matrix (matrix.def size 2 2; right context ids must be below 2) }
 </code></pre>
 <ul>
@@ -5322,20 +5371,20 @@ EOS
 <li>ID が軸の範囲外にある <code>matrix.def</code> の行もエラーになり、フィールドが 4 つ未満の <code>unk.def</code> の行もエラーになります。</li>
 <li>ユーザー辞書（<code>--user</code>）を確認するのは、組み合わせるシステム辞書を <code>--system-dict</code> で指定したときだけです（次の段落を参照）。</li>
 </ul>
-<p><code>--system-dict</code> を指定すると、<code>lindera build --user</code> はユーザー辞書の各行を、そのシステム辞書の接続コスト行列と同じ範囲で照らし合わせて確認します。簡易形式の行は、<code>metadata.json</code> の既定の文脈 ID（<code>default_left_context_id</code> と <code>default_right_context_id</code>）で確認します。行列の範囲外にある最初の行でビルドは失敗し、エラーはその行の CSV の行番号と表層形を示します。<code>.bin</code> ファイルは書き出しません。たとえば IPADIC の 1316 x 1316 の行列に対して、<code>userdic.csv</code> の 2 行目の左文脈 ID が 60000 の場合は次のとおりです：</p>
-<pre><code class="language-text">% lindera build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
+<p><code>--system-dict</code> を指定すると、<code>lindera dictionary build --user</code> はユーザー辞書の各行を、そのシステム辞書の接続コスト行列と同じ範囲で照らし合わせて確認します。簡易形式の行は、<code>metadata.json</code> の既定の文脈 ID（<code>default_left_context_id</code> と <code>default_right_context_id</code>）で確認します。行列の範囲外にある最初の行でビルドは失敗し、エラーはその行の CSV の行番号と表層形を示します。<code>.bin</code> ファイルは書き出しません。たとえば IPADIC の 1316 x 1316 の行列に対して、<code>userdic.csv</code> の 2 行目の左文脈 ID が 60000 の場合は次のとおりです：</p>
+<pre><code class="language-text">% lindera dictionary build --src ./userdic.csv --dest ./user_dict --metadata ./lindera-ipadic/metadata.json --user --system-dict embedded://ipadic
 Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '東京スカイツリー'): left context id 60000 is out of range for the connection matrix (matrix.def size 1316 1316; left context ids must be below 1316) }
 </code></pre>
 <p><code>--system-dict</code> を指定しないと、ビルドの時点では組み合わせるシステム辞書が分からないため、ユーザー辞書はそのままビルドされます。その後 <code>lindera tokenize --user-dict</code> がシステム辞書と照らし合わせて確認し、行列の範囲外にある最初の見出し語を単語 ID で示すエラーで失敗します（<a href="lindera-cli/../concepts/user_dictionary.html#%E6%96%87%E8%84%88-id">文脈 ID</a> を参照）。<code>lindera tokenize --user-dict</code> に <code>.csv</code> を渡すと、読み込むときに <code>--dict</code> のシステム辞書に合わせてビルドするため、<code>--system-dict</code> と同じく CSV の行番号と表層形を示すエラーになります。</p>
-<h3 id="matrixdef-にないセル"><a class="header" href="#matrixdef-にないセル">matrix.def にないセル</a></h3>
-<p><code>matrix.def</code> は、すべてのセルを列挙しなくてもかまいません。<code>lindera build</code> は、<code>matrix.def</code> が列挙していないセルのコストを、MeCab の <code>mecab-dict-index</code> と同じく 0 にします。v6.2.0 までは、そうしたセルのコストは 32767（<code>i16::MAX</code>）で、その接続は非常に高いコストになっていました。たとえば次の <code>matrix.def</code> では、右文脈 ID 1 から左文脈 ID 0 と 1 への接続のコストが 10 と 20 になり、残りの 7 つのセルのコストは 0 になります。</p>
+<h4 id="matrixdef-にないセル"><a class="header" href="#matrixdef-にないセル">matrix.def にないセル</a></h4>
+<p><code>matrix.def</code> は、すべてのセルを列挙しなくてもかまいません。<code>lindera dictionary build</code> は、<code>matrix.def</code> が列挙していないセルのコストを、MeCab の <code>mecab-dict-index</code> と同じく 0 にします。v6.2.0 までは、そうしたセルのコストは 32767（<code>i16::MAX</code>）で、その接続は非常に高いコストになっていました。たとえば次の <code>matrix.def</code> では、右文脈 ID 1 から左文脈 ID 0 と 1 への接続のコストが 10 と 20 になり、残りの 7 つのセルのコストは 0 になります。</p>
 <pre><code class="language-text">3 3
 1 0 10
 1 1 20
 </code></pre>
-<p>同梱の辞書と、<code>lindera export</code> が書き出す <code>matrix.def</code> は、すべてのセルを列挙しているため、この規則で変わることはありません。</p>
-<h3 id="chardef-と-unkdef-の確認"><a class="header" href="#chardef-と-unkdef-の確認">char.def と unk.def の確認</a></h3>
-<p>システム辞書をビルドするとき、<code>lindera build</code> は <code>mecab-dict-index</code> と同じく、<code>char.def</code> と <code>unk.def</code> を互いに照らし合わせて確認します：</p>
+<p>同梱の辞書と、<code>lindera dictionary export</code> が書き出す <code>matrix.def</code> は、すべてのセルを列挙しているため、この規則で変わることはありません。</p>
+<h4 id="chardef-と-unkdef-の確認"><a class="header" href="#chardef-と-unkdef-の確認">char.def と unk.def の確認</a></h4>
+<p>システム辞書をビルドするとき、<code>lindera dictionary build</code> は <code>mecab-dict-index</code> と同じく、<code>char.def</code> と <code>unk.def</code> を互いに照らし合わせて確認します：</p>
 <ul>
 <li><code>char.def</code> の範囲行が指すカテゴリは、それより前の行で定義されていること</li>
 <li>各カテゴリの定義は 1 回だけであること</li>
@@ -5345,181 +5394,154 @@ Error: LinderaError { kind: Content, source: user dictionary line 2 (surface: '�
 <p>どれかに反する辞書はビルドに失敗し、エラーはファイルとカテゴリを示します。<code>unk.def</code> の行がないカテゴリ以外では、行も示します。以前はこうした辞書もビルドでき、その後の <code>lindera tokenize</code> は、未定義のカテゴリの文字で panic したり、一部のカテゴリに別のカテゴリの設定を使ったり、どの単語にも未知語にも覆われない文字の手前で出力を打ち切ったり、<code>unk.def</code> の行を無視したりしていました。たとえば、<code>char.def</code> が <code>SPACE</code> カテゴリを定義し、<code>unk.def</code> に <code>SPACE</code> の行がない場合は、次のようになります：</p>
 <pre><code class="language-text">Error: LinderaError { kind: Content, source: ./dict-source/unk.def: no line for category SPACE, which char.def defines; every char.def category needs at least one unk.def line }
 </code></pre>
-<p><code>lindera train</code> も、学習の前に <code>--char-def</code> と <code>--unk-def</code> を同じように確認します（<a href="lindera-cli/../development/training_pipeline.html#3-%E6%96%87%E5%AD%97%E5%AE%9A%E7%BE%A9-chardef">学習パイプライン</a>を参照）。</p>
-<h3 id="chardef-の形式"><a class="header" href="#chardef-の形式">char.def の形式</a></h3>
+<p><code>lindera dictionary train</code> も、学習の前に <code>--char-def</code> と <code>--unk-def</code> を同じように確認します（<a href="lindera-cli/../development/training_pipeline.html#3-%E6%96%87%E5%AD%97%E5%AE%9A%E7%BE%A9-chardef">学習パイプライン</a>を参照）。</p>
+<h4 id="chardef-の形式"><a class="header" href="#chardef-の形式">char.def の形式</a></h4>
 <p>辞書の <code>metadata.json</code> は、<code>char_def_format</code> で <code>char.def</code> の形式を選びます（<a href="https://github.com/lindera/lindera/issues/1388">#1388</a>）：</p>
 <ul>
 <li><code>"mecab"</code>（省略したときの既定）: MeCab の形式です。コードポイントのカテゴリは、それを覆う最後の行が決めます。その先頭のカテゴリ（既定のカテゴリ）だけが未知語を作ります。</li>
 <li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。コードポイントは、それを覆うすべての行のカテゴリを持ちます。範囲行には、ファイルが定義したカテゴリのほかに、<code>ALL</code>（すべてのカテゴリ）と、フラグ <code>NOOOVBOW</code>（その文字から未知語を始めない）・<code>NOOOVEOW</code>（その文字の直後から未知語を始めない）を書けます。BMP の外のコードポイントも書けます。ファイルは <code>DEFAULT</code> を定義する必要があり、<code>ALL</code>・<code>NOOOVBOW</code>・<code>NOOOVEOW</code> をカテゴリとして定義することはできず、定義できるカテゴリは 64 個までです。未知語は、文字のすべてのカテゴリから、Sudachi と同じ規則で区切ったまとまりの上に作ります。ほかに何も始まらない位置には、Sudachi と同じく <code>DEFAULT</code> の 1 文字の未知語を置きます。空白（<code>--keep-whitespace</code>・<code>--disable-skip-whitespace</code>・左空白ペナルティが扱うもの）とみなすのは、カテゴリが <code>SPACE</code> だけの文字です。<code>ALL</code> がすべてのカテゴリに入れる結合文字や ZWJ などは、空白とみなしません。</li>
 </ul>
-<p><code>lindera train</code> は、<code>--char-def</code> を MeCab の形式でだけ読みます。</p>
-<h3 id="語彙の形式"><a class="header" href="#語彙の形式">語彙の形式</a></h3>
+<p><code>lindera dictionary train</code> は、<code>--char-def</code> を MeCab の形式でだけ読みます。</p>
+<h4 id="語彙の形式"><a class="header" href="#語彙の形式">語彙の形式</a></h4>
 <p>辞書の <code>metadata.json</code> は、<code>lexicon_format</code> で語彙の CSV ファイルの形式を選びます（<a href="https://github.com/lindera/lindera/issues/1389">#1389</a>）：</p>
 <ul>
 <li><code>"mecab"</code>（省略したときの既定）: MeCab の形式です。すべての欄を、書かれたとおりに読みます。</li>
-<li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・<code>u</code>・16 進数 4 桁、またはバックスラッシュ・<code>u</code>・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、<code>http://</code> を <code>http:\u002f\u002f</code>、<code>1,2塁</code> を <code>1\u002c2塁</code> と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（<code>lindera build --user</code> にその <code>metadata.json</code> を渡したもの、またはその辞書と一緒に読み込む <code>.csv</code> ファイル）も、同じように復号します。</li>
+<li><code>"sudachi"</code>: Sudachi の形式で、SudachiDict が使います。バックスラッシュ・<code>u</code>・16 進数 4 桁、またはバックスラッシュ・<code>u</code>・波括弧で囲んだ 16 進数 1〜6 桁は、その数が表すコードポイントを表します。ビルダーは、Sudachi の辞書ビルダーと同じく、これをすべての欄で復号します。たとえば SudachiDict は、<code>http://</code> を <code>http:\u002f\u002f</code>、<code>1,2塁</code> を <code>1\u002c2塁</code> と書いています。エスケープは左から順に復号し、復号してできた文字列をもう一度復号することはしません。バックスラッシュ自体のエスケープはないので、エスケープの前のバックスラッシュはそのまま残ります。Unicode のスカラー値でない値（サロゲート、または U+10FFFF より大きい値）や、組んだ辞書でエントリの詳細を区切る NUL を表すエスケープがあると、ファイルと行を示すエラーでビルドが止まります。その辞書に対して組む user dictionary（<code>lindera dictionary build --user</code> にその <code>metadata.json</code> を渡したもの、またはその辞書と一緒に読み込む <code>.csv</code> ファイル）も、同じように復号します。</li>
 </ul>
 <p><code>unk.def</code> は、どちらの形式でも書かれたとおりに読みます。Sudachi も同じです。</p>
-<h3 id="文字コードとして読めない行"><a class="header" href="#文字コードとして読めない行">文字コードとして読めない行</a></h3>
+<h4 id="文字コードとして読めない行"><a class="header" href="#文字コードとして読めない行">文字コードとして読めない行</a></h4>
 <p><code>encoding</code> が UTF-8 の辞書では、語彙の CSV ファイルの行が UTF-8 として読めないと、ビルドは失敗します。<code>encoding</code> の誤りには、これで気づけます。<code>metadata.json</code> に <code>"skip_invalid_encoding": true</code> があると、ビルダーはそういう行を飛ばし、ファイルと行番号を添えて警告します（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定は <code>false</code> です。公式の辞書でこれを指定しているのは、JUMAN 辞書だけです。ソースの 6 行が、文字の途中で切れています（<a href="lindera-cli/../lindera-jumandic/build.html#%E9%A3%9B%E3%81%B0%E3%81%95%E3%82%8C%E3%82%8B-6-%E8%A1%8C">ビルド</a>を参照）。</p>
 <p>UTF-8 以外の文字コードでは、その文字コードの文字にならないバイト列は、置き換えの文字 U+FFFD になり、ビルドは続きます。この設定があると、そういうバイト列のある行も、同じように飛ばします。</p>
-<h3 id="例-1"><a class="header" href="#例-1">例</a></h3>
-<h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
+<h4 id="例-1"><a class="header" href="#例-1">例</a></h4>
+<h5 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h5>
 <pre><code class="language-shell"># IPADICソースファイルのダウンロードと展開
 % curl -L -o /tmp/mecab-ipadic-2.7.0-20250920.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-2.7.0-20250920.tar.gz -C /tmp
 
 # 辞書のビルド
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ipadic-2.7.0-20250920 \
   --dest /tmp/lindera-ipadic-2.7.0-20250920 \
   --metadata ./lindera-ipadic/metadata.json
 </code></pre>
-<h4 id="ipadic-neologd日本語辞書のビルド"><a class="header" href="#ipadic-neologd日本語辞書のビルド">IPADIC NEologd（日本語辞書）のビルド</a></h4>
+<h5 id="ipadic-neologd日本語辞書のビルド"><a class="header" href="#ipadic-neologd日本語辞書のビルド">IPADIC NEologd（日本語辞書）のビルド</a></h5>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ipadic-neologd-0.0.7-20200820 \
   --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
   --metadata ./lindera-ipadic-neologd/metadata.json
 </code></pre>
-<h4 id="unidic日本語辞書のビルド"><a class="header" href="#unidic日本語辞書のビルド">UniDic（日本語辞書）のビルド</a></h4>
+<h5 id="unidic日本語辞書のビルド"><a class="header" href="#unidic日本語辞書のビルド">UniDic（日本語辞書）のビルド</a></h5>
 <pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
 % unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/unidic-mecab-2.1.2_src \
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json \
   --context-id-freq ./lindera-unidic/context_id_freq.txt
 </code></pre>
-<h4 id="cc-cedict中国語辞書のビルド"><a class="header" href="#cc-cedict中国語辞書のビルド">CC-CEDICT（中国語辞書）のビルド</a></h4>
+<h5 id="cc-cedict中国語辞書のビルド"><a class="header" href="#cc-cedict中国語辞書のビルド">CC-CEDICT（中国語辞書）のビルド</a></h5>
 <pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20261021.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/CC-CEDICT-MeCab-0.1.0-20261021 \
   --dest /tmp/lindera-cc-cedict-0.1.0-20261021 \
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
-<h4 id="jieba中国語辞書のビルド"><a class="header" href="#jieba中国語辞書のビルド">Jieba（中国語辞書）のビルド</a></h4>
+<h5 id="jieba中国語辞書のビルド"><a class="header" href="#jieba中国語辞書のビルド">Jieba（中国語辞書）のビルド</a></h5>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.3.tar.gz "https://lindera.dev/mecab-jieba-0.1.3.tar.gz"
 % tar zxvf /tmp/mecab-jieba-0.1.3.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-jieba-0.1.3/dict-src \
   --dest /tmp/lindera-jieba-0.1.3 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
-<h4 id="ko-dic韓国語辞書のビルド"><a class="header" href="#ko-dic韓国語辞書のビルド">ko-dic（韓国語辞書）のビルド</a></h4>
+<h5 id="ko-dic韓国語辞書のビルド"><a class="header" href="#ko-dic韓国語辞書のビルド">ko-dic（韓国語辞書）のビルド</a></h5>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 
-% lindera build \
+% lindera dictionary build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
   --metadata ./lindera-ko-dic/metadata.json \
   --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 </code></pre>
-<h3 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h3>
-<h4 id="ipadicユーザー辞書日本語のビルド"><a class="header" href="#ipadicユーザー辞書日本語のビルド">IPADICユーザー辞書（日本語）のビルド</a></h4>
+<h4 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h4>
+<h5 id="ipadicユーザー辞書日本語のビルド"><a class="header" href="#ipadicユーザー辞書日本語のビルド">IPADICユーザー辞書（日本語）のビルド</a></h5>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>
 <li><a href="https://github.com/lindera/lindera/tree/main/lindera-ipadic#user-dictionary-format-csv">Lindera IPADIC Builder/User Dictionary Format</a></li>
 </ul>
-<pre><code class="language-shell">% lindera build \
+<pre><code class="language-shell">% lindera dictionary build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-ipadic/metadata.json \
   --user
 </code></pre>
 <p><code>--system-dict embedded://ipadic</code>（またはビルド済みの IPADIC のパス）を加えると、各行の文脈 ID を IPADIC の接続コスト行列と照らし合わせて確認します（<a href="lindera-cli/commands.html#%E6%96%87%E8%84%88-id-%E3%81%AE%E7%A2%BA%E8%AA%8D">文脈 ID の確認</a> を参照）。</p>
-<h4 id="unidicユーザー辞書日本語のビルド"><a class="header" href="#unidicユーザー辞書日本語のビルド">UniDicユーザー辞書（日本語）のビルド</a></h4>
+<h5 id="unidicユーザー辞書日本語のビルド"><a class="header" href="#unidicユーザー辞書日本語のビルド">UniDicユーザー辞書（日本語）のビルド</a></h5>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>
 <li><a href="https://github.com/lindera/lindera/tree/main/lindera-unidic#user-dictionary-format-csv">Lindera UniDic Builder/User Dictionary Format</a></li>
 </ul>
-<pre><code class="language-shell">% lindera build \
+<pre><code class="language-shell">% lindera dictionary build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-unidic/metadata.json \
   --user
 </code></pre>
-<h4 id="sudachidictユーザー辞書日本語のビルド"><a class="header" href="#sudachidictユーザー辞書日本語のビルド">SudachiDictユーザー辞書（日本語）のビルド</a></h4>
+<h5 id="sudachidictユーザー辞書日本語のビルド"><a class="header" href="#sudachidictユーザー辞書日本語のビルド">SudachiDictユーザー辞書（日本語）のビルド</a></h5>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>
 <li><a href="https://github.com/lindera/lindera/tree/main/lindera-sudachidict#user-dictionary-format-csv">Lindera SudachiDict Builder/User Dictionary Format</a></li>
 </ul>
-<pre><code class="language-shell">% lindera build \
+<pre><code class="language-shell">% lindera dictionary build \
   --src ./resources/user_dict/sudachidict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-sudachidict/metadata.json \
   --user
 </code></pre>
-<h4 id="cc-cedictユーザー辞書中国語のビルド"><a class="header" href="#cc-cedictユーザー辞書中国語のビルド">CC-CEDICTユーザー辞書（中国語）のビルド</a></h4>
+<h5 id="cc-cedictユーザー辞書中国語のビルド"><a class="header" href="#cc-cedictユーザー辞書中国語のビルド">CC-CEDICTユーザー辞書（中国語）のビルド</a></h5>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>
 <li><a href="https://github.com/lindera/lindera/tree/main/lindera-cc-cedict#user-dictionary-format-csv">Lindera CC-CEDICT Builder/User Dictionary Format</a></li>
 </ul>
-<pre><code class="language-shell">% lindera build \
+<pre><code class="language-shell">% lindera dictionary build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
   --user
 </code></pre>
-<h4 id="jiebaユーザー辞書中国語のビルド"><a class="header" href="#jiebaユーザー辞書中国語のビルド">Jiebaユーザー辞書（中国語）のビルド</a></h4>
+<h5 id="jiebaユーザー辞書中国語のビルド"><a class="header" href="#jiebaユーザー辞書中国語のビルド">Jiebaユーザー辞書（中国語）のビルド</a></h5>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>
 <li><a href="https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv">Lindera Jieba Builder/User Dictionary Format</a></li>
 </ul>
-<pre><code class="language-shell">% lindera build \
+<pre><code class="language-shell">% lindera dictionary build \
   --src ./resources/user_dict/jieba_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-jieba/metadata.json \
   --user
 </code></pre>
-<h4 id="ko-dicユーザー辞書韓国語のビルド"><a class="header" href="#ko-dicユーザー辞書韓国語のビルド">ko-dicユーザー辞書（韓国語）のビルド</a></h4>
+<h5 id="ko-dicユーザー辞書韓国語のビルド"><a class="header" href="#ko-dicユーザー辞書韓国語のビルド">ko-dicユーザー辞書（韓国語）のビルド</a></h5>
 <p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
 <ul>
 <li><a href="https://github.com/lindera/lindera/tree/main/lindera-ko-dic#user-dictionary-format-csv">Lindera ko-dic Builder/User Dictionary Format</a></li>
 </ul>
-<pre><code class="language-shell">% lindera build \
+<pre><code class="language-shell">% lindera dictionary build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 </code></pre>
-<h2 id="download"><a class="header" href="#download">download</a></h2>
-<p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、辞書ディレクトリにインストールします。リリースが辞書と並べて公開する、係り受け解析のモデルは、<code>lindera dependency download</code> で取得します。<a href="lindera-cli/commands.html#%E4%BF%82%E3%82%8A%E5%8F%97%E3%81%91%E8%A7%A3%E6%9E%90%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89">係り受け解析のモデルのダウンロード</a>を見てください。</p>
-<h3 id="download-パラメータ"><a class="header" href="#download-パラメータ">download パラメータ</a></h3>
-<ul>
-<li>名前（必須）: 辞書の名前。<code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>unidic-cwj</code>, <code>unidic-csj</code>, <code>sudachidict</code>, <code>jumandic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか</li>
-<li><code>--force</code>: CLI のバージョンがビルドした辞書でも、再ダウンロードして置き換える</li>
-</ul>
-<h3 id="保存場所"><a class="header" href="#保存場所">保存場所</a></h3>
-<p><code>lindera download &lt;辞書名&gt;</code> は辞書を <code>&lt;辞書ディレクトリ&gt;/&lt;辞書名&gt;/</code> にインストールし、そのパス（<code>--dict</code> に渡す値）を表示します。辞書ディレクトリは環境変数 <code>LINDERA_DICTIONARIES_DIR</code> で指定し、デフォルトは OS のローカルデータディレクトリの <code>lindera/dictionaries</code> です。OS ごとのデフォルトの場所と、v7.0.0 より前の変数 <code>LINDERA_DATA_DIR</code> については <a href="lindera-cli/../getting_started/environment_variables.html#lindera_dictionaries_dir">LINDERA_DICTIONARIES_DIR</a> を参照してください。</p>
-<p>すでに置いてある完全な辞書は、<code>metadata.json</code> の <code>lindera_version</code> が CLI のバージョンと同じなら、そのまま使います。別のバージョンの Lindera がビルドした辞書や、v7.0.0 より前にビルドした辞書のように <code>metadata.json</code> にバージョンの記録がない辞書は、<code>--force</code> がなくても再ダウンロードし、標準エラー出力にそう表示します（例: <code>Downloaded dictionary 'ipadic', replacing the one built by an unknown version of Lindera</code>）。</p>
-<h3 id="download-の使用方法"><a class="header" href="#download-の使用方法">download の使用方法</a></h3>
-<pre><code class="language-shell">% lindera download ipadic
-</code></pre>
-<pre><code class="language-text">Downloading https://github.com/lindera/lindera/releases/download/v7.0.0/lindera-ipadic-7.0.0.zip
-Downloaded dictionary 'ipadic'
-/home/user/.local/share/lindera/dictionaries/ipadic
-</code></pre>
-<p>端末では、1 行目の後に進捗の行が出ます。インストール先のパスは、辞書がすでにある場合も標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで受け取って <code>tokenize</code> に渡せます：</p>
-<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict "$DICT_DIR"
-</code></pre>
-<p>注意事項：</p>
-<ul>
-<li>アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。</li>
-<li>整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。</li>
-<li>最大の辞書（<code>ipadic-neologd</code>）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。</li>
-</ul>
-<h2 id="train"><a class="header" href="#train">train</a></h2>
+<h3 id="train"><a class="header" href="#train">train</a></h3>
 <p>注釈付きコーパスデータから新しい形態素解析モデルを学習します。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。（<code>train</code> 機能フラグはデフォルトで有効になっています。）</p>
-<h3 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h3>
+<h4 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h4>
 <ul>
 <li><code>--seed</code> / <code>-s</code>: 重み付けを行うシード語彙ファイル（CSV形式）</li>
 <li><code>--corpus</code> / <code>-c</code>: 学習用コーパス（注釈付きテキスト）</li>
@@ -5536,8 +5558,8 @@ Downloaded dictionary 'ipadic'
 <li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数。1 以上 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)</li>
 <li><code>--break-characters &lt;CHARS&gt;</code> / <code>--disable-break-characters</code>: 未知語候補の区切り文字。<code>lindera tokenize</code> と同じ意味です（デフォルト: <code>・</code>）。辞書を使うときと同じ値で学習してください。コーパス自身のトークンは、境目をまたいでもそのまま使います</li>
 </ul>
-<h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
-<h4 id="1-学習用ファイルの準備"><a class="header" href="#1-学習用ファイルの準備">1. 学習用ファイルの準備</a></h4>
+<h4 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h4>
+<h5 id="1-学習用ファイルの準備"><a class="header" href="#1-学習用ファイルの準備">1. 学習用ファイルの準備</a></h5>
 <p><strong>シード語彙ファイル (seed.csv):</strong></p>
 <p>シード語彙ファイルは、CRFモデルの学習に使用される初期辞書エントリを含みます。各行はカンマ区切りのフィールドを持つ単語エントリを表します：</p>
 <ul>
@@ -5554,7 +5576,7 @@ Downloaded dictionary 'ipadic'
 <pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 </code></pre>
-<p>このファイルは、<code>lindera build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます。フィールドは引用符で囲め（<code>",",0,0,0,...</code>）、<code>#</code> で始まる行はコメントではなくエントリです。詳しくは<a href="lindera-cli/../development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照してください。</p>
+<p>このファイルは、<code>lindera dictionary build</code> が <code>lex.csv</code> を読むのと同じく CSV として読みます。フィールドは引用符で囲め（<code>",",0,0,0,...</code>）、<code>#</code> で始まる行はコメントではなくエントリです。詳しくは<a href="lindera-cli/../development/training_pipeline.html#1-%E7%A8%AE%E8%BE%9E%E6%9B%B8-seedcsv">種辞書</a>を参照してください。</p>
 <p><strong>学習用コーパス (corpus.txt):</strong></p>
 <p>学習用コーパスファイルは、CRFモデルの学習に使用される注釈付きテキストデータを含みます。各行は以下で構成されます：</p>
 <ul>
@@ -5569,8 +5591,8 @@ Downloaded dictionary 'ipadic'
 EOS
 </code></pre>
 <p>ファイルフォーマットや高度な機能の詳細については、<a href="lindera-cli/../development/training_pipeline.html">学習パイプライン</a> を参照してください。</p>
-<h4 id="2-モデルの学習"><a class="header" href="#2-モデルの学習">2. モデルの学習</a></h4>
-<pre><code class="language-bash">lindera train \
+<h5 id="2-モデルの学習"><a class="header" href="#2-モデルの学習">2. モデルの学習</a></h5>
+<pre><code class="language-bash">lindera dictionary train \
   --seed ./resources/training/seed.csv \
   --corpus ./resources/training/corpus.txt \
   --unk-def ./resources/training/unk.def \
@@ -5580,8 +5602,8 @@ EOS
   --output /tmp/lindera/training/model.dat \
   --max-iterations 100
 </code></pre>
-<h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
-<p><code>lindera train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
+<h5 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h5>
+<p><code>lindera dictionary train</code> はモデルを <code>--output</code> のファイルに書き出します。学習用のラティスを作り終えると、コーパスの正解トークンのラベルの付き方を出力します（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。<code>./resources/training/</code> のファイルでは次のとおりです：</p>
 <pre><code class="language-text">Lattice statistics: gold_lexicon=14 gold_unknown=0 gold_virtual=0 virtual_labels=0 negative_lexicon=0 negative_unknown=17
 </code></pre>
 <p>種辞書の語である正解トークンが 1 つもないとき、または表層を持つ種辞書の行がある正解トークンのうち種辞書の語であるものが半分に満たないときは、続けて標準エラーに警告を書きます。警告には、表層を持つ種辞書の行はあるものの素性文字列が一致する行がない最初の正解トークンと、その表層を持つ種辞書の行が並びます（<a href="lindera-cli/../development/training_pipeline.html#%E5%AD%A6%E7%BF%92%E3%81%AE%E3%81%97%E3%81%8F%E3%81%BF">学習のしくみ</a>を参照）。</p>
@@ -5595,16 +5617,16 @@ EOS
 <li><strong>未知語</strong>: <code>unk.def</code> のすべてのエントリをファイル順に（学習された重みと文脈 ID 付き）</li>
 </ul>
 <p>シード辞書にないコーパスの語は、語として追加されません。それらは <code>unk.def</code> のエントリか、学習されるもののエクスポートされない仮想ラベルを通じて学習されます。</p>
-<h2 id="export"><a class="header" href="#export">export</a></h2>
+<h3 id="export"><a class="header" href="#export">export</a></h3>
 <p>学習済みモデルファイルをLindera辞書フォーマットのファイルにエクスポートします。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。</p>
-<h3 id="エクスポートパラメータ"><a class="header" href="#エクスポートパラメータ">エクスポートパラメータ</a></h3>
+<h4 id="エクスポートパラメータ"><a class="header" href="#エクスポートパラメータ">エクスポートパラメータ</a></h4>
 <ul>
 <li><code>--model</code> / <code>-m</code>: 学習済みモデルファイル（.dat形式）のパス</li>
 <li><code>--output</code> / <code>-o</code>: 辞書ファイルの出力先ディレクトリ</li>
 <li><code>--metadata</code>: オプションの metadata.json ファイル（学習済みモデル情報で更新されます）</li>
 <li><code>--cost-factor</code>: 重みからコストへの変換係数を上書き（デフォルト: 学習済みモデルの値、通常は700）</li>
 </ul>
-<h3 id="出力ファイル"><a class="header" href="#出力ファイル">出力ファイル</a></h3>
+<h4 id="出力ファイル"><a class="header" href="#出力ファイル">出力ファイル</a></h4>
 <p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
 <ul>
 <li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル（MeCab互換の <code>tocost()</code> によるコスト変換）</li>
@@ -5617,13 +5639,13 @@ EOS
 <li><code>right-id.def</code>: 右文脈IDから素性文字列へのマッピング</li>
 <li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
 </ul>
-<h3 id="モデルの形式バージョン"><a class="header" href="#モデルの形式バージョン">モデルの形式バージョン</a></h3>
-<p><code>lindera export</code> が読み込めるのは、現在の形式バージョン（3.0.0）のモデルだけです。それより前のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、<code>lindera train</code> で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：</p>
-<pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera train` to regenerate it. }
+<h4 id="モデルの形式バージョン"><a class="header" href="#モデルの形式バージョン">モデルの形式バージョン</a></h4>
+<p><code>lindera dictionary export</code> が読み込めるのは、現在の形式バージョン（3.0.0）のモデルだけです。それより前のバージョンで書かれた <code>model.dat</code>（7.0.0 より前に書かれたものはすべて該当）は拒否されるため、<code>lindera dictionary train</code> で学習し直す必要があります。6.1.0 の CLI で学習したモデルでは次のとおりです：</p>
+<pre><code class="language-text">Error: LinderaError { kind: Deserialize, source: failed to deserialize model: failed without error information; enable debug assertions and the `alloc` feature in rancor for error information. The file is not a legacy JSON model either, so it was most likely written by a different version of lindera-trainer; re-run `lindera dictionary train` to regenerate it. }
 </code></pre>
-<h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>
-<h4 id="1-モデルの学習"><a class="header" href="#1-モデルの学習">1. モデルの学習</a></h4>
-<pre><code class="language-bash">lindera train \
+<h4 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h4>
+<h5 id="1-モデルの学習"><a class="header" href="#1-モデルの学習">1. モデルの学習</a></h5>
+<pre><code class="language-bash">lindera dictionary train \
   --seed ./resources/training/seed.csv \
   --corpus ./resources/training/corpus.txt \
   --unk-def ./resources/training/unk.def \
@@ -5633,19 +5655,19 @@ EOS
   --output /tmp/lindera/training/model.dat \
   --max-iterations 100
 </code></pre>
-<h4 id="2-辞書フォーマットへのエクスポート"><a class="header" href="#2-辞書フォーマットへのエクスポート">2. 辞書フォーマットへのエクスポート</a></h4>
-<pre><code class="language-bash">lindera export \
+<h5 id="2-辞書フォーマットへのエクスポート"><a class="header" href="#2-辞書フォーマットへのエクスポート">2. 辞書フォーマットへのエクスポート</a></h5>
+<pre><code class="language-bash">lindera dictionary export \
   --model /tmp/lindera/training/model.dat \
   --metadata ./resources/training/metadata.json \
   --output /tmp/lindera/training/dictionary
 </code></pre>
-<h4 id="3-辞書のビルド"><a class="header" href="#3-辞書のビルド">3. 辞書のビルド</a></h4>
-<pre><code class="language-bash">lindera build \
+<h5 id="3-辞書のビルド"><a class="header" href="#3-辞書のビルド">3. 辞書のビルド</a></h5>
+<pre><code class="language-bash">lindera dictionary build \
   --src /tmp/lindera/training/dictionary \
   --dest /tmp/lindera/training/compiled_dictionary \
   --metadata /tmp/lindera/training/dictionary/metadata.json
 </code></pre>
-<h4 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h4>
+<h5 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h5>
 <pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize -d /tmp/lindera/training/compiled_dictionary
 </code></pre>
 <pre><code class="language-text">これ	名詞,代名詞,一般,*,*,*,これ,コレ,コレ
@@ -5658,7 +5680,7 @@ EOS
 。	記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<h3 id="メタデータ更新機能"><a class="header" href="#メタデータ更新機能">メタデータ更新機能</a></h3>
+<h4 id="メタデータ更新機能"><a class="header" href="#メタデータ更新機能">メタデータ更新機能</a></h4>
 <p><code>--metadata</code> オプションが指定されると、エクスポートコマンドは以下の処理を行います：</p>
 <ol>
 <li><strong>ベースとなる metadata.json ファイルを読み込み</strong>、既存の設定を保持します</li>
@@ -5691,7 +5713,7 @@ EOS
 <p><code>parse</code>・<code>chunk</code>・<code>download</code>・<code>list</code> は <code>dependency</code> feature のあるビルドに、ほかの 7 つは、さらに <code>train</code> もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。</p>
 <h3 id="dependency-の使用例"><a class="header" href="#dependency-の使用例">dependency の使用例</a></h3>
 <p><code>parse</code> には、分かち書きに使う辞書に合ったモデルが要ります。モデルは <code>dependency download</code> で取得します。</p>
-<pre><code class="language-bash">DICT=$(lindera download ipadic)
+<pre><code class="language-bash">DICT=$(lindera dictionary download ipadic)
 MODEL=$(lindera dependency download ipadic)
 echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
@@ -5700,7 +5722,7 @@ echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" -
 <h3 id="係り受け解析のモデルのダウンロード"><a class="header" href="#係り受け解析のモデルのダウンロード">係り受け解析のモデルのダウンロード</a></h3>
 <p><code>lindera dependency download ipadic</code> は、トークンフィルター <code>japanese_dependency</code> の <a href="lindera-cli/../lindera-dependency/model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>を取得します。CLI のバージョンのリリースのページにある <code>lindera-dependency-ipadic-&lt;version&gt;.zip</code> で、7.1.0 以降のリリースにあります。辞書と並べて <code>&lt;辞書ディレクトリ&gt;/dependency-ipadic/</code> にインストールし、その中のモデルファイルのパスを表示します。<code>lindera dependency parse</code> の <code>--model</code> と、フィルターの <code>model</code> に渡す値です。<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> は、同じやり方で <a href="lindera-cli/../lindera-dependency/model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を取得します。</p>
 <pre><code class="language-shell">% MODEL=$(lindera dependency download ipadic)
-% DICT_DIR=$(lindera download ipadic)
+% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "彼は赤い花を見た。" | lindera tokenize --dict "$DICT_DIR" --output json \
     --token-filter "japanese_dependency:{\"model\":\"$MODEL\"}"
 </code></pre>
@@ -5746,8 +5768,8 @@ ipadic      7.1.0    ok      /home/user/.local/share/lindera/dictionaries/depend
 <pre><code class="language-shell">% lindera --help
 </code></pre>
 <h2 id="2-辞書のダウンロード"><a class="header" href="#2-辞書のダウンロード">2. 辞書のダウンロード</a></h2>
-<p>GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は辞書ディレクトリ（Linux では <code>~/.local/share/lindera/dictionaries/ipadic</code>）にインストールされ、<code>lindera download</code> がそのパスを表示します。以降の手順のために <code>DICT_DIR</code> に受け取ります：</p>
-<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+<p>GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は辞書ディレクトリ（Linux では <code>~/.local/share/lindera/dictionaries/ipadic</code>）にインストールされ、<code>lindera dictionary download</code> がそのパスを表示します。以降の手順のために <code>DICT_DIR</code> に受け取ります：</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera dictionary download ipadic)
 </code></pre>
 <p>利用可能な辞書名と保存場所については<a href="lindera-cli/commands.html#download">コマンド</a>を参照してください。</p>
 <h2 id="3-基本的なトークナイズ"><a class="header" href="#3-基本的なトークナイズ">3. 基本的なトークナイズ</a></h2>
@@ -13119,6 +13141,9 @@ dictionary の行も同じく復号されます。指定しないと、2026-07-2
 UniDic のものと同じファイルで、<code>char.def</code> は UniDic のものに Sudachi が手を加えたものです。
 このレシピでビルドした辞書はこれらを含みます。再配布の前にライセンスを確認してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="v3-から-v4-への移行"><a class="header" href="#v3-から-v4-への移行">v3 から v4 への移行</a></h1>
+<blockquote>
+<p><strong>注意:</strong> v7.1.0 から、辞書のコマンドは <code>lindera dictionary</code> のサブコマンドです（<code>lindera build</code> は <code>lindera dictionary build</code>。<code>list</code>・<code>download</code>・<code>train</code>・<code>export</code> も同じ）。このガイドは、対象の版での名前のまま書いています。これらの名前は、v7.x の間は非推奨の警告つきで動き、v8.0.0 で削除します。<a href="./migration_v7_0_to_v7_1.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF-lindera-dictionary-%E3%81%AE%E4%B8%8B%E3%81%AB">v7.0 から v7.1 への移行</a>を参照してください。</p>
+</blockquote>
 <p>Lindera v4.0.0 は、v3 系で意図的に先送りしていた破壊的変更をまとめて取り込んだメジャー
 リリースです。個々の変更は小さいものですが、安心してアップグレードできるよう、すべての変更を
 本ガイドに列挙します。</p>
@@ -13240,6 +13265,9 @@ let cost = word_entry.word_cost();
 <li><code>lindera-dictionary</code> の viterbi フィールド直接アクセスを新しいアクセサに切り替える（Rust）。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="v4-から-v5-への移行"><a class="header" href="#v4-から-v5-への移行">v4 から v5 への移行</a></h1>
+<blockquote>
+<p><strong>注意:</strong> v7.1.0 から、辞書のコマンドは <code>lindera dictionary</code> のサブコマンドです（<code>lindera build</code> は <code>lindera dictionary build</code>。<code>list</code>・<code>download</code>・<code>train</code>・<code>export</code> も同じ）。このガイドは、対象の版での名前のまま書いています。これらの名前は、v7.x の間は非推奨の警告つきで動き、v8.0.0 で削除します。<a href="./migration_v7_0_to_v7_1.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF-lindera-dictionary-%E3%81%AE%E4%B8%8B%E3%81%AB">v7.0 から v7.1 への移行</a>を参照してください。</p>
+</blockquote>
 <p>Lindera v5.0.0 では、ワークスペースをリーンなコアを中心に再構成しました。
 <code>lindera</code> クレートのデフォルトビルドは純粋な形態素分割器（セグメンター）となり、
 辞書学習パイプラインは独立したクレートに移動しました。このガイドでは、
@@ -13352,6 +13380,9 @@ export LINDERA_DICTIONARIES_PATH=/path/to/cache
 export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="v5-から-v6-への移行"><a class="header" href="#v5-から-v6-への移行">v5 から v6 への移行</a></h1>
+<blockquote>
+<p><strong>注意:</strong> v7.1.0 から、辞書のコマンドは <code>lindera dictionary</code> のサブコマンドです（<code>lindera build</code> は <code>lindera dictionary build</code>。<code>list</code>・<code>download</code>・<code>train</code>・<code>export</code> も同じ）。このガイドは、対象の版での名前のまま書いています。これらの名前は、v7.x の間は非推奨の警告つきで動き、v8.0.0 で削除します。<a href="./migration_v7_0_to_v7_1.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF-lindera-dictionary-%E3%81%AE%E4%B8%8B%E3%81%AB">v7.0 から v7.1 への移行</a>を参照してください。</p>
+</blockquote>
 <p>Lindera v6.0.0 では、ビルド済みユーザー辞書の再ビルドが必要になり、
 トークナイズ結果が 2 点（Decompose モードの精度修正と、新しいデフォルト
 有効な未知語機能）で変わり、JavaScript バインディングのトークン型が変わり、
@@ -13769,6 +13800,9 @@ TypeScript 利用者は型名 <code>JsTokenData</code> を <code>Token</code> �
 <li>WASM: v5 世代の辞書を OPFS から削除し、v6 のアーカイブをダウンロードする。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="v6-から-v7-への移行"><a class="header" href="#v6-から-v7-への移行">v6 から v7 への移行</a></h1>
+<blockquote>
+<p><strong>注意:</strong> v7.1.0 から、辞書のコマンドは <code>lindera dictionary</code> のサブコマンドです（<code>lindera build</code> は <code>lindera dictionary build</code>。<code>list</code>・<code>download</code>・<code>train</code>・<code>export</code> も同じ）。このガイドは、対象の版での名前のまま書いています。これらの名前は、v7.x の間は非推奨の警告つきで動き、v8.0.0 で削除します。<a href="./migration_v7_0_to_v7_1.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF-lindera-dictionary-%E3%81%AE%E4%B8%8B%E3%81%AB">v7.0 から v7.1 への移行</a>を参照してください。</p>
+</blockquote>
 <p>Lindera v7.0.0 では <code>lindera</code> クレートがファサード（facade）になりました。
 形態素セグメンター（<code>lindera-segmenter</code> として公開）を再エクスポートし、
 新しくデフォルト有効になった <code>analysis</code> feature を通じて <code>lindera-analysis</code> の
@@ -16413,6 +16447,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 </div>
 <p>トークナイザーが返したトークンを読むコードは、影響を受けません。<code>surface</code>、<code>byte_start</code>、<code>details()</code>、<code>as_value()</code> などの欄とメソッドは、これまでどおりです。</p>
 <p>v7.1 は、文節の係り受け解析（<a href="./lindera-dependency.html">Lindera Dependency</a>）を足します。<code>Token</code> の変更は、それに伴うものです。v7.1 が足すほかのものは、既存のコードの変更を必要としません。利用者が気づきうる点は、<a href="migration_v7_0_to_v7_1.html#%E5%A4%89%E3%82%8F%E3%82%89%E3%81%AA%E3%81%84%E3%81%93%E3%81%A8">変わらないこと</a>に挙げます。</p>
+<p>v7.1 は、5 つのコマンドの名前を非推奨にもします。動かなくなるものはありません。<a href="migration_v7_0_to_v7_1.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF-lindera-dictionary-%E3%81%AE%E4%B8%8B%E3%81%AB">辞書のコマンドは <code>lindera dictionary</code> の下に</a>を参照してください。</p>
 <h2 id="token-は-tokennew-で作る"><a class="header" href="#token-は-tokennew-で作る"><code>Token</code> は <code>Token::new</code> で作る</a></h2>
 <p><code>Token</code> に、係り受け解析の結果を持つ欄が加わりました。<code>Token::dependency()</code> で読み、係り受けを解析するトークンフィルターを使わなければ <code>None</code> です（<a href="https://github.com/lindera/lindera/issues/1438">#1438</a>）。欄を足すと、この型の構造体式がすべて壊れます。そこで、この型を <code>#[non_exhaustive]</code> にしました。今後は、欄を足してもコードが壊れません。</p>
 <p><code>#[non_exhaustive]</code> の構造体は、その型のクレートの外では、構造体式で作れません。欄のパターンには <code>..</code> が必要です。該当するのは、トークンを手で作るコードで、多くは自作のトークンフィルターのテストです。</p>
@@ -16456,12 +16491,30 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <p><code>lindera_dictionary::dictionary::Dictionary::save_to_path</code> を削除しました（<a href="https://github.com/lindera/lindera/issues/1446">#1446</a>）。v1.0.0 から API にありましたが、実装されたことがありません。渡されたディレクトリを作ったあと、どの呼び出しでも panic していました。これを呼ぶコードは、コンパイルできなくなります。</p>
 <pre><code class="language-text">error[E0599]: no method named `save_to_path` found for struct `lindera_dictionary::dictionary::Dictionary` in the current scope
 </code></pre>
-<p>代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには <a href="./lindera-cli/commands.html"><code>lindera build</code></a> を、公開されている辞書を入れるには <a href="./lindera-cli/commands.html"><code>lindera download</code></a> を使います。</p>
+<p>代わりのメソッドはありません。Lindera は、読み込んだ辞書を書き出しません。辞書はファイルの入ったディレクトリで、ディレクトリをコピーすれば同じ辞書になります。ソースから作るには <a href="./lindera-cli/commands.html"><code>lindera dictionary build</code></a> を、公開されている辞書を入れるには <a href="./lindera-cli/commands.html"><code>lindera dictionary download</code></a> を使います。</p>
 <h2 id="metadata-に欄が増えた"><a class="header" href="#metadata-に欄が増えた"><code>Metadata</code> に欄が増えた</a></h2>
 <p><code>lindera_dictionary::dictionary::metadata::Metadata</code> に、欄 <code>skip_invalid_encoding: bool</code> が増えました（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。JUMAN 辞書に必要な設定です。これがあると、ビルダーは、語彙の CSV ファイルの行が辞書の文字コードのテキストとして読めないときに、その行を飛ばして警告します（<a href="./lindera-cli/commands.html#%E6%96%87%E5%AD%97%E3%82%B3%E3%83%BC%E3%83%89%E3%81%A8%E3%81%97%E3%81%A6%E8%AA%AD%E3%82%81%E3%81%AA%E3%81%84%E8%A1%8C"><code>build</code> コマンド</a>を参照）。<code>Metadata</code> は <code>#[non_exhaustive]</code> ではないので、全部の欄を書いた構造体式は、コンパイルできなくなります。</p>
 <pre><code class="language-text">error[E0063]: missing field `skip_invalid_encoding` in initializer of `lindera_dictionary::dictionary::metadata::Metadata`
 </code></pre>
 <p><code>skip_invalid_encoding: false</code> を足してください。これまでのビルドと同じ動きです。または、式の最後に <code>..Default::default()</code> を書いてください。こう書くと、今後に欄が増えても影響を受けません。<code>metadata.json</code> を読むコード、<code>Metadata::default()</code> から始めるコード、<code>Metadata::new</code> を呼ぶコードは、影響を受けません。この欄の無い <code>metadata.json</code> は <code>false</code> として読まれ、<code>false</code> のときは、書き出すファイルにこの欄は入りません。</p>
+<h2 id="辞書のコマンドは-lindera-dictionary-の下に"><a class="header" href="#辞書のコマンドは-lindera-dictionary-の下に">辞書のコマンドは <code>lindera dictionary</code> の下に</a></h2>
+<p>これは非推奨で、破壊的変更ではありません。v7.0 のコマンドラインは、これまでどおり動きます。</p>
+<p>コマンドラインは、先に対象を、その後に操作を書く形になりました（<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>、<a href="https://github.com/lindera/lindera/issues/1483">#1483</a>）。係り受け解析の操作は <code>lindera dependency</code> に、辞書の操作は <code>lindera dictionary</code> にあります。辞書の操作は、これまで <code>lindera</code> 自身のサブコマンドでした。</p>
+<div class="table-wrapper"><table><thead><tr><th>v7.0</th><th>v7.1</th></tr></thead><tbody>
+<tr><td><code>lindera list</code></td><td><code>lindera dictionary list</code></td></tr>
+<tr><td><code>lindera download</code></td><td><code>lindera dictionary download</code></td></tr>
+<tr><td><code>lindera build</code></td><td><code>lindera dictionary build</code></td></tr>
+<tr><td><code>lindera train</code></td><td><code>lindera dictionary train</code></td></tr>
+<tr><td><code>lindera export</code></td><td><code>lindera dictionary export</code></td></tr>
+</tbody></table>
+</div>
+<p>オプション・標準出力・終了コードは変わりません。<code>lindera tokenize</code> の名前はそのままです。</p>
+<p>v7.0 の名前は今も動きます。新しいコマンドと同じことをする前に、標準エラー出力へ 1 行を書きます。</p>
+<pre><code class="language-text">Warning: `lindera build` is deprecated and will be removed in v8.0.0; use `lindera dictionary build` instead
+</code></pre>
+<p><code>lindera --help</code> の一覧には出ず、v8.0.0 で削除します。スクリプトが 5 つのどれかを呼んでいるなら、名前を変えてください。変えるまでは、標準エラー出力に 1 行増えるだけで、ほかは変わりません。</p>
+<p>これらのコマンドを案内するメッセージは、新しい名前を書きます。たとえば、辞書のディレクトリが空のときの <code>lindera dictionary list</code> の案内（<code>run 'lindera dictionary download &lt;name&gt;' to download one</code>）や、形式の版が違う辞書のエラー（<code>rebuild it with `lindera dictionary build` </code>）です。ライブラリが同じ文を書くので、バインディングにも同じ文が出ます。</p>
+<p><a href="./lindera-cli/commands.html#dictionary">コマンド</a> を参照してください。</p>
 <h2 id="変わらないこと"><a class="header" href="#変わらないこと">変わらないこと</a></h2>
 <ul>
 <li><code>Token::as_value</code> と <code>lindera tokenize -o json</code> が書く JSON は、係り受けを持たないトークンでは、キーが増えません。</li>
@@ -16469,7 +16522,7 @@ decompose モードを調整するには <code>Penalty</code> を渡す。実行
 <li>トークンは、ポインター 1 つ分だけ大きくなります。</li>
 <li><code>lindera</code> コマンドとバインディングは、既定のビルドに <code>dependency</code> feature を持ちます。トークンフィルター <code>japanese_dependency</code> がパッケージに入り、<code>lindera-dependency</code> クレートに依存します（このクレート自身は依存を持ちません）。コマンドは 134 kB 大きくなります。<code>default-features = false</code> で、入っていないビルドになります。ライブラリの <code>lindera</code> と <code>lindera-analysis</code> は、feature を指定したときだけ持ちます。</li>
 <li>モデルは、パッケージにも入っておらず、既定では埋め込みもしません。IPADIC のモデルは、<code>lindera dependency download ipadic</code> で取得します。UniDic のモデルは、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> で取得します。</li>
-<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera download jumandic</code> で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</li>
+<li>10 個目の辞書として、<a href="./lindera-jumandic.html">JUMAN 辞書</a>（辞書名 <code>jumandic</code>、クレート <code>lindera-jumandic</code>、feature <code>embed-jumandic</code>）が増えました。mecab-jumandic 7.0-20130310 から作ります（<a href="https://github.com/lindera/lindera/issues/1466">#1466</a>）。既定のビルドは、これを埋め込みません。<code>lindera dictionary download jumandic</code> で取得できます。この辞書の係り受け解析のモデルは、公開していません。CaboCha が配布する JUMAN のモデルを、この辞書用のモデルに<a href="./lindera-dependency/cabocha_models.html">変換できます</a>。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>

@@ -188,10 +188,10 @@
 </ul>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
 <p>Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the <code>download</code> subcommand, which fetches the pre-built dictionary matching the CLI version, installs it in the dictionaries directory (<code>~/.local/share/lindera/dictionaries/ipadic</code> on Linux) and prints its path, which <code>--dict</code> takes:</p>
-<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+<pre><code class="language-shell">% DICT_DIR=$(lindera dictionary download ipadic)
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dict "$DICT_DIR"
 </code></pre>
-<p>See <a href="commands.html#download">Commands</a> for the available dictionary names and storage locations, and <a href="commands.html#list"><code>lindera list</code></a> for the dictionaries in place.</p>
+<p>See <a href="commands.html#download">Commands</a> for the available dictionary names and storage locations, and <a href="commands.html#list"><code>lindera dictionary list</code></a> for the dictionaries in place.</p>
 <p>Alternatively, you can download a pre-built dictionary manually from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
 <pre><code class="language-shell"># Example: download and extract the IPADIC dictionary
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
@@ -222,11 +222,11 @@
 <h4 id="unidic-cwj-japanese-dictionary"><a class="header" href="#unidic-cwj-japanese-dictionary">UniDic CWJ (Japanese dictionary)</a></h4>
 <pre><code class="language-shell">% cargo build --release --features=embed-unidic-cwj
 </code></pre>
-<p>The binary carries the 1.2 GB dictionary, and the build takes about 11 GiB of memory. <code>lindera download unidic-cwj</code> gets the dictionary without embedding it.</p>
+<p>The binary carries the 1.2 GB dictionary, and the build takes about 11 GiB of memory. <code>lindera dictionary download unidic-cwj</code> gets the dictionary without embedding it.</p>
 <h4 id="unidic-csj-japanese-dictionary"><a class="header" href="#unidic-csj-japanese-dictionary">UniDic CSJ (Japanese dictionary)</a></h4>
 <pre><code class="language-shell">% cargo build --release --features=embed-unidic-csj
 </code></pre>
-<p>The binary carries the 1.2 GB dictionary, and the build takes 8 to 11 GiB of memory, as for UniDic CWJ. <code>lindera download unidic-csj</code> gets the dictionary without embedding it.</p>
+<p>The binary carries the 1.2 GB dictionary, and the build takes 8 to 11 GiB of memory, as for UniDic CWJ. <code>lindera dictionary download unidic-csj</code> gets the dictionary without embedding it.</p>
 <h4 id="sudachidict-japanese-dictionary"><a class="header" href="#sudachidict-japanese-dictionary">SudachiDict (Japanese dictionary)</a></h4>
 <pre><code class="language-shell">% cargo build --release --features=embed-sudachidict
 </code></pre>
