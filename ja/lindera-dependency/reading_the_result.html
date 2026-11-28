@@ -207,12 +207,12 @@
 <h2 id="結果の読み方"><a class="header" href="#結果の読み方">結果の読み方</a></h2>
 <p>結果には 2 つの形があり、中身は同じです。</p>
 <ul>
-<li><code>lindera-dependency</code> コマンドの<strong>ラティス形式</strong>。<code>cabocha -f1</code> が書く形式です。</li>
+<li><code>lindera dependency parse</code> の<strong>ラティス形式</strong>。<code>cabocha -f1</code> が書く形式です。</li>
 <li>Lindera のトークナイザーの<strong>トークンの欄</strong>。トークンフィルター <code>japanese_dependency</code> が書き込みます。</li>
 </ul>
 <h3 id="ラティス形式"><a class="header" href="#ラティス形式">ラティス形式</a></h3>
 <pre><code class="language-shell">% echo "太郎は昨日買った新しい本を図書館で読んだ。" \
-    | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+    | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 6D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -288,7 +288,7 @@ EOS
 </div>
 <p>この文は、節の中に節があります。係り受けは、2 つの節を区別しています。花子が は内側の節の動詞 書いた に係り、太郎は は外側の節の動詞 読んだ。 に係ります。</p>
 <h3 id="ほかの種類の文"><a class="header" href="#ほかの種類の文">ほかの種類の文</a></h3>
-<p>以下の表は、上の表と同じく、<code>lindera-dependency parse</code> の出力から読み取ったものです。</p>
+<p>以下の表は、上の表と同じく、<code>lindera dependency parse</code> の出力から読み取ったものです。</p>
 <p><strong>引用</strong>: 彼は明日来ると言った。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>文節</th><th>係り先</th></tr></thead><tbody>
 <tr><td>0</td><td>彼は</td><td>3 言った。</td></tr>

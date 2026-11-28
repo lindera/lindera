@@ -2523,7 +2523,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <li><strong>Convert the three models CaboCha distributes</strong>, for IPA, for JUMAN and for UniDic, into a model file that analyzes as CaboCha does. Such a model is limited to research and personal use, as CaboCha's.</li>
 <li><strong>Evaluate</strong> chunking and dependency accuracy as CaboCha and J.DepP count them, and compare two outputs with a paired test.</li>
 </ul>
-<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it holds the types, the lattice format, the schema, the model file, the chunker and the parser. The command is behind the <code>cli</code> feature, and the training and the evaluation behind the <code>train</code> feature.</p>
+<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it holds the types, the lattice format, the schema, the model file, the chunker and the parser. The training and the evaluation are behind the <code>train</code> feature. The crate is a library: its command is <a href="./lindera-dependency/command_line.html"><code>lindera dependency</code></a>, of the <code>lindera</code> command.</p>
 <h2 id="contents-4"><a class="header" href="#contents-4">Contents</a></h2>
 <ul>
 <li>
@@ -2551,7 +2551,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <p><a href="./lindera-dependency/cabocha_models.html">CaboCha's Models</a> -- Converting the models CaboCha distributes: their terms, the command, what is converted, and the agreement with CaboCha</p>
 </li>
 <li>
-<p><a href="./lindera-dependency/command_line.html">Command Line</a> -- Parsing plain text with the <code>lindera-dependency</code> command: the options, the input layers, the speed</p>
+<p><a href="./lindera-dependency/command_line.html">Command Line</a> -- Parsing plain text with <code>lindera dependency parse</code>: the options, the input layers, the speed</p>
 </li>
 <li>
 <p><a href="./lindera-dependency/token_filter.html">Token Filter</a> -- The filter <code>japanese_dependency</code> of the Lindera tokenizer: the build, what is written on a token, the sentences, the order of the filters, the speed</p>
@@ -2585,9 +2585,9 @@ lindera = { version = "7.1", features = ["dependency"] }
 <pre><code class="language-toml">[dependencies]
 lindera-dependency = "7.1"
 </code></pre>
-<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it takes any sequence of morphemes, from Lindera or not. The <a href="lindera-dependency/./architecture.html#feature-flags">feature flags</a> add the command, the training and the embedded model.</p>
-<p>The <code>lindera-dependency</code> command, which parses plain text and writes the lattice format, is behind <code>cli</code>:</p>
-<pre><code class="language-shell">cargo install lindera-dependency --features cli
+<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it takes any sequence of morphemes, from Lindera or not. The <a href="lindera-dependency/./architecture.html#feature-flags">feature flags</a> add the training and the embedded model.</p>
+<p>The crate is a library. Its command, which parses plain text and writes the lattice format, is <code>lindera dependency</code>, a part of the <code>lindera</code> command, in its default build:</p>
+<pre><code class="language-shell">cargo install lindera-cli
 </code></pre>
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
 <p>The analysis needs a <a href="lindera-dependency/./model_file.html">model file</a> for the dictionary of the tokenizer. Lindera publishes four with each release: one for IPADIC (<a href="lindera-dependency/./model_file.html#the-model-for-ipadic">The model for IPADIC</a>) and one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<a href="lindera-dependency/./model_file.html#the-models-for-unidic">The models for UniDic</a>). A model is not part of a package or of a crate, as the dictionaries are not. There are three ways to get one, shown here for IPADIC; for a UniDic dictionary, its name takes the place of <code>ipadic</code>:</p>
@@ -2627,10 +2627,9 @@ lindera-dependency = "7.1"
 </tbody></table>
 </div>
 <p>The sentence has four bunsetsu: 彼は (0) and 花を (2) depend on 見た。 (3), 赤い (1) on 花を, and the last one on nothing. <a href="lindera-dependency/./token_filter.html">Token Filter</a> describes the fields, how a text is cut into sentences, and the same from a configuration file and from the bindings.</p>
-<h2 id="with-the-lindera-dependency-command"><a class="header" href="#with-the-lindera-dependency-command">With the <code>lindera-dependency</code> command</a></h2>
-<p>The command of the crate writes the lattice format, which is what <code>cabocha -f1</code> writes:</p>
-<pre><code class="language-shell">% cargo install lindera-dependency --features cli
-% echo "彼は赤い花を見た。" | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+<h2 id="with-lindera-dependency-parse"><a class="header" href="#with-lindera-dependency-parse">With <code>lindera dependency parse</code></a></h2>
+<p><code>lindera dependency parse</code>, of the same command, writes the lattice format, which is what <code>cabocha -f1</code> writes:</p>
+<pre><code class="language-shell">% echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 3D 0/1 0.000000
 彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ
@@ -2729,12 +2728,12 @@ fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
 <h2 id="reading-the-result"><a class="header" href="#reading-the-result">Reading the result</a></h2>
 <p>The result comes in two forms, with the same content:</p>
 <ul>
-<li>the <strong>lattice format</strong> of the <code>lindera-dependency</code> command, which is what <code>cabocha -f1</code> writes;</li>
+<li>the <strong>lattice format</strong> of <code>lindera dependency parse</code>, which is what <code>cabocha -f1</code> writes;</li>
 <li><strong>fields on the tokens</strong> of the Lindera tokenizer, with the token filter <code>japanese_dependency</code>.</li>
 </ul>
 <h3 id="the-lattice-format"><a class="header" href="#the-lattice-format">The lattice format</a></h3>
 <pre><code class="language-shell">% echo "太郎は昨日買った新しい本を図書館で読んだ。" \
-    | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+    | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 6D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -2810,7 +2809,7 @@ EOS
 </div>
 <p>The sentence has a clause inside a clause, and the dependencies keep the two apart: 花子が depends on 書いた, the verb of the inner clause, and 太郎は on 読んだ。, the verb of the outer one.</p>
 <h3 id="more-kinds-of-sentence"><a class="header" href="#more-kinds-of-sentence">More kinds of sentence</a></h3>
-<p>The tables below are read from the output of <code>lindera-dependency parse</code>, as the one above.</p>
+<p>The tables below are read from the output of <code>lindera dependency parse</code>, as the one above.</p>
 <p><strong>A quotation</strong>: 彼は明日来ると言った。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>Bunsetsu</th><th>Depends on</th></tr></thead><tbody>
 <tr><td>0</td><td>彼は</td><td>3 言った。</td></tr>
@@ -3125,10 +3124,10 @@ assert_eq!(output, text.as_bytes());
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
 <p>A <code>Parser</code> finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a <code>FeatureSet</code> says which groups of them are made; a <code>Classifier</code> scores them, by adding the weights of the features and of their pairs. The classifier of a model file is a <code>ParserPart</code>, which reads the weights on the bytes of the file; <code>ParserModel</code> holds them in memory, as training gives them; <code>LinearClassifier</code> takes weights made by hand. <code>parser::instances</code> gives the training instances from a sentence with its answer, and <code>parser::train</code> trains on them. See <a href="lindera-dependency/./parsing.html">Parsing</a>.</p>
 <h3 id="the-command"><a class="header" href="#the-command">The command</a></h3>
-<p>With the <code>cli</code> feature the crate builds the <code>lindera-dependency</code> command, which tokenizes with <code>lindera-segmenter</code> and has no training code. The <code>train</code> feature adds the subcommands that make training data, train and evaluate:</p>
+<p>The crate has no binary. Its command is <code>lindera dependency</code>, in <code>lindera-cli</code>, behind the <code>dependency</code> feature of that crate, which is in its default build. With the <code>train</code> feature of <code>lindera-cli</code>, also in the default build, it has the subcommands that make training data, train and evaluate:</p>
 <div class="table-wrapper"><table><thead><tr><th>Subcommand</th><th>Feature</th><th>What it does</th><th>Page</th></tr></thead><tbody>
-<tr><td><code>parse</code></td><td><code>cli</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="lindera-dependency/./command_line.html">Command Line</a></td></tr>
-<tr><td><code>chunk</code></td><td><code>cli</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="lindera-dependency/./chunking.html">Chunking</a></td></tr>
+<tr><td><code>parse</code></td><td><code>dependency</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="lindera-dependency/./command_line.html">Command Line</a></td></tr>
+<tr><td><code>chunk</code></td><td><code>dependency</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="lindera-dependency/./chunking.html">Chunking</a></td></tr>
 <tr><td><code>convert</code></td><td><code>train</code></td><td>Makes training data from a CoNLL-U file with bunsetsu labels</td><td><a href="lindera-dependency/./training_data.html">Training Data</a></td></tr>
 <tr><td><code>evaluate</code></td><td><code>train</code></td><td>Compares an output with the answer</td><td><a href="lindera-dependency/./evaluation.html">Evaluation</a></td></tr>
 <tr><td><code>split</code></td><td><code>train</code></td><td>Writes the folds of a cross-validation</td><td><a href="lindera-dependency/./evaluation.html">Evaluation</a></td></tr>
@@ -3138,13 +3137,11 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>convert-cabocha</code></td><td><code>train</code></td><td>Converts the chunker and parser models of CaboCha into a model file</td><td><a href="lindera-dependency/./cabocha_models.html">CaboCha's Models</a></td></tr>
 </tbody></table>
 </div>
-<p>The command is in this crate, not in <code>lindera-cli</code>: it writes the lattice format and holds the training, which a user of the tokenizer does not need. <code>lindera-cli</code> runs the parser as a <a href="lindera-dependency/./token_filter.html">token filter</a>.</p>
+<p>The command is in <code>lindera-cli</code>, not in this crate (<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>): a user has one command to install, the one that also downloads the dictionary and the model, and this crate depends on no tokenizer with any feature. <code>lindera-cli</code> also runs the parser as a <a href="lindera-dependency/./token_filter.html">token filter</a>.</p>
 <h2 id="feature-flags-4"><a class="header" href="#feature-flags-4">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td>(none)</td><td>The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for <code>wasm32-unknown-unknown</code></td><td>Yes</td></tr>
-<tr><td><code>cli</code></td><td>The <code>lindera-dependency</code> command with <code>parse</code> and <code>chunk</code>, which tokenizes with <code>lindera-segmenter</code>. No training code</td><td>No</td></tr>
-<tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser, and their subcommands (implies <code>cli</code>)</td><td>No</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>Embeds IPADIC in the command, for <code>--dict embedded://ipadic</code> (implies <code>cli</code>)</td><td>No</td></tr>
+<tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser</td><td>No</td></tr>
 <tr><td><code>embed-model-ipadic</code></td><td>Embeds the <a href="lindera-dependency/./model_file.html#embedding-it">model for IPADIC</a>, for <code>embedded::model("ipadic")</code> and <code>--model embedded://ipadic</code>. A build dependency, and none of the library</td><td>No</td></tr>
 <tr><td><code>embed-model-unidic</code>, <code>embed-model-unidic-cwj</code>, <code>embed-model-unidic-csj</code></td><td>Embed the <a href="lindera-dependency/./model_file.html#the-models-for-unidic">models for UniDic</a>, for <code>embedded::model("unidic")</code> and <code>--model embedded://unidic</code>, and the same with the two other names</td><td>No</td></tr>
 </tbody></table>
@@ -3216,7 +3213,7 @@ EOS
 </code></pre>
 <h2 id="training-a-model"><a class="header" href="#training-a-model">Training a model</a></h2>
 <p>The <a href="lindera-dependency/./model_file.html#the-model-for-ipadic">model for IPADIC</a> that Lindera releases has a chunker, and so have the <a href="lindera-dependency/./model_file.html#the-models-for-unidic">models for UniDic</a>. To train one of your own from <a href="lindera-dependency/./training_data.html">training data</a>:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
 <p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="lindera-dependency/./head_and_function_word.html">schema</a> of that dictionary then go into the model, and the columns, the template and the coefficient are <a href="lindera-dependency/chunking.html#with-unidic">the ones for it</a>.</p>
@@ -3238,7 +3235,7 @@ bytes: 261857
 </tbody></table>
 </div>
 <p><code>chunk</code> segments the morphemes of a file again with a model, for <a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> to compare with the answer:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
 <p>It writes every bunsetsu as depending on the next one: it measures the chunker alone. <a href="lindera-dependency/./command_line.html#input-that-is-tokenized-already"><code>parse --input-layer morphemes</code></a> segments and parses.</p>
@@ -3490,8 +3487,8 @@ for instance in parser::instances(&amp;Schema::ipadic(), &amp;set, sentence)? {
 <p>These are the three decisions of the table above. In the third, 本を is already attached to the target 読んだと, hence <code>A:を</code>.</p>
 <p>A sentence whose tree the parser cannot make (a head to the left, crossing arcs, a root that is not the last bunsetsu) is an error. The <a href="lindera-dependency/./training_data.html">conversion</a> leaves such sentences out of the training data.</p>
 <h3 id="the-command-1"><a class="header" href="#the-command-1">The command</a></h3>
-<p>With the <code>train</code> feature, <code>lindera-dependency instances</code> writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names:</p>
-<pre><code class="language-shell">lindera-dependency instances --input train.lattice --output train.instances
+<p>With the <code>train</code> feature, <code>lindera dependency instances</code> writes the instances of a file in the lattice format, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names:</p>
+<pre><code class="language-shell">lindera dependency instances --input train.lattice --output train.instances
 </code></pre>
 <p>Each line is one instance: <code>+1</code> or <code>-1</code>, then the feature strings, separated by tabs. An empty line ends each sentence, so that a file can be cut into folds between sentences. <code>--features</code> takes a feature set; the default is every group.</p>
 <p>The report goes to the standard error. For the train file of UD Japanese-GSD:</p>
@@ -3513,9 +3510,9 @@ negative: 32488
 </div>
 <h2 id="training-a-model-1"><a class="header" href="#training-a-model-1">Training a model</a></h2>
 <p>Training is behind the <code>train</code> feature. <code>train-parser</code> trains the parser on <a href="lindera-dependency/./training_data.html">training data</a>, with the schema of IPADIC, or of the dictionary that <code>--dictionary-name</code> names, and writes a <a href="lindera-dependency/./model_file.html">model file</a>. With <code>--chunker</code>, the chunker of another model file goes into the output, which is then the whole model of the dictionary; that file has to be for the same dictionary:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
-cargo run --release -p lindera-dependency --features train -- train-parser \
+cargo run --release -p lindera-cli -- dependency train-parser \
     --input train.lattice --chunker chunker.model --output ipadic.model
 </code></pre>
 <p>On the train file of UD Japanese-GSD converted with IPADIC, <code>train-parser</code> takes about three seconds and ends with:</p>
@@ -3546,9 +3543,9 @@ bytes: 6258554
 </tbody></table>
 </div>
 <p><a href="lindera-dependency/./command_line.html"><code>parse</code></a> with <code>--input-layer</code> finds the heads of a file in the lattice format with a model, for <a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> to compare with the answer:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- parse \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency parse \
     --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 </code></pre>
 <p>With <code>bunsetsu</code> it parses the bunsetsu of the input, which measures the parser alone. With <code>morphemes</code> the bunsetsu of the input are not read: the morphemes are segmented by the chunker of the model and then parsed, which is the analysis as it is used. Without <code>--input-layer</code> the input is plain text: see <a href="lindera-dependency/./command_line.html">Command Line</a>.</p>
@@ -3736,7 +3733,7 @@ cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ip
 <p>One script builds the file from the corpus and the sources of the repository:</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera-dependency</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to <code>scripts/dependency/data/model</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
+<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to <code>scripts/dependency/data/model</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
@@ -3871,7 +3868,7 @@ archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  linde
 </div>
 <p>Measured on one core of an AMD Ryzen AI Max+ 395, with Rust 1.100.0; <a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> and <code>scripts/dependency/parser_experiments.sh speed</code> measure it again.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="cabochas-models"><a class="header" href="#cabochas-models">CaboCha's Models</a></h1>
-<p><a href="https://taku910.github.io/cabocha/">CaboCha</a> comes with models trained on the Kyoto University Text Corpus 4.0. They cannot be trained again without the corpus, and their bunsetsu are those of the Kyoto corpus, not those of UD Japanese-GSD, which the models of this crate follow. <code>lindera-dependency convert-cabocha</code> converts such a model into a <a href="lindera-dependency/./model_file.html">model file</a>, and the analysis with the converted model is the one CaboCha gives.</p>
+<p><a href="https://taku910.github.io/cabocha/">CaboCha</a> comes with models trained on the Kyoto University Text Corpus 4.0. They cannot be trained again without the corpus, and their bunsetsu are those of the Kyoto corpus, not those of UD Japanese-GSD, which the models of this crate follow. <code>lindera dependency convert-cabocha</code> converts such a model into a <a href="lindera-dependency/./model_file.html">model file</a>, and the analysis with the converted model is the one CaboCha gives.</p>
 <h2 id="the-terms-of-the-models"><a class="header" href="#the-terms-of-the-models">The terms of the models</a></h2>
 <p><strong>A converted model is limited to research and personal use, as the model it comes from. Convert the files of your own copy of CaboCha, and do not distribute the result.</strong> This crate, its releases and its builds hold no model of CaboCha.</p>
 <p>The license of CaboCha, the LGPL or the BSD license, does not cover its models. Its page says (in Japanese):</p>
@@ -3891,10 +3888,10 @@ archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  linde
 <p>The files are the text models in <code>model/</code> of CaboCha's source, in UTF-8. The compiled models of an installation (<code>dep.ipa.model</code>) are not read: they depend on the machine.</p>
 <p>The two files have to be those of one model. The part-of-speech set is read in the header of the parser model (<code>posset: IPA</code>), and the chunker model does not say which it is for: <code>chunk.ipa.txt</code> with <code>dep.juman.txt</code> converts without an error, into a model that chunks wrongly.</p>
 <h2 id="converting"><a class="header" href="#converting">Converting</a></h2>
-<p>The command is in the build with the <code>train</code> feature:</p>
-<pre><code class="language-sh">cargo install lindera-dependency --features train,embed-ipadic
+<p>The command is in the default build of <code>lindera</code>, which has the <code>train</code> feature:</p>
+<pre><code class="language-sh">cargo install lindera-cli --features embed-ipadic
 </code></pre>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.ipa.txt \
     --parser cabocha/model/dep.ipa.txt \
     --output cabocha-ipa.model
@@ -3911,7 +3908,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>The file is a model for <code>ipadic</code>, read by <code>parse</code>, by the <a href="lindera-dependency/./token_filter.html">token filter</a> and by <code>Model::new</code> as any other, in the default build:</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict embedded://ipadic --model cabocha-ipa.model
+    | lindera dependency parse --dict embedded://ipadic --model cabocha-ipa.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -3940,7 +3937,7 @@ EOS
 <p>From Rust, <code>lindera_dependency::cabocha::convert</code> takes the content of the two files and gives the two models and what it did.</p>
 <h3 id="the-model-for-juman"><a class="header" href="#the-model-for-juman">The model for JUMAN</a></h3>
 <p>The model for JUMAN is the one CaboCha's page gives the highest accuracy for: it was trained on the Kyoto corpus as it is, where the other two were trained on the corpus tokenized again. It is converted in the same way:</p>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.juman.txt \
     --parser cabocha/model/dep.juman.txt \
     --output cabocha-juman.model
@@ -3957,7 +3954,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>The file is a model for <code>jumandic</code>. <code>lindera-dependency</code> embeds no dictionary but IPADIC, so <code>--dict</code> takes the directory of the JUMAN dictionary, which <code>lindera download jumandic</code> installs, from 7.1.0 on, and <a href="lindera-dependency/../lindera-jumandic/build.html"><code>lindera build</code></a> makes from the source:</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+    | lindera dependency parse --dict jumandic --model cabocha-juman.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,人名,*,*,太郎,たろう,人名:日本:名:45:0.00106
@@ -3982,7 +3979,7 @@ EOS
 <p><code>cabocha -f1 -n0 -P JUMAN</code>, with MeCab and mecab-jumandic, writes the same bunsetsu, heads, positions and scores for this sentence, with <code>-0.468695</code> where no decision is made. Its lines differ in the last column of the particles, <code>連語</code> where Lindera has <code>*</code>: the two take another one of two entries of the same cost (<a href="lindera-dependency/../lindera-jumandic/examples.html#agreement-with-mecab">Examples</a>), in a column the model does not read.</p>
 <h3 id="the-model-for-unidic"><a class="header" href="#the-model-for-unidic">The model for UniDic</a></h3>
 <p>The model for UniDic is converted in the same way:</p>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.unidic.txt \
     --parser cabocha/model/dep.unidic.txt \
     --output cabocha-unidic.model
@@ -3999,7 +3996,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>The file is a model for <code>unidic</code>, the dictionary built from unidic-mecab 2.1.2. Lindera has three UniDic dictionaries, which have the columns a model reads at the same places, and a model file is for one dictionary by its name: <code>--dictionary unidic-cwj</code> or <code>--dictionary unidic-csj</code> makes the model one for another of them. CaboCha's page does not say which UniDic its model was trained with. <code>--dict</code> takes the directory of the dictionary, which <code>lindera download unidic</code> installs:</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+    | lindera dependency parse --dict unidic --model cabocha-unidic.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,タロウ,タロウ,太郎,タロー,太郎,タロー,固,*,*,*,*
@@ -4057,7 +4054,7 @@ EOS
 <li>the punctuation is <code>。</code> and <code>、</code>, and the brackets are those of CaboCha, each matched as the whole surface.</li>
 </ul>
 <h2 id="agreement-with-cabocha"><a class="header" href="#agreement-with-cabocha">Agreement with CaboCha</a></h2>
-<p><code>scripts/dependency/cabocha_models.sh</code> converts the model for IPA, or with <code>--posset juman</code> or <code>--posset unidic</code> the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by <code>scripts/dependency/build_baselines.sh</code>, with the model as its own build compiled it) and to <code>lindera-dependency parse</code> with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.</p>
+<p><code>scripts/dependency/cabocha_models.sh</code> converts the model for IPA, or with <code>--posset juman</code> or <code>--posset unidic</code> the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by <code>scripts/dependency/build_baselines.sh</code>, with the model as its own build compiled it) and to <code>lindera dependency parse</code> with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.</p>
 <p>On the same morphemes, those of Lindera with IPADIC, everything is the same:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Sentences with the same bunsetsu</th><th>Bunsetsu with the same head</th><th>Bunsetsu with the same head word and function word</th></tr></thead><tbody>
 <tr><td>GSD dev</td><td>100% (506 / 506)</td><td>100% (3,740 / 3,740)</td><td>100% (4,246 / 4,246)</td></tr>
@@ -4125,16 +4122,16 @@ EOS
 <li><strong>Not verified</strong>: CaboCha built with another compiler or system than GCC 15.2 on Linux (x86_64).</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="command-line"><a class="header" href="#command-line">Command Line</a></h1>
-<p>The <code>lindera-dependency</code> command takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the <a href="lindera-dependency/./architecture.html#the-lattice-format">lattice format</a>, which is what <code>cabocha -f1</code> writes.</p>
+<p><code>lindera dependency parse</code> takes plain text, tokenizes it with a Lindera dictionary, and writes the bunsetsu of each sentence and their dependencies in the <a href="lindera-dependency/./architecture.html#the-lattice-format">lattice format</a>, which is what <code>cabocha -f1</code> writes.</p>
 <p>It needs a <a href="lindera-dependency/./model_file.html">model file</a> with a chunker and a parser: the <a href="lindera-dependency/./model_file.html#the-model-for-ipadic">model for IPADIC</a> or one of the <a href="lindera-dependency/./model_file.html#the-models-for-unidic">models for UniDic</a>, which a release of Lindera publishes from 7.1.0 on, or one you <a href="lindera-dependency/./parsing.html#training-a-model">train</a>.</p>
 <h2 id="building"><a class="header" href="#building">Building</a></h2>
-<p>The command is behind the <code>cli</code> feature, which brings <code>clap</code> and <code>lindera-segmenter</code> and no training code. <code>embed-ipadic</code> embeds IPADIC in it, and <code>embed-model-ipadic</code> the <a href="lindera-dependency/./model_file.html#embedding-it">model for IPADIC</a>, which <code>--model embedded://ipadic</code> then names (<code>embed-model-unidic-cwj</code> and <code>--model embedded://unidic-cwj</code> for UniDic CWJ, and the same for <code>unidic</code> and <code>unidic-csj</code>, with the dictionary given as a directory):</p>
-<pre><code class="language-shell">cargo build --release -p lindera-dependency --features cli,embed-ipadic
+<p><code>lindera dependency</code> is a part of the <a href="lindera-dependency/../lindera-cli/installation.html"><code>lindera</code> command</a>, in its default build: the binaries of a release have it, and so does <code>cargo install lindera-cli</code>. It is behind the <code>dependency</code> feature of <code>lindera-cli</code>. <code>embed-ipadic</code> embeds IPADIC in the command, and <code>embed-dependency-ipadic</code> the <a href="lindera-dependency/./model_file.html#embedding-it">model for IPADIC</a>, which <code>--model embedded://ipadic</code> then names (<code>embed-dependency-unidic-cwj</code> and <code>--model embedded://unidic-cwj</code> for UniDic CWJ, and the same for <code>unidic</code> and <code>unidic-csj</code>, with the dictionary given as a directory):</p>
+<pre><code class="language-shell">cargo build --release -p lindera-cli --features embed-ipadic
 </code></pre>
-<p>The binary is <code>target/release/lindera-dependency</code>. A build with <code>cli</code> has two subcommands, <code>parse</code> and <a href="lindera-dependency/./chunking.html"><code>chunk</code></a>; the <code>train</code> feature adds the ones that make training data, train and evaluate.</p>
+<p>The binary is <code>target/release/lindera</code>. <code>lindera dependency</code> has two subcommands for a user, <code>parse</code> and <a href="lindera-dependency/./chunking.html"><code>chunk</code></a>; the <code>train</code> feature, which is in the default build too, adds the ones that make training data, train and evaluate. The crate <code>lindera-dependency</code> itself is a library, and has no command.</p>
 <h2 id="parsing-text"><a class="header" href="#parsing-text">Parsing text</a></h2>
 <p>One line of the input is one sentence:</p>
-<pre><code class="language-shell">echo "彼は赤い花を見た。" | lindera-dependency parse \
+<pre><code class="language-shell">echo "彼は赤い花を見た。" | lindera dependency parse \
     --model ipadic.model --dict embedded://ipadic
 </code></pre>
 <pre><code class="language-text">* 0 3D 0/1 0.000000
@@ -4169,7 +4166,7 @@ EOS
 </div>
 <h2 id="the-dictionary-and-the-model"><a class="header" href="#the-dictionary-and-the-model">The dictionary and the model</a></h2>
 <p>A model is trained on the morphemes of one dictionary, and gives wrong answers on those of another one without failing. The command therefore compares the name of the dictionary it loaded with the name in the model file, and stops when they differ:</p>
-<pre><code class="language-text">Error: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic"
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic" }
 </code></pre>
 <h2 id="input-that-is-tokenized-already"><a class="header" href="#input-that-is-tokenized-already">Input that is tokenized already</a></h2>
 <p><code>--input-layer</code> says what the input holds. With <code>morphemes</code> and <code>bunsetsu</code> the input is in the lattice format, no dictionary is loaded, and <code>--dict</code> is refused.</p>
@@ -4179,9 +4176,9 @@ EOS
 <tr><td><code>bunsetsu</code></td><td>Morphemes and bunsetsu in the lattice format</td><td>Parses the bunsetsu of the input</td><td><code>-I2</code></td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-shell">lindera-dependency parse --model ipadic.model --input-layer morphemes \
+<pre><code class="language-shell">lindera dependency parse --model ipadic.model --input-layer morphemes \
     --input tokens.lattice --output output.lattice
-lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
+lindera dependency parse --model ipadic.model --input-layer bunsetsu \
     --input dev.lattice --output output.lattice
 </code></pre>
 <p>The three layers give the same output for a sentence, when the morphemes and the bunsetsu are the ones the command would have made. <code>bunsetsu</code> on the answer of a corpus measures the parser alone, and <code>morphemes</code> the chunker and the parser together: see <a href="lindera-dependency/./evaluation.html">Evaluation</a>. With no dictionary to compare, what is checked on a lattice input is that each morpheme has the feature columns the schema of the model reads.</p>
@@ -4197,8 +4194,8 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <p>CaboCha's own tools read the output (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>): <code>cabocha-system-eval</code> counts on it what <a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> counts, and <code>cabocha -I 2</code> takes it as its input with bunsetsu.</p>
 <h2 id="speed"><a class="header" href="#speed">Speed</a></h2>
 <p>On the text of the test file of UD Japanese-GSD (543 sentences), with the default model and the embedded IPADIC, the command writes about 6,600 sentences per second, from the text to the lattice format. Loading the dictionary and the model takes about 5 ms. The numbers depend on the machine; <code>scripts/dependency/parse_speed.sh</code> measures them.</p>
-<h2 id="the-lindera-command"><a class="header" href="#the-lindera-command">The <code>lindera</code> command</a></h2>
-<p><code>lindera tokenize</code> runs the parser as a token filter: see <a href="lindera-dependency/./token_filter.html">Token Filter</a>. It writes the result on the tokens of its JSON output, not the lattice format. The <code>lindera</code> command has the filter in its default build, from 7.1.0 on.</p>
+<h2 id="lindera-tokenize"><a class="header" href="#lindera-tokenize"><code>lindera tokenize</code></a></h2>
+<p><code>lindera tokenize</code> runs the parser as a token filter: see <a href="lindera-dependency/./token_filter.html">Token Filter</a>. It writes the result on the tokens of its JSON output, not the lattice format. The <code>lindera</code> command has the filter in its default build, from 7.1.0 on, as it has <code>lindera dependency</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="token-filter"><a class="header" href="#token-filter">Token Filter</a></h1>
 <p>The token filter <code>japanese_dependency</code> runs the analysis inside a Lindera tokenizer: it groups the tokens of a text into bunsetsu, finds the bunsetsu each one depends on, and writes the result on every token. It is what the <code>lindera</code> command, a configuration file and a program that uses the <code>Tokenizer</code> of Lindera call. To parse text into the lattice format of CaboCha, see <a href="lindera-dependency/./command_line.html">Command Line</a>.</p>
 <p>The filter adds, removes and rewrites no token. The MeCab and wakati outputs are the ones without it, and the JSON output has one key more for each token.</p>
@@ -4254,7 +4251,7 @@ lindera = { version = "7.1", features = ["dependency"] }
 た    {"bunsetsu": 3, "head": null, "role": "function", "score": 0.0, "sentence": 0}
 。    {"bunsetsu": 3, "head": null, "role": "other", "score": 0.0, "sentence": 0}
 </code></pre>
-<p>That is 彼は → 見た。, 赤い → 花を and 花を → 見た。, the analysis <code>lindera-dependency parse</code> writes for the same sentence.</p>
+<p>That is 彼は → 見た。, 赤い → 花を and 花を → 見た。, the analysis <code>lindera dependency parse</code> writes for the same sentence.</p>
 <h2 id="from-a-configuration-file"><a class="header" href="#from-a-configuration-file">From a configuration file</a></h2>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
@@ -4517,9 +4514,9 @@ let schema = Schema {
 };
 <span class="boring">}</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="training-data"><a class="header" href="#training-data">Training Data</a></h1>
-<p>The chunker is trained on bunsetsu, and the parser will be trained on bunsetsu dependencies, both on the morphemes of the dictionary they run with. <code>lindera-dependency convert</code>, behind the <code>train</code> feature, makes such data from a corpus that has word dependencies and bunsetsu boundaries: a CoNLL-U file with <code>BunsetuBILabel</code> in its last column, as UD Japanese-GSD and UD Japanese-PUD have it.</p>
+<p>The chunker is trained on bunsetsu, and the parser will be trained on bunsetsu dependencies, both on the morphemes of the dictionary they run with. <code>lindera dependency convert</code>, behind the <code>train</code> feature, makes such data from a corpus that has word dependencies and bunsetsu boundaries: a CoNLL-U file with <code>BunsetuBILabel</code> in its last column, as UD Japanese-GSD and UD Japanese-PUD have it.</p>
 <h2 id="converting-a-corpus"><a class="header" href="#converting-a-corpus">Converting a corpus</a></h2>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+<pre><code class="language-shell">cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -4527,13 +4524,13 @@ let schema = Schema {
 <p><code>--dict</code> also takes the directory of a dictionary built for Lindera; the <code>train</code> feature alone is then enough.</p>
 <p>The <a href="lindera-dependency/./head_and_function_word.html">schema</a> is the one of the dictionary: <code>convert</code> reads the name of the dictionary from its metadata. There are schemas for <code>ipadic</code>, <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code>. For UniDic, give the directory of the dictionary, such as the one <a href="lindera-dependency/../lindera-cli/commands.html"><code>lindera download</code></a> installs:</p>
 <pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
-cargo run --release -p lindera-dependency --features train -- convert \
+cargo run --release -p lindera-cli -- dependency convert \
     --dict "$dictionary" \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
 </code></pre>
 <p>A dictionary without a schema is refused:</p>
-<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj }
 </code></pre>
 <p>The commands that train do not read a dictionary. <a href="lindera-dependency/./chunking.html#training-a-model"><code>train-chunker</code></a>, <a href="lindera-dependency/./parsing.html#training-a-model"><code>train-parser</code></a> and <code>instances</code> take its name with <code>--dictionary-name</code>, and <code>ipadic</code> when it is left out.</p>
 <p>For each sentence, the command:</p>
@@ -4623,8 +4620,8 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <li>A model trained on converted data is released with the corpus, its version and its license stated. Whether the share-alike condition extends to a trained model is not settled by a court. This project takes its model, which holds weights and none of the annotation, not to be an adaptation of the corpus, and distributes it under the MIT license: see <a href="lindera-dependency/./model_file.html#license-of-the-model">License of the model</a>.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="evaluation"><a class="header" href="#evaluation">Evaluation</a></h1>
-<p><code>lindera-dependency evaluate</code>, behind the <code>train</code> feature, compares an output with the answer, both in the <a href="lindera-dependency/./architecture.html#the-lattice-format">lattice format</a> with the same sentences in the same order.</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- evaluate \
+<p><code>lindera dependency evaluate</code>, behind the <code>train</code> feature, compares an output with the answer, both in the <a href="lindera-dependency/./architecture.html#the-lattice-format">lattice format</a> with the same sentences in the same order.</p>
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice \
     --system output.lattice
 </code></pre>
@@ -4655,7 +4652,7 @@ end to end sentences: 14.43% (73/506)
 <p>"Every bunsetsu depends on the next one" with the bunsetsu of the answer is the baseline any parser has to beat. At level 1 it is 64.10% (2,334 / 3,641) on the dev file, 62.77% (2,490 / 3,967) on the test file and 60.87% (5,386 / 8,849) on UD Japanese-PUD.</p>
 <h2 id="comparing-two-outputs"><a class="header" href="#comparing-two-outputs">Comparing two outputs</a></h2>
 <p>With <code>--compare</code>, a second output is evaluated too, and the two are paired: each segmentation of a sentence, each end-to-end arc and each sentence is right in both, in the first only, in the second only or in neither. The p-value is the one of McNemar's exact test, two-sided, on the two discordant counts. The segmentations compare two chunkers, whatever the heads.</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- evaluate \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 </code></pre>
 <p>For two chunkers on the 10 folds of the train file (the template of CaboCha, then the default one):</p>
@@ -4671,8 +4668,8 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <li><strong>The test file and UD Japanese-PUD are for the reported result only.</strong></li>
 </ul>
 <h2 id="cross-validation"><a class="header" href="#cross-validation">Cross-validation</a></h2>
-<p><code>lindera-dependency split</code> writes the folds. Sentence <code>i</code> of the input, from 0, is in the test file of fold <code>i mod k</code> and in the training file of every other fold, so the folds are the same wherever the command runs:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- split \
+<p><code>lindera dependency split</code> writes the folds. Sentence <code>i</code> of the input, from 0, is in the test file of fold <code>i mod k</code> and in the training file of every other fold, so the folds are the same wherever the command runs:</p>
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency split \
     --input train.lattice --folds 10 --output-dir folds
 </code></pre>
 <p>This writes <code>fold0.test.lattice</code> and <code>fold0.train.lattice</code> to <code>fold9.test.lattice</code> and <code>fold9.train.lattice</code>. For the train file of UD Japanese-GSD, each test file has 702 or 703 sentences.</p>
@@ -4763,7 +4760,7 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <p>See <a href="lindera-cli/../development/feature_flags.html">Feature Flags</a> for details.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
-<p>The Lindera CLI provides six main commands:</p>
+<p>The Lindera CLI provides seven main commands:</p>
 <ul>
 <li><strong>list</strong> - List the morphological analysis dictionaries and their status</li>
 <li><strong>tokenize</strong> - Perform morphological analysis on text</li>
@@ -4771,6 +4768,7 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <li><strong>download</strong> - Download a pre-built dictionary from the GitHub releases page</li>
 <li><strong>train</strong> - Train a CRF model from annotated corpus data</li>
 <li><strong>export</strong> - Export a trained model to dictionary format</li>
+<li><strong>dependency</strong> - Analyze bunsetsu dependencies, and train and evaluate the models of the analysis</li>
 </ul>
 <h2 id="warnings-and-log-messages"><a class="header" href="#warnings-and-log-messages">Warnings and log messages</a></h2>
 <p>Every command writes its results to standard output and the warnings of the Lindera libraries to standard error. For example, when <code>tokenize</code> reads more than 32 KiB of text without a sentence delimiter, it cuts the sentence there (see <a href="lindera-cli/../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>) and warns:</p>
@@ -4783,6 +4781,7 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <ul>
 <li><code>tokenize</code>, <code>list</code> and <code>download</code> write their result there, so they stop at the first write that has no reader. <code>tokenize</code> reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.</li>
 <li><code>train</code> and <code>export</code> only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.</li>
+<li><code>dependency parse</code> and <code>dependency evaluate</code> write their result there, and stop at the first write that has no reader, as <code>tokenize</code> does. The other subcommands of <code>dependency</code> write files, and report on them on standard error.</li>
 </ul>
 <p>When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of <code>download</code> and the notices of <code>list</code>, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.</p>
 <p>Up to v6.2.0, the commands failed instead; see the <a href="lindera-cli/../migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">migration guide</a>.</p>
@@ -5696,6 +5695,31 @@ EOS
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>
 </ol>
+<h2 id="dependency-1"><a class="header" href="#dependency-1">dependency</a></h2>
+<p>Analyzes bunsetsu dependencies, with the library of <a href="lindera-cli/../lindera-dependency.html"><code>lindera-dependency</code></a>, from 7.1.0 on. The command has subcommands of its own:</p>
+<pre><code class="language-text">lindera dependency &lt;SUBCOMMAND&gt;
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>Subcommand</th><th>What it does</th><th>Page</th></tr></thead><tbody>
+<tr><td><code>parse</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="lindera-cli/../lindera-dependency/command_line.html">Command Line</a></td></tr>
+<tr><td><code>chunk</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="lindera-cli/../lindera-dependency/chunking.html">Chunking</a></td></tr>
+<tr><td><code>convert</code></td><td>Makes training data from a CoNLL-U file with bunsetsu labels</td><td><a href="lindera-cli/../lindera-dependency/training_data.html">Training Data</a></td></tr>
+<tr><td><code>evaluate</code></td><td>Compares an output with the answer</td><td><a href="lindera-cli/../lindera-dependency/evaluation.html">Evaluation</a></td></tr>
+<tr><td><code>split</code></td><td>Writes the folds of a cross-validation</td><td><a href="lindera-cli/../lindera-dependency/evaluation.html">Evaluation</a></td></tr>
+<tr><td><code>train-chunker</code></td><td>Trains the chunker and writes a model file</td><td><a href="lindera-cli/../lindera-dependency/chunking.html">Chunking</a></td></tr>
+<tr><td><code>instances</code></td><td>Writes the training instances of the parser</td><td><a href="lindera-cli/../lindera-dependency/parsing.html">Parsing</a></td></tr>
+<tr><td><code>train-parser</code></td><td>Trains the parser and writes a model file, with the chunker of another one</td><td><a href="lindera-cli/../lindera-dependency/parsing.html">Parsing</a></td></tr>
+<tr><td><code>convert-cabocha</code></td><td>Converts the chunker and parser models of CaboCha into a model file</td><td><a href="lindera-cli/../lindera-dependency/cabocha_models.html">CaboCha's Models</a></td></tr>
+</tbody></table>
+</div>
+<p><code>parse</code> and <code>chunk</code> are in a build with the <code>dependency</code> feature, and the seven others in a build that has <code>train</code> as well. Both features are in the default build.</p>
+<h3 id="dependency-usage"><a class="header" href="#dependency-usage">Dependency usage</a></h3>
+<p><code>parse</code> needs the model for the dictionary it tokenizes with, which <code>download</code> gets:</p>
+<pre><code class="language-bash">DICT=$(lindera download ipadic)
+MODEL=$(lindera download dependency-ipadic)
+echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
+</code></pre>
+<p>It writes the bunsetsu of each sentence and their dependencies in the lattice format, which is what <code>cabocha -f1</code> writes. <a href="lindera-cli/../lindera-dependency/quickstart.html">Quick Start</a> has the output, and <a href="lindera-cli/../lindera-dependency/reading_the_result.html">Reading and Using the Result</a> says how to read it.</p>
+<p><code>tokenize</code> gives the same analysis on the tokens of its output, with the token filter <code>japanese_dependency</code>: see <a href="lindera-cli/../lindera-dependency/token_filter.html">Token Filter</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="tutorial"><a class="header" href="#tutorial">Tutorial</a></h1>
 <p>This tutorial walks you through the basic usage of the Lindera CLI, from installation to advanced text processing.</p>
 <h2 id="1-install-the-cli"><a class="header" href="#1-install-the-cli">1. Install the CLI</a></h2>
@@ -17126,7 +17150,7 @@ lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 <h4 id="lindera-analysis-1"><a class="header" href="#lindera-analysis-1"><code>lindera-analysis</code></a></h4>
 <p>Lucene-style analysis chain on top of <code>lindera-segmenter</code> (used as <code>lindera::analysis</code> through the facade): character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
 <h4 id="lindera-dependency-1"><a class="header" href="#lindera-dependency-1"><code>lindera-dependency</code></a></h4>
-<p>Japanese bunsetsu dependency analysis (<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>), published from 7.1.0 on. It holds the types the analysis is built on (a morpheme trait, bunsetsu and sentences), the reading and writing of the lattice format of CaboCha (<code>cabocha -f1</code>), a check of the dependency tree, the schema of a dictionary (which feature column holds what, and the patterns that give the head and the function word of a bunsetsu and recognize symbols; there is one for IPADIC and one for UniDic), the chunker, which segments the morphemes of a sentence into bunsetsu with a conditional random field and a model that is a table of weights, the model file of a dictionary, which is read in place, and the parser, which finds the head of each bunsetsu with shift-reduce and a classifier over features and pairs of features. A release of Lindera publishes the model for IPADIC, and the chunker and the parser can be trained with the commands of the crate. Its default build depends on no other crate of the workspace and builds for <code>wasm32-unknown-unknown</code> (<code>make check-lindera-dependency</code>). With the <code>train</code> feature it also has the <code>lindera-dependency convert</code> command, which makes training data from a dependency corpus such as UD Japanese-GSD by tokenizing it with <code>lindera-segmenter</code> and reports how often the head of the schema is the content head of the corpus, and the <code>lindera-dependency evaluate</code> and <code>lindera-dependency split</code> commands, which count the accuracy of chunking and of dependency as CaboCha and J.DepP do and write the folds of a cross-validation, and the <code>lindera-dependency train-chunker</code> and <code>lindera-dependency chunk</code> commands, which train the model of the chunker with <code>lindera-crf</code> and segment a file with it, and the <code>lindera-dependency instances</code> command, which writes the training instances of the parser (see the README of the crate). How to use it is in the <a href="development/../lindera-dependency.html">Lindera Dependency</a> chapter. The decisions behind the crate and the numbers they rest on are in the <a href="development/./dependency_design.html">design notes</a>; the scripts that give the numbers are in <code>scripts/dependency/</code>.</p>
+<p>Japanese bunsetsu dependency analysis (<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>), published from 7.1.0 on. It holds the types the analysis is built on (a morpheme trait, bunsetsu and sentences), the reading and writing of the lattice format of CaboCha (<code>cabocha -f1</code>), a check of the dependency tree, the schema of a dictionary (which feature column holds what, and the patterns that give the head and the function word of a bunsetsu and recognize symbols; there is one for IPADIC and one for UniDic), the chunker, which segments the morphemes of a sentence into bunsetsu with a conditional random field and a model that is a table of weights, the model file of a dictionary, which is read in place, and the parser, which finds the head of each bunsetsu with shift-reduce and a classifier over features and pairs of features. A release of Lindera publishes the model for IPADIC, and the chunker and the parser can be trained with the <code>lindera dependency</code> command, which is in <code>lindera-cli</code>: the crate is a library, without a binary. Its default build depends on no other crate of the workspace and builds for <code>wasm32-unknown-unknown</code> (<code>make check-lindera-dependency</code>). With the <code>train</code> feature it also has the code of the <code>lindera dependency convert</code> command, which makes training data from a dependency corpus such as UD Japanese-GSD by tokenizing it with <code>lindera-segmenter</code> and reports how often the head of the schema is the content head of the corpus, and the <code>lindera dependency evaluate</code> and <code>lindera dependency split</code> commands, which count the accuracy of chunking and of dependency as CaboCha and J.DepP do and write the folds of a cross-validation, and the <code>lindera dependency train-chunker</code> and <code>lindera dependency chunk</code> commands, which train the model of the chunker with <code>lindera-crf</code> and segment a file with it, and the <code>lindera dependency instances</code> command, which writes the training instances of the parser (see the README of the crate). How to use it is in the <a href="development/../lindera-dependency.html">Lindera Dependency</a> chapter. The decisions behind the crate and the numbers they rest on are in the <a href="development/./dependency_design.html">design notes</a>; the scripts that give the numbers are in <code>scripts/dependency/</code>.</p>
 <h4 id="lindera-cli-1"><a class="header" href="#lindera-cli-1"><code>lindera-cli</code></a></h4>
 <p>Command-line interface for tokenization, dictionary training, export, and building. The <code>train</code> feature is enabled by default.</p>
 <h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
@@ -17625,6 +17649,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>What makes the features of a model is data of its schema, down to the normalization of the surface and the way a mark is matched.</td><td>A model of another program is only right with that program's features, and a schema in code would be one schema for a dictionary. The file is version 2 for it.</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
 <tr><td>The three models of CaboCha are to be converted, and a JUMAN dictionary is added to Lindera for the one of JUMAN.</td><td>Decided by the maintainer on 2026-11-27. The model for JUMAN is the one trained on the Kyoto corpus directly.</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a>, <a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td></tr>
 <tr><td>The command for text is in the binary of this crate, in a build without the training code: the <code>cli</code> feature holds the command, <code>train</code> adds the training to it. The <code>lindera</code> command follows with the filter and the publication.</td><td>A user of the command does not get <code>lindera-crf</code>. <code>lindera-cli</code> is published and cannot depend on a crate that is not, and an output format of <code>lindera tokenize</code> needs the token filter.</td><td>#1439</td></tr>
+<tr><td>The command moves to <code>lindera-cli</code>, as <code>lindera dependency</code>, before the crate is published, and the crate becomes a library only: no binary, no <code>cli</code> feature, no dependency on <code>clap</code> or on <code>lindera-segmenter</code>.</td><td>The command line of Lindera gets three levels, the object and then the operation, and a user has one command to install. Nothing of the dependency analysis had been released, so the old command goes without an alias. <code>lindera-cli</code> can depend on the crate now that the two are published together.</td><td>#1482</td></tr>
 <tr><td>Of CaboCha's options the command keeps the lattice output (<code>-f1</code>) and the three input layers (<code>-I</code>), as <code>--input-layer</code>. The tree, XML and CoNLL outputs, the output layer and the named entities are not kept.</td><td>The lattice format is what other tools read, and its writer exists. The layers are what <code>parse</code> and <code>parse --chunk</code> did, as one option. The morphemes alone and the bunsetsu alone have commands of their own.</td><td>#1439</td></tr>
 <tr><td>The command reads, parses and writes one sentence at a time, and stops at the first sentence that fails, with what it wrote before.</td><td>It stands in a pipe, and its memory does not grow with the input.</td><td>#1439</td></tr>
 <tr><td>The model for IPADIC is distributed under the MIT license, with an acknowledgement of UD Japanese-GSD and the notice of IPADIC.</td><td>The model holds names of features and weights, and none of the annotation: the project takes it not to be an adaptation of the treebank. No court has decided the question; the <a href="development/../lindera-dependency/model_file.html#license-of-the-model">model file page</a> says what the position rests on. With one license for the code and the model, a program that embeds the model is distributed as one with an embedded dictionary is.</td><td>#1440</td></tr>
@@ -17655,15 +17680,15 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><code>Sentence::violations</code> reports the ways a sentence is not the tree the parsers assume: one root that is the last bunsetsu, every head to the right, no crossing arcs. The corpus conversion and the evaluation share it.</li>
 </ul>
 <h3 id="training-data-1419"><a class="header" href="#training-data-1419">Training data (<a href="https://github.com/lindera/lindera/issues/1419">#1419</a>)</a></h3>
-<p><code>lindera-dependency convert</code> makes training data from UD Japanese-GSD and UD Japanese-PUD in two steps.</p>
+<p><code>lindera dependency convert</code> makes training data from UD Japanese-GSD and UD Japanese-PUD in two steps.</p>
 <ol>
 <li><strong>Word dependencies to bunsetsu dependencies.</strong> A word with <code>BunsetuBILabel=B</code> starts a bunsetsu; the word whose head is outside the bunsetsu gives the head of the bunsetsu; coordination is put back (<code>a → b</code>, <code>b → c</code>, <code>c → h</code>, with <code>P</code>); a sentence that is not a tree is dropped.</li>
 <li><strong>Projection onto the morphemes of the dictionary.</strong> The text is tokenized with the dictionary and the default settings of Lindera, as the parser will be used. Bunsetsu are laid over the morphemes by character offsets; where a boundary falls inside a morpheme, the bunsetsu are merged up to the next boundary that fits, and the merged one takes the head of the last one, as <code>kc2cabocha.pl</code> does.</li>
 </ol>
-<p>The command is a subcommand of the crate's own binary, behind the <code>train</code> feature (the binary itself is behind <code>cli</code> since #1439): <code>lindera-cli</code> is published and cannot depend on a crate that is not.</p>
+<p>The command is a subcommand of the crate's own binary, behind the <code>train</code> feature (the binary itself is behind <code>cli</code> since #1439): <code>lindera-cli</code> is published and cannot depend on a crate that is not. Since #1482 the command is <code>lindera dependency convert</code>, in <code>lindera-cli</code>, which is published together with the crate.</p>
 <h3 id="evaluation-1420"><a class="header" href="#evaluation-1420">Evaluation (<a href="https://github.com/lindera/lindera/issues/1420">#1420</a>)</a></h3>
-<p><code>lindera-dependency evaluate</code> counts what <code>cabocha-system-eval</code> and J.DepP count, so that numbers can be set next to theirs. Level 1 (every bunsetsu but the last of each sentence) is the number J.DepP reports and the headline number here. End to end counts, over the bunsetsu of the answer but the last of each sentence, those for which the output has a bunsetsu with the same span whose head has the span of the head in the answer.</p>
-<p>Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided), not the chi-square approximation: the discordant counts are small. <code>lindera-dependency split</code> writes the folds of a cross-validation as "sentence <code>i</code> is in the test file of fold <code>i mod k</code>", without random numbers, so the folds are the same everywhere.</p>
+<p><code>lindera dependency evaluate</code> counts what <code>cabocha-system-eval</code> and J.DepP count, so that numbers can be set next to theirs. Level 1 (every bunsetsu but the last of each sentence) is the number J.DepP reports and the headline number here. End to end counts, over the bunsetsu of the answer but the last of each sentence, those for which the output has a bunsetsu with the same span whose head has the span of the head in the answer.</p>
+<p>Two outputs are compared in pairs with McNemar's exact test (binomial, two-sided), not the chi-square approximation: the discordant counts are small. <code>lindera dependency split</code> writes the folds of a cross-validation as "sentence <code>i</code> is in the test file of fold <code>i mod k</code>", without random numbers, so the folds are the same everywhere.</p>
 <h3 id="chunker-1421"><a class="header" href="#chunker-1421">Chunker (<a href="https://github.com/lindera/lindera/issues/1421">#1421</a>)</a></h3>
 <ul>
 <li><strong>Feature extraction is separate from decoding.</strong> Columns are read from a morpheme through the schema, a template in the format of CRF++ expands them into feature strings, and the decoder sees only feature strings and a table of weights. An extractor with CaboCha's strings can later feed the same decoder.</li>
@@ -17714,7 +17739,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong><code>parse</code> is the command of a user</strong>: plain text in, one sentence per line, and the lattice format out. It was the subcommand that parsed a lattice file for <code>evaluate</code>; a second subcommand for text would have been a second entry to the same analysis. What it did is <code>--input-layer bunsetsu</code> and <code>--input-layer morphemes</code> now.</li>
 <li><strong>The text is tokenized as the training data is</strong>: <code>Mode::Normal</code> and no user dictionary, the settings of <code>convert</code>. Another segmentation would not be the one the model was trained on.</li>
 <li><strong>The name of the dictionary that was loaded is compared with the name in the model file</strong> (<code>Model::check_dictionary</code> of #1437), which is the check the model file was given its name for. With a lattice input there is no dictionary, and the number of feature columns is what is checked.</li>
-<li><strong>The features are split in two</strong>: <code>cli</code> brings <code>clap</code> and <code>lindera-segmenter</code>, <code>train</code> adds <code>lindera-crf</code> and <code>serde_json</code>. <code>scripts/check_dependency_crate.sh</code> checks that the build with <code>cli</code> has no <code>lindera-crf</code>, and a job of CI tests the command in that build.</li>
+<li><strong>The features are split in two</strong>: <code>cli</code> brings <code>clap</code> and <code>lindera-segmenter</code>, <code>train</code> adds <code>lindera-crf</code> and <code>serde_json</code>. <code>scripts/check_dependency_crate.sh</code> checks that the build with <code>cli</code> has no <code>lindera-crf</code>, and a job of CI tests the command in that build. #1482 took the command out of the crate: <code>lindera-cli</code> has it behind its <code>dependency</code> feature, and the training subcommands behind <code>train</code> as well; the crate keeps <code>train</code> alone, and the script checks that it depends on neither <code>clap</code> nor <code>lindera-segmenter</code> with any feature.</li>
 <li><strong><code>DictionaryMorpheme</code></strong>, the morpheme made from a token, moved from the <code>corpus</code> module, which is behind <code>train</code>, to the default build.</li>
 <li><strong>CaboCha's tools read the output</strong> (<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>): <code>cabocha-system-eval</code> counts on the output of <code>parse</code> what <code>evaluate</code> counts, and <code>cabocha -I 2</code> takes it as its input with bunsetsu.</li>
 </ul>
@@ -17725,7 +17750,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>The half-width period ends no sentence.</strong> The periods of the schema are <code>。</code>, <code>．</code> and <code>.</code>; with them the filter cut 4 of the 543 lines of the test file of UD Japanese-GSD, all at a number (<code>4.20</code>, <code>1.5km</code>) or at <code>...</code>. The full-width <code>．</code> ends a sentence unless a digit follows. <code>！</code> and <code>？</code> end one too: in IPADIC they are symbols, not periods.</li>
 <li><strong>What the filter can see of an earlier filter is the positions.</strong> The tokenizer numbers its tokens from 0 without a gap, a filter that removes tokens leaves a gap, and one that joins them a token of more than one position. A rewritten surface or detail, and tokens removed from the end, cannot be seen; the documentation says to put the filter first.</li>
 <li><strong>The tokens are read where they are.</strong> A morpheme of the filter borrows the surface and the details of its token. The model is behind an <code>Arc</code>, shared by the clones of the filter, which a tokenizer makes when it is cloned.</li>
-<li><strong>The filter gives what the command gives</strong>: on the 543 sentences of the test file of UD Japanese-GSD, every token has the bunsetsu, the head, the role and the score of <code>lindera-dependency parse</code> with the same model.</li>
+<li><strong>The filter gives what the command gives</strong>: on the 543 sentences of the test file of UD Japanese-GSD, every token has the bunsetsu, the head, the role and the score of <code>lindera dependency parse</code> with the same model.</li>
 <li><strong>The bindings give the dependency as an object of its own on a token</strong>, and nothing without the filter: <code>None</code> in Python, <code>nil</code> in Ruby, <code>null</code> in PHP, and no property in Node.js and WebAssembly, where a token is a plain object and stays the object it was. The head of the last bunsetsu is null in every binding, as in the JSON of the command. <code>TokenView</code> of <code>lindera-binding</code> carries it to all five.</li>
 <li><strong>Node.js makes the names of the six properties for the first token that has a dependency</strong>, in the handle scope that token is made in, and again after the scope is renewed: a call without the filter makes the objects it made before, with the calls it made before.</li>
 <li><strong>WebAssembly takes the bytes of a model</strong>, with <code>appendDependencyFilter</code>: there is no path to read. The builder of <code>lindera-binding</code> takes a filter that was made in Rust for it, and runs it where it was appended among the filters given by <code>kind</code>.</li>
@@ -17788,7 +17813,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>J.DepP: the same</td><td>dev 97.17 / 90.11 (3,281 / 3,641) / 85.99, test 97.02 / 88.71 (3,519 / 3,967) / 84.65, PUD 98.04 / 88.98 (7,874 / 8,849) / 86.45</td><td><code>evaluate</code>; script: <code>baselines.sh</code></td></tr>
 <tr><td>The same two, on record before they were measured again</td><td>CaboCha: dev 96.82 / 89.84 / 85.03, test 96.80 / 88.51 / 84.25, PUD 97.80 / 88.64 / 85.65. J.DepP: dev 95.93 / 89.98 / 83.80, test 95.37 / 88.76 / 82.40</td><td>Prototype, lost</td></tr>
 <tr><td>The cost of CaboCha's chunker (<code>-c</code>) 0.5, 1, 2, 4, 8, 16: chunking F on dev, and over a 10-fold cross-validation of train</td><td>dev 96.66, 96.64, 96.68, 96.79, 96.82, 96.86; cross-validation 96.45, 96.57, 96.63, 96.66, 96.66, 96.67</td><td>Script: <code>cabocha_chunker_cost.sh</code></td></tr>
-<tr><td><code>cabocha-system-eval</code> on the outputs of CaboCha and of <code>lindera-dependency parse</code></td><td>The counts of <code>evaluate</code>: for CaboCha level 1 3,271 / 3,641 and chunking 4,008 / 4,135 and 4,008 / 4,147 on dev; for <code>parse</code> 3,281 / 3,641, and 4,009 / 4,132 and 4,009 / 4,147</td><td>Script: <code>baselines.sh</code>; the second by hand</td></tr>
+<tr><td><code>cabocha-system-eval</code> on the outputs of CaboCha and of <code>lindera dependency parse</code></td><td>The counts of <code>evaluate</code>: for CaboCha level 1 3,271 / 3,641 and chunking 4,008 / 4,135 and 4,008 / 4,147 on dev; for <code>parse</code> 3,281 / 3,641, and 4,009 / 4,132 and 4,009 / 4,147</td><td>Script: <code>baselines.sh</code>; the second by hand</td></tr>
 <tr><td>Arcs on which CaboCha and J.DepP differ, with the bunsetsu of the answer</td><td>127 of 3,641 on dev, 196 of 3,967 on test, 424 of 8,849 on PUD</td><td><code>evaluate</code>; script: <code>baselines.sh</code>. On record before: 5 and 10, which is the difference of their counts of right arcs, not the arcs that differ</td></tr>
 <tr><td>Gain of dependency accuracy per doubling of the training set</td><td>About 0.8 point, not levelling off at 7,024 sentences</td><td>Prototype, lost</td></tr>
 <tr><td>CRF++ and <code>lindera-crf</code> with CaboCha's template, L2 0.25: chunking F</td><td>96.79 / 96.77 on dev / test</td><td>Prototype, lost; <code>chunker_experiments.sh table</code> gives 96.79 / 96.80 with <code>lindera-crf</code></td></tr>
@@ -17918,7 +17943,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>With the filter</td><td>About 180,000 tokens per second, 7,700 sentences per second</td><td>Script: <code>filter_speed.sh</code></td></tr>
 <tr><td>What the filter adds to a token</td><td>About 5.2 microseconds; about 78,000 instructions</td><td>Script: <code>filter_speed.sh</code>; the instructions with <code>perf stat</code>, not kept as a script</td></tr>
 <tr><td>Making the filter, which reads the model</td><td>About 4 ms</td><td>Script: <code>filter_speed.sh</code></td></tr>
-<tr><td>The filter against <code>lindera-dependency parse</code></td><td>The same bunsetsu, heads, roles and scores for the 12,644 tokens of the 543 sentences</td><td>A comparison of the two outputs, not kept as a script</td></tr>
+<tr><td>The filter against <code>lindera dependency parse</code></td><td>The same bunsetsu, heads, roles and scores for the 12,644 tokens of the 543 sentences</td><td>A comparison of the two outputs, not kept as a script</td></tr>
 <tr><td>A token without a dependency, against Lindera before the field</td><td>At most 0.35% more instructions on 15 workloads; one pointer more in a token</td><td><code>perf stat</code>, in the pull request of the field (#1449)</td></tr>
 </tbody></table>
 </div>

@@ -302,7 +302,7 @@ cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ip
 <p>One script builds the file from the corpus and the sources of the repository:</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera-dependency</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to <code>scripts/dependency/data/model</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
+<p>It gets UD Japanese-GSD at its fixed commit, builds the <code>lindera</code> command with a named toolchain and the dependencies of <code>Cargo.lock</code>, converts the train file, trains the chunker and the parser, and writes the directory of the archive and the archive to <code>scripts/dependency/data/model</code>. It takes about 15 seconds after the build. At its end it names the commit of Lindera, and then says what else it used and what it made:</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43

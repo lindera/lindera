@@ -207,12 +207,12 @@
 <h2 id="reading-the-result"><a class="header" href="#reading-the-result">Reading the result</a></h2>
 <p>The result comes in two forms, with the same content:</p>
 <ul>
-<li>the <strong>lattice format</strong> of the <code>lindera-dependency</code> command, which is what <code>cabocha -f1</code> writes;</li>
+<li>the <strong>lattice format</strong> of <code>lindera dependency parse</code>, which is what <code>cabocha -f1</code> writes;</li>
 <li><strong>fields on the tokens</strong> of the Lindera tokenizer, with the token filter <code>japanese_dependency</code>.</li>
 </ul>
 <h3 id="the-lattice-format"><a class="header" href="#the-lattice-format">The lattice format</a></h3>
 <pre><code class="language-shell">% echo "太郎は昨日買った新しい本を図書館で読んだ。" \
-    | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+    | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 6D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -288,7 +288,7 @@ EOS
 </div>
 <p>The sentence has a clause inside a clause, and the dependencies keep the two apart: 花子が depends on 書いた, the verb of the inner clause, and 太郎は on 読んだ。, the verb of the outer one.</p>
 <h3 id="more-kinds-of-sentence"><a class="header" href="#more-kinds-of-sentence">More kinds of sentence</a></h3>
-<p>The tables below are read from the output of <code>lindera-dependency parse</code>, as the one above.</p>
+<p>The tables below are read from the output of <code>lindera dependency parse</code>, as the one above.</p>
 <p><strong>A quotation</strong>: 彼は明日来ると言った。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>Bunsetsu</th><th>Depends on</th></tr></thead><tbody>
 <tr><td>0</td><td>彼は</td><td>3 言った。</td></tr>

@@ -302,7 +302,7 @@ cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ip
 <p>1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
+<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43

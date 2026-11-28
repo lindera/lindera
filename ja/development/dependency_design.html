@@ -236,6 +236,7 @@
 <tr><td>モデルの素性を作るものは、スキーマのデータとする。表層の正規化と、記号の照合の仕方まで含める。</td><td>ほかのプログラムのモデルは、そのプログラムの素性でしか正しく動かない。スキーマをコードに持つと、1 つの辞書に 1 つのスキーマしか持てない。このために、ファイルの版を 2 にした。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
 <tr><td>CaboCha の 3 つのモデルを変換できるようにする。JUMAN のモデルのために、Lindera に JUMAN の辞書を足す。</td><td>2026-11-27 のメンテナーの決定。JUMAN のモデルは、京大コーパスから直接学習されたものである。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a>、<a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td></tr>
 <tr><td>テキストを受けるコマンドは、このクレートのバイナリの、学習のコードを含まないビルドに置く。<code>cli</code> feature がコマンドを持ち、<code>train</code> がそこに学習を足す。<code>lindera</code> コマンドからの利用は、フィルターと公開の後にする。</td><td>コマンドを使うだけの人に <code>lindera-crf</code> が入らない。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できない。<code>lindera tokenize</code> の出力形式にするには、トークンフィルターが要る。</td><td>#1439</td></tr>
+<tr><td>コマンドを、クレートの公開の前に、<code>lindera dependency</code> として <code>lindera-cli</code> に移す。クレートはライブラリだけにする。バイナリも、<code>cli</code> feature も、<code>clap</code>・<code>lindera-segmenter</code> への依存も持たない。</td><td>Lindera のコマンドラインを「対象 → 操作」の 3 階層にし、利用者が入れるコマンドを 1 つにする。係り受けの解析はまだ何も公開していないので、古いコマンドは別名を残さずに消す。<code>lindera-cli</code> は、クレートと一緒に公開されるようになったので、クレートに依存できる。</td><td>#1482</td></tr>
 <tr><td>CaboCha のオプションのうち、コマンドは、ラティス形式の出力（<code>-f1</code>）と 3 つの入力の層（<code>-I</code>）を <code>--input-layer</code> として持つ。木・XML・CoNLL の出力、出力の層、固有表現は持たない。</td><td>ラティス形式はほかの道具が読む形式で、書き出しの実装がある。入力の層は、<code>parse</code> と <code>parse --chunk</code> がしていたことを 1 つのオプションにまとめたもの。形態素だけ、文節だけを書くコマンドは別にある。</td><td>#1439</td></tr>
 <tr><td>コマンドは、1 文ずつ読んで、解析して、書く。解析できない最初の文で止まり、そこまでに書いた出力は残る。</td><td>パイプの中で使え、メモリが入力の長さで増えない。</td><td>#1439</td></tr>
 <tr><td>IPADIC のモデルは MIT ライセンスで配布し、UD Japanese-GSD への謝辞と IPADIC の表示を添える。</td><td>モデルが持つのは素性の名前と重みで、注釈は含まない。このプロジェクトは、これをコーパスの改変物ではないとみなす。この問いを判断した裁判例はない。立場の根拠は<a href="../lindera-dependency/model_file.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルファイルのページ</a>に書く。コードとモデルが同じライセンスなので、モデルを埋め込んだプログラムは、辞書を埋め込んだプログラムと同じように配布できる。</td><td>#1440</td></tr>
@@ -266,15 +267,15 @@
 <li><code>Sentence::violations</code> は、文が、解析器の仮定する木でない点を報告する。根は 1 つで最後の文節、係り先はすべて右、係りは交差しない。コーパスの変換と評価が共有する。</li>
 </ul>
 <h3 id="学習データ1419"><a class="header" href="#学習データ1419">学習データ（<a href="https://github.com/lindera/lindera/issues/1419">#1419</a>）</a></h3>
-<p><code>lindera-dependency convert</code> は、UD Japanese-GSD と UD Japanese-PUD から、2 段階で学習データを作ります。</p>
+<p><code>lindera dependency convert</code> は、UD Japanese-GSD と UD Japanese-PUD から、2 段階で学習データを作ります。</p>
 <ol>
 <li><strong>語の係り受けから文節の係り受けへ。</strong> <code>BunsetuBILabel=B</code> の語が文節を始める。文節の外に係る語が、文節の係り先を決める。並列を戻す（<code>a → b</code>、<code>b → c</code>、<code>c → h</code>、種類は <code>P</code>）。木にならない文は落とす。</li>
 <li><strong>辞書の形態素への投影。</strong> 文章を、解析器を使うときと同じ、その辞書と Lindera の既定の設定で解析する。文節を文字の位置で形態素に合わせ、境界が形態素の途中に来たら、次に合う境界まで文節をつなぐ。つないだ文節は、<code>kc2cabocha.pl</code> と同じく、最後の文節の係り先を引き継ぐ。</li>
 </ol>
-<p>コマンドは、<code>train</code> feature の裏の、クレート自身のバイナリのサブコマンドです（バイナリ自体は、#1439 から <code>cli</code> の裏にあります）。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できません。</p>
+<p>コマンドは、<code>train</code> feature の裏の、クレート自身のバイナリのサブコマンドです（バイナリ自体は、#1439 から <code>cli</code> の裏にあります）。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できません。#1482 からは、コマンドは <code>lindera-cli</code> の <code>lindera dependency convert</code> です。こちらは、クレートと一緒に公開されます。</p>
 <h3 id="評価1420"><a class="header" href="#評価1420">評価（<a href="https://github.com/lindera/lindera/issues/1420">#1420</a>）</a></h3>
-<p><code>lindera-dependency evaluate</code> は、<code>cabocha-system-eval</code> と J.DepP と同じものを数えます。数字を並べて比べられるようにするためです。レベル 1（各文の最後を除いた文節）は J.DepP が報告する数字で、ここでも見出しの数字にします。一貫（end to end）は、正解の文節のうち各文の最後を除いたものについて、出力に同じ範囲の文節があり、その係り先が、正解の係り先と同じ範囲であるものを数えます。</p>
-<p>2 つの出力は対にして比べ、McNemar の正確検定（二項分布、両側）を使います。カイ二乗の近似は使いません。食い違う対の数が小さいためです。<code>lindera-dependency split</code> は、交差検証の分割を「文 <code>i</code> は fold <code>i mod k</code> のテストに入る」という規則で、乱数なしで書き出すので、どこで流しても同じ分割になります。</p>
+<p><code>lindera dependency evaluate</code> は、<code>cabocha-system-eval</code> と J.DepP と同じものを数えます。数字を並べて比べられるようにするためです。レベル 1（各文の最後を除いた文節）は J.DepP が報告する数字で、ここでも見出しの数字にします。一貫（end to end）は、正解の文節のうち各文の最後を除いたものについて、出力に同じ範囲の文節があり、その係り先が、正解の係り先と同じ範囲であるものを数えます。</p>
+<p>2 つの出力は対にして比べ、McNemar の正確検定（二項分布、両側）を使います。カイ二乗の近似は使いません。食い違う対の数が小さいためです。<code>lindera dependency split</code> は、交差検証の分割を「文 <code>i</code> は fold <code>i mod k</code> のテストに入る」という規則で、乱数なしで書き出すので、どこで流しても同じ分割になります。</p>
 <h3 id="文節の区切り1421"><a class="header" href="#文節の区切り1421">文節の区切り（<a href="https://github.com/lindera/lindera/issues/1421">#1421</a>）</a></h3>
 <ul>
 <li><strong>素性の取り出しと復号を分ける。</strong> 形態素からスキーマを通して列を読み、CRF++ の形式のテンプレートが素性の文字列に展開する。復号は、素性の文字列と重みの表だけを見る。後で、CaboCha と同じ文字列を作る取り出し方を足せば、同じ復号を使える。</li>
@@ -325,7 +326,7 @@
 <li><strong><code>parse</code> は、利用者のコマンドです</strong>。1 行 1 文のテキストを受けて、ラティス形式で書き出します。これまでは、<code>evaluate</code> のためにラティス形式のファイルを解析するサブコマンドでした。テキスト用のサブコマンドを別に足すと、同じ解析に入口が 2 つできます。これまでの動きは、<code>--input-layer bunsetsu</code> と <code>--input-layer morphemes</code> です。</li>
 <li><strong>テキストは、学習データと同じ設定で分かち書きします</strong>。<code>Mode::Normal</code> で、ユーザー辞書は使いません。<code>convert</code> と同じ設定です。違う分かち書きは、モデルが学習したものではなくなります。</li>
 <li><strong>読み込んだ辞書の名前を、モデルファイルの名前と比べます</strong>（#1437 の <code>Model::check_dictionary</code>）。モデルファイルに名前を持たせたのは、この照合のためです。ラティス形式の入力では辞書が無いので、素性の列の数だけを検査します。</li>
-<li><strong>feature を 2 つに分けました</strong>。<code>cli</code> は <code>clap</code> と <code>lindera-segmenter</code> を、<code>train</code> はそこに <code>lindera-crf</code> と <code>serde_json</code> を入れます。<code>scripts/check_dependency_crate.sh</code> が、<code>cli</code> のビルドに <code>lindera-crf</code> が入らないことを検査し、CI のジョブが、そのビルドでコマンドをテストします。</li>
+<li><strong>feature を 2 つに分けました</strong>。<code>cli</code> は <code>clap</code> と <code>lindera-segmenter</code> を、<code>train</code> はそこに <code>lindera-crf</code> と <code>serde_json</code> を入れます。<code>scripts/check_dependency_crate.sh</code> が、<code>cli</code> のビルドに <code>lindera-crf</code> が入らないことを検査し、CI のジョブが、そのビルドでコマンドをテストします。#1482 で、コマンドをクレートの外に出しました。<code>lindera-cli</code> が、<code>dependency</code> feature の裏にコマンドを、さらに <code>train</code> の裏に学習のサブコマンドを持ちます。クレートには <code>train</code> だけが残り、スクリプトは、どの feature でも <code>clap</code>・<code>lindera-segmenter</code> に依存しないことを検査します。</li>
 <li><strong><code>DictionaryMorpheme</code></strong>（トークンから作る形態素）を、<code>train</code> の裏の <code>corpus</code> モジュールから、既定のビルドへ移しました。</li>
 <li><strong>CaboCha の道具が出力を読める</strong>（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。<code>cabocha-system-eval</code> は、<code>parse</code> の出力で <code>evaluate</code> と同じ数を数える。<code>cabocha -I 2</code> は、出力を文節つきの入力として受け取る。</li>
 </ul>
@@ -336,7 +337,7 @@
 <li><strong>半角のピリオドでは、文を終えません。</strong> スキーマの句点は <code>。</code>、<code>．</code>、<code>.</code> です。これをそのまま使うと、UD Japanese-GSD の test の 543 行のうち 4 行が分かれ、どれも数（<code>4.20</code>、<code>1.5km</code>）か <code>...</code> の位置でした。全角の <code>．</code> は、直後が数字でなければ文を終えます。<code>！</code> と <code>？</code> でも終えます。IPADIC では、これらは句点ではなく記号です。</li>
 <li><strong>前のフィルターについてこのフィルターに見えるのは、位置です。</strong> トークナイザーは、トークンに 0 から隙間なく位置を振ります。トークンを消すフィルターは隙間を残し、つなぐフィルターは位置を 2 つ以上占めるトークンを残します。書き換えられた表層や詳細と、末尾から消されたトークンは見えません。文書では、このフィルターを最初に置くよう案内しています。</li>
 <li><strong>トークンは、その場で読みます。</strong> フィルターの形態素は、トークンの表層と詳細を借ります。モデルは <code>Arc</code> の中にあり、フィルターの複製の間で共有します。トークナイザーを複製すると、フィルターも複製されます。</li>
-<li><strong>フィルターの結果は、コマンドの結果と同じです。</strong> UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの <code>lindera-dependency parse</code> と一致します。</li>
+<li><strong>フィルターの結果は、コマンドの結果と同じです。</strong> UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの <code>lindera dependency parse</code> と一致します。</li>
 <li><strong>バインディングは、係り受けをトークンの上の独立したオブジェクトとして返します。</strong> フィルターを使わなければ何も返しません。Python では <code>None</code>、Ruby では <code>nil</code>、PHP では <code>null</code> で、Node.js と WebAssembly ではプロパティがありません。この 2 つではトークンがプレーンなオブジェクトなので、これまでと同じオブジェクトのままです。最後の文節の係り先は、コマンドの JSON と同じく、どのバインディングでも null です。<code>lindera-binding</code> の <code>TokenView</code> が、5 つすべてに運びます。</li>
 <li><strong>Node.js は、6 つのプロパティの名前を、係り受けを持つ最初のトークンで作ります。</strong> そのトークンを作るハンドルスコープの中で作り、スコープを開き直した後は作り直します。フィルターを使わない呼び出しは、これまでと同じ呼び出しで、これまでと同じオブジェクトを作ります。</li>
 <li><strong>WebAssembly は、<code>appendDependencyFilter</code> でモデルのバイト列を受け取ります。</strong> 読めるパスが無いためです。そのために、<code>lindera-binding</code> のビルダーは Rust で作ったフィルターを受け取り、<code>kind</code> で足したフィルターの間の、足された位置で動かします。</li>
@@ -399,7 +400,7 @@
 <tr><td>J.DepP: 同じ</td><td>dev 97.17 / 90.11（3,281 / 3,641）/ 85.99、test 97.02 / 88.71（3,519 / 3,967）/ 84.65、PUD 98.04 / 88.98（7,874 / 8,849）/ 86.45</td><td><code>evaluate</code>、スクリプト: <code>baselines.sh</code></td></tr>
 <tr><td>同じ 2 つの、測り直す前に記録に残っていた数字</td><td>CaboCha: dev 96.82 / 89.84 / 85.03、test 96.80 / 88.51 / 84.25、PUD 97.80 / 88.64 / 85.65。J.DepP: dev 95.93 / 89.98 / 83.80、test 95.37 / 88.76 / 82.40</td><td>試作・消失</td></tr>
 <tr><td>CaboCha の区切りのコスト（<code>-c</code>）0.5、1、2、4、8、16: dev での区切りの F と、train の 10 分割の交差検証</td><td>dev 96.66、96.64、96.68、96.79、96.82、96.86。交差検証 96.45、96.57、96.63、96.66、96.66、96.67</td><td>スクリプト: <code>cabocha_chunker_cost.sh</code></td></tr>
-<tr><td>CaboCha の出力と <code>lindera-dependency parse</code> の出力を <code>cabocha-system-eval</code> で数えた結果</td><td><code>evaluate</code> と同じ数。CaboCha は dev でレベル 1 が 3,271 / 3,641、区切りが 4,008 / 4,135 と 4,008 / 4,147。<code>parse</code> は 3,281 / 3,641、4,009 / 4,132 と 4,009 / 4,147</td><td>スクリプト: <code>baselines.sh</code>。後者は手作業</td></tr>
+<tr><td>CaboCha の出力と <code>lindera dependency parse</code> の出力を <code>cabocha-system-eval</code> で数えた結果</td><td><code>evaluate</code> と同じ数。CaboCha は dev でレベル 1 が 3,271 / 3,641、区切りが 4,008 / 4,135 と 4,008 / 4,147。<code>parse</code> は 3,281 / 3,641、4,009 / 4,132 と 4,009 / 4,147</td><td>スクリプト: <code>baselines.sh</code>。後者は手作業</td></tr>
 <tr><td>正解の文節を与えたときに、CaboCha と J.DepP で違う係り</td><td>dev で 3,641 のうち 127、test で 3,967 のうち 196、PUD で 8,849 のうち 424</td><td><code>evaluate</code>、スクリプト: <code>baselines.sh</code>。以前の記録は 5 と 10 で、これは正しい係りの数の差であり、違う係りの数ではない</td></tr>
 <tr><td>学習データを 2 倍にするごとの、係り受けの精度の伸び</td><td>約 0.8 ポイント。7,024 文でも頭打ちにならない</td><td>試作・消失</td></tr>
 <tr><td>CRF++ と <code>lindera-crf</code>、CaboCha のテンプレート、L2 0.25: 区切りの F</td><td>dev / test で 96.79 / 96.77</td><td>試作・消失。<code>chunker_experiments.sh table</code> は、<code>lindera-crf</code> で 96.79 / 96.80 を出す</td></tr>
@@ -529,7 +530,7 @@
 <tr><td>フィルターあり</td><td>毎秒 約 180,000 トークン、約 7,700 文</td><td>スクリプト: <code>filter_speed.sh</code></td></tr>
 <tr><td>フィルターが 1 トークンに足すもの</td><td>約 5.2 マイクロ秒。約 78,000 命令</td><td>スクリプト: <code>filter_speed.sh</code>。命令数は <code>perf stat</code> で測った。スクリプトは残していない</td></tr>
 <tr><td>モデルを読む、フィルターの作成</td><td>約 4 ミリ秒</td><td>スクリプト: <code>filter_speed.sh</code></td></tr>
-<tr><td>フィルターと <code>lindera-dependency parse</code></td><td>543 文の 12,644 トークンで、文節、係り先、役割、スコアが同じ</td><td>2 つの出力を比べた。スクリプトは残していない</td></tr>
+<tr><td>フィルターと <code>lindera dependency parse</code></td><td>543 文の 12,644 トークンで、文節、係り先、役割、スコアが同じ</td><td>2 つの出力を比べた。スクリプトは残していない</td></tr>
 <tr><td>係り受けの無いトークン（フィールドを足す前の Lindera との比較）</td><td>15 の計測で、命令数の増加は最大 0.35%。トークンはポインタ 1 つ分大きい</td><td><code>perf stat</code>。フィールドを足した pull request（#1449）</td></tr>
 </tbody></table>
 </div>

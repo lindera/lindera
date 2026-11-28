@@ -2527,7 +2527,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <li><strong>CaboCha が配布する 3 つのモデル（IPA・JUMAN・UniDic）を変換し</strong>、CaboCha と同じ解析をするモデルファイルにする。そのモデルの利用は、CaboCha のモデルと同じく、研究目的と個人利用に限られる。</li>
 <li>文節の区切りと係り受けの精度を、CaboCha・J.DepP と同じ数え方で<strong>評価し</strong>、2 つの出力を対の検定で比べる。</li>
 </ul>
-<p>既定のビルドは依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。コマンドは <code>cli</code> feature の裏に、学習と評価は <code>train</code> feature の裏にあります。</p>
+<p>既定のビルドは依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。学習と評価は <code>train</code> feature の裏にあります。このクレートはライブラリで、コマンドは <code>lindera</code> コマンドの <a href="./lindera-dependency/command_line.html"><code>lindera dependency</code></a> です。</p>
 <h2 id="目次-4"><a class="header" href="#目次-4">目次</a></h2>
 <ul>
 <li>
@@ -2555,7 +2555,7 @@ let surfaces: Vec&lt;Vec&lt;String&gt;&gt; = pool.tokenize_batch(&amp;lines, thr
 <p><a href="./lindera-dependency/cabocha_models.html">CaboCha のモデル</a> -- CaboCha が配布するモデルを変換する。利用条件、コマンド、変換するもの、CaboCha との一致</p>
 </li>
 <li>
-<p><a href="./lindera-dependency/command_line.html">コマンドライン</a> -- <code>lindera-dependency</code> コマンドでテキストを解析する。オプション、入力の層、速度</p>
+<p><a href="./lindera-dependency/command_line.html">コマンドライン</a> -- <code>lindera dependency parse</code> でテキストを解析する。オプション、入力の層、速度</p>
 </li>
 <li>
 <p><a href="./lindera-dependency/token_filter.html">トークンフィルター</a> -- Lindera のトークナイザーのフィルター <code>japanese_dependency</code>。ビルド、トークンに書かれるもの、文、フィルターの順、速度</p>
@@ -2589,9 +2589,9 @@ lindera = { version = "7.1", features = ["dependency"] }
 <pre><code class="language-toml">[dependencies]
 lindera-dependency = "7.1"
 </code></pre>
-<p>既定のビルドは依存を持たず、<code>wasm32-unknown-unknown</code> 向けにビルドできます。Lindera のものでなくても、形態素の列なら受け取れます。<a href="lindera-dependency/./architecture.html#feature-%E3%83%95%E3%83%A9%E3%82%B0">feature フラグ</a>で、コマンド、学習、埋め込みのモデルを足します。</p>
-<p>テキストを解析してラティス形式を書き出す <code>lindera-dependency</code> コマンドは、<code>cli</code> の裏にあります。</p>
-<pre><code class="language-shell">cargo install lindera-dependency --features cli
+<p>既定のビルドは依存を持たず、<code>wasm32-unknown-unknown</code> 向けにビルドできます。Lindera のものでなくても、形態素の列なら受け取れます。<a href="lindera-dependency/./architecture.html#feature-%E3%83%95%E3%83%A9%E3%82%B0">feature フラグ</a>で、学習、埋め込みのモデルを足します。</p>
+<p>このクレートはライブラリです。テキストを解析してラティス形式を書き出すコマンドは <code>lindera dependency</code> で、<code>lindera</code> コマンドの一部として、既定のビルドに入っています。</p>
+<pre><code class="language-shell">cargo install lindera-cli
 </code></pre>
 <h2 id="モデル"><a class="header" href="#モデル">モデル</a></h2>
 <p>解析には、トークナイザーの辞書に合った<a href="lindera-dependency/./model_file.html">モデルファイル</a>が必要です。Lindera は、リリースのたびに、モデルを 4 つ公開します。IPADIC 用が 1 つ（<a href="lindera-dependency/./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>）と、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> 用が 1 つずつです（<a href="lindera-dependency/./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>）。モデルは、辞書と同じく、パッケージにもクレートにも入っていません。手に入れる方法は 3 つあります。ここでは IPADIC の場合を示します。UniDic の辞書では、<code>ipadic</code> のところが辞書の名前になります。</p>
@@ -2631,10 +2631,9 @@ lindera-dependency = "7.1"
 </tbody></table>
 </div>
 <p>この文には、文節が 4 つあります。彼は (0) と 花を (2) は 見た。 (3) に係り、赤い (1) は 花を に係り、最後の文節はどこにも係りません。欄の意味、テキストを文に分ける規則、設定ファイルやバインディングからの使い方は、<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>にあります。</p>
-<h2 id="lindera-dependency-コマンドで"><a class="header" href="#lindera-dependency-コマンドで"><code>lindera-dependency</code> コマンドで</a></h2>
-<p>クレートのコマンドは、ラティス形式を書き出します。<code>cabocha -f1</code> が書く形式です。</p>
-<pre><code class="language-shell">% cargo install lindera-dependency --features cli
-% echo "彼は赤い花を見た。" | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+<h2 id="lindera-dependency-parse-で"><a class="header" href="#lindera-dependency-parse-で"><code>lindera dependency parse</code> で</a></h2>
+<p>同じコマンドの <code>lindera dependency parse</code> は、ラティス形式を書き出します。<code>cabocha -f1</code> が書く形式です。</p>
+<pre><code class="language-shell">% echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 3D 0/1 0.000000
 彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ
@@ -2733,12 +2732,12 @@ fn main() -&gt; lindera::LinderaResult&lt;()&gt; {
 <h2 id="結果の読み方"><a class="header" href="#結果の読み方">結果の読み方</a></h2>
 <p>結果には 2 つの形があり、中身は同じです。</p>
 <ul>
-<li><code>lindera-dependency</code> コマンドの<strong>ラティス形式</strong>。<code>cabocha -f1</code> が書く形式です。</li>
+<li><code>lindera dependency parse</code> の<strong>ラティス形式</strong>。<code>cabocha -f1</code> が書く形式です。</li>
 <li>Lindera のトークナイザーの<strong>トークンの欄</strong>。トークンフィルター <code>japanese_dependency</code> が書き込みます。</li>
 </ul>
 <h3 id="ラティス形式"><a class="header" href="#ラティス形式">ラティス形式</a></h3>
 <pre><code class="language-shell">% echo "太郎は昨日買った新しい本を図書館で読んだ。" \
-    | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+    | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 6D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -2814,7 +2813,7 @@ EOS
 </div>
 <p>この文は、節の中に節があります。係り受けは、2 つの節を区別しています。花子が は内側の節の動詞 書いた に係り、太郎は は外側の節の動詞 読んだ。 に係ります。</p>
 <h3 id="ほかの種類の文"><a class="header" href="#ほかの種類の文">ほかの種類の文</a></h3>
-<p>以下の表は、上の表と同じく、<code>lindera-dependency parse</code> の出力から読み取ったものです。</p>
+<p>以下の表は、上の表と同じく、<code>lindera dependency parse</code> の出力から読み取ったものです。</p>
 <p><strong>引用</strong>: 彼は明日来ると言った。</p>
 <div class="table-wrapper"><table><thead><tr><th></th><th>文節</th><th>係り先</th></tr></thead><tbody>
 <tr><td>0</td><td>彼は</td><td>3 言った。</td></tr>
@@ -3129,10 +3128,10 @@ assert_eq!(output, text.as_bytes());
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
 <p><code>Parser</code> は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。<code>FeatureSet</code> がどの群の素性を作るかを決め、<code>Classifier</code> が、素性の重みとその対の重みを足して点数を付けます。モデルファイルの分類器は <code>ParserPart</code> で、ファイルのバイト列の上で重みを読みます。<code>ParserModel</code> は、学習の結果の重みをメモリに持ちます。<code>LinearClassifier</code> は、手で作った重みを受け取ります。<code>parser::instances</code> は正解のある文から学習事例を作り、<code>parser::train</code> がそれで学習します。<a href="lindera-dependency/./parsing.html">係り受けの解析</a>を参照してください。</p>
 <h3 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h3>
-<p><code>cli</code> feature を付けると、<code>lindera-dependency</code> コマンドがビルドされます。分かち書きには <code>lindera-segmenter</code> を使い、学習のコードは入りません。<code>train</code> feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>
+<p>このクレートにバイナリはありません。コマンドは <code>lindera-cli</code> の <code>lindera dependency</code> で、そのクレートの <code>dependency</code> feature の裏にあり、既定のビルドに入っています。<code>lindera-cli</code> の <code>train</code> feature（これも既定のビルドに入っています）を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>
 <div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>Feature</th><th>内容</th><th>ページ</th></tr></thead><tbody>
-<tr><td><code>parse</code></td><td><code>cli</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="lindera-dependency/./command_line.html">コマンドライン</a></td></tr>
-<tr><td><code>chunk</code></td><td><code>cli</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="lindera-dependency/./chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>parse</code></td><td><code>dependency</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="lindera-dependency/./command_line.html">コマンドライン</a></td></tr>
+<tr><td><code>chunk</code></td><td><code>dependency</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="lindera-dependency/./chunking.html">文節の区切り</a></td></tr>
 <tr><td><code>convert</code></td><td><code>train</code></td><td>文節のラベルを持つ CoNLL-U のファイルから、学習データを作る</td><td><a href="lindera-dependency/./training_data.html">学習データ</a></td></tr>
 <tr><td><code>evaluate</code></td><td><code>train</code></td><td>出力を正解と比べる</td><td><a href="lindera-dependency/./evaluation.html">評価</a></td></tr>
 <tr><td><code>split</code></td><td><code>train</code></td><td>交差検証の分割を書き出す</td><td><a href="lindera-dependency/./evaluation.html">評価</a></td></tr>
@@ -3142,13 +3141,11 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>convert-cabocha</code></td><td><code>train</code></td><td>CaboCha の区切りと解析器のモデルを、モデルファイルに変換する</td><td><a href="lindera-dependency/./cabocha_models.html">CaboCha のモデル</a></td></tr>
 </tbody></table>
 </div>
-<p>コマンドは <code>lindera-cli</code> ではなく、このクレートにあります。ラティス形式を書き出し、学習を持つコマンドで、トークナイザーを使うだけの人には要らないためです。<code>lindera-cli</code> は、解析器を<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>として動かします。</p>
+<p>コマンドは、このクレートではなく <code>lindera-cli</code> にあります（<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>）。利用者が入れるコマンドが、辞書とモデルのダウンロードも行う 1 つで済み、このクレートは、どの feature でもトークナイザーに依存しません。<code>lindera-cli</code> は、解析器を<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>としても動かします。</p>
 <h2 id="feature-フラグ-2"><a class="header" href="#feature-フラグ-2">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td>（なし）</td><td>型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできる</td><td>Yes</td></tr>
-<tr><td><code>cli</code></td><td><code>lindera-dependency</code> コマンドの <code>parse</code> と <code>chunk</code>。分かち書きは <code>lindera-segmenter</code>。学習のコードは入らない</td><td>No</td></tr>
-<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習、そのサブコマンド（<code>cli</code> を含む）</td><td>No</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>コマンドに IPADIC を埋め込む。<code>--dict embedded://ipadic</code> で使う（<code>cli</code> を含む）</td><td>No</td></tr>
+<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習</td><td>No</td></tr>
 <tr><td><code>embed-model-ipadic</code></td><td><a href="lindera-dependency/./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込む。<code>embedded::model("ipadic")</code> と <code>--model embedded://ipadic</code> で使う。ビルド依存が増え、ライブラリの依存は増えない</td><td>No</td></tr>
 <tr><td><code>embed-model-unidic</code>、<code>embed-model-unidic-cwj</code>、<code>embed-model-unidic-csj</code></td><td><a href="lindera-dependency/./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を埋め込む。<code>embedded::model("unidic")</code> と <code>--model embedded://unidic</code> で使う。ほかの 2 つの名前でも同じ</td><td>No</td></tr>
 </tbody></table>
@@ -3220,7 +3217,7 @@ EOS
 </code></pre>
 <h2 id="モデルを学習する"><a class="header" href="#モデルを学習する">モデルを学習する</a></h2>
 <p>Lindera が公開する <a href="lindera-dependency/./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>には、区切りが入っています。<a href="lindera-dependency/./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>も同じです。自分のモデルは、<a href="lindera-dependency/./training_data.html">学習データ</a>から学習します。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
 <p>モデルは IPADIC のものになります。<code>--dictionary-name</code> でほかの辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）を指定すると、その辞書の名前と<a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>がモデルに入り、列・テンプレート・係数は<a href="lindera-dependency/chunking.html#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">その辞書の設定</a>になります。</p>
@@ -3242,7 +3239,7 @@ bytes: 261857
 </tbody></table>
 </div>
 <p><code>chunk</code> は、モデルでファイルの形態素を区切り直します。<a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> で正解と比べるためのものです。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
 <p>どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは <a href="lindera-dependency/./command_line.html#%E5%88%86%E3%81%8B%E3%81%A1%E6%9B%B8%E3%81%8D%E6%B8%88%E3%81%BF%E3%81%AE%E5%85%A5%E5%8A%9B"><code>parse --input-layer morphemes</code></a> です。</p>
@@ -3494,8 +3491,8 @@ for instance in parser::instances(&amp;Schema::ipadic(), &amp;set, sentence)? {
 <p>上の表の 3 回の判定です。3 回目では、本を がすでに係り先の候補の 読んだと に係っているので、<code>A:を</code> が付きます。</p>
 <p>解析器が作れない木の文（係り先が左にある、係り受けが交差する、根が最後の文節でない）は、エラーになります。<a href="lindera-dependency/./training_data.html">変換</a>は、そういう文を学習データに入れません。</p>
 <h3 id="コマンド-1"><a class="header" href="#コマンド-1">コマンド</a></h3>
-<p><code>train</code> feature を付けると、<code>lindera-dependency instances</code> が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。<code>--dictionary-name</code> で辞書を指定すると、その辞書のスキーマを使います。</p>
-<pre><code class="language-shell">lindera-dependency instances --input train.lattice --output train.instances
+<p><code>train</code> feature を付けると、<code>lindera dependency instances</code> が、ラティス形式のファイルの学習事例を、IPADIC のスキーマで書き出します。<code>--dictionary-name</code> で辞書を指定すると、その辞書のスキーマを使います。</p>
+<pre><code class="language-shell">lindera dependency instances --input train.lattice --output train.instances
 </code></pre>
 <p>1 行が 1 件の事例です。<code>+1</code> か <code>-1</code> の後に、素性の文字列がタブ区切りで続きます。文ごとに空行が 1 つ入るので、ファイルを文の境目で分割できます。<code>--features</code> は素性の集合を受け取り、既定は全部の群です。</p>
 <p>報告は標準エラーに出ます。UD Japanese-GSD の train では、次のとおりです。</p>
@@ -3517,9 +3514,9 @@ negative: 32488
 </div>
 <h2 id="モデルを学習する-1"><a class="header" href="#モデルを学習する-1">モデルを学習する</a></h2>
 <p>学習は <code>train</code> feature の裏にあります。<code>train-parser</code> は、<a href="lindera-dependency/./training_data.html">学習データ</a>から IPADIC のスキーマで解析器を学習し、<a href="lindera-dependency/./model_file.html">モデルファイル</a>を書き出します。<code>--dictionary-name</code> で辞書を指定すると、その辞書のスキーマを使います。<code>--chunker</code> を付けると、ほかのモデルファイルの区切りを出力に入れます。これで、その辞書のモデルの全体になります。そのファイルは、同じ辞書のものでなければなりません。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
-cargo run --release -p lindera-dependency --features train -- train-parser \
+cargo run --release -p lindera-cli -- dependency train-parser \
     --input train.lattice --chunker chunker.model --output ipadic.model
 </code></pre>
 <p>IPADIC で変換した UD Japanese-GSD の train では、<code>train-parser</code> は約 3 秒で終わり、最後に次を出力します。</p>
@@ -3550,9 +3547,9 @@ bytes: 6258554
 </tbody></table>
 </div>
 <p><a href="lindera-dependency/./command_line.html"><code>parse</code></a> に <code>--input-layer</code> を付けると、モデルで、ラティス形式のファイルの係り先を求めます。<a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> で正解と比べるためのものです。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- parse \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency parse \
     --input-layer bunsetsu --model ipadic.model --input dev.lattice --output output.lattice
-cargo run --release -p lindera-dependency --features train -- parse \
+cargo run --release -p lindera-cli -- dependency parse \
     --input-layer morphemes --model ipadic.model --input dev.lattice --output output.lattice
 </code></pre>
 <p><code>bunsetsu</code> では、入力の文節を解析します。解析器だけを測る形です。<code>morphemes</code> では、入力の文節は読みません。形態素をモデルの区切りで文節に区切ってから解析します。実際に使うときの解析です。<code>--input-layer</code> が無ければ、入力はテキストです。<a href="lindera-dependency/./command_line.html">コマンドライン</a>を見てください。</p>
@@ -3740,7 +3737,7 @@ cargo build --release -p lindera-cli --features embed-ipadic,embed-dependency-ip
 <p>1 つのスクリプトが、コーパスとリポジトリのソースからファイルを作ります。</p>
 <pre><code class="language-shell">scripts/dependency/build_model.sh
 </code></pre>
-<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera-dependency</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
+<p>スクリプトは、UD Japanese-GSD を固定の commit で取り、<code>lindera</code> コマンドを、名指しした toolchain と <code>Cargo.lock</code> の依存でビルドします。続けて、train のファイルを変換し、区切りと解析器を学習して、<code>scripts/dependency/data/model</code> に、アーカイブのディレクトリとアーカイブを書きます。ビルドの後は 15 秒ほどで終わります。最後に、Lindera の commit を表示し、続けて、ほかに使ったものと作ったものを表示します。</p>
 <pre><code class="language-text">corpus: UD Japanese-GSD c662dc96ed5ee5ac0fc8b5e44261557e431f50e6
 toolchain: rustc 1.100.0 (0ef1bc386 2026-11-09)
 platform: x86_64-unknown-linux-gnu, glibc 2.43
@@ -3875,7 +3872,7 @@ archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  linde
 </div>
 <p>AMD Ryzen AI Max+ 395 の 1 コアで、Rust 1.100.0 を使って測りました。<a href="https://github.com/lindera/lindera/tree/main/scripts/dependency/model_speed"><code>scripts/dependency/model_speed</code></a> と <code>scripts/dependency/parser_experiments.sh speed</code> で測り直せます。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="cabocha-のモデル"><a class="header" href="#cabocha-のモデル">CaboCha のモデル</a></h1>
-<p><a href="https://taku910.github.io/cabocha/">CaboCha</a> には、京都大学テキストコーパス 4.0 で学習したモデルが付属しています。コーパスが無いと学習し直せません。また、文節の基準は京大コーパスのもので、このクレートのモデルが従う UD Japanese-GSD のものとは違います。<code>lindera-dependency convert-cabocha</code> は、そのモデルを<a href="lindera-dependency/./model_file.html">モデルファイル</a>に変換します。変換したモデルでの解析は、CaboCha の解析と同じ結果になります。</p>
+<p><a href="https://taku910.github.io/cabocha/">CaboCha</a> には、京都大学テキストコーパス 4.0 で学習したモデルが付属しています。コーパスが無いと学習し直せません。また、文節の基準は京大コーパスのもので、このクレートのモデルが従う UD Japanese-GSD のものとは違います。<code>lindera dependency convert-cabocha</code> は、そのモデルを<a href="lindera-dependency/./model_file.html">モデルファイル</a>に変換します。変換したモデルでの解析は、CaboCha の解析と同じ結果になります。</p>
 <h2 id="モデルの利用条件"><a class="header" href="#モデルの利用条件">モデルの利用条件</a></h2>
 <p><strong>変換したモデルの利用は、元のモデルと同じく、研究目的と個人利用に限られます。ご自身が入手した CaboCha のファイルを変換し、結果を配布しないでください。</strong> このクレートとそのリリース、ビルドは、CaboCha のモデルを含みません。</p>
 <p>CaboCha のライセンス（LGPL または BSD ライセンス）は、モデルには及びません。CaboCha の配布ページには、次のように書かれています。</p>
@@ -3895,10 +3892,10 @@ archive: 61f9c243c462779d83879f9468d40b8f207067f7b1d6c6f8e5fc89d20faed690  linde
 <p>ファイルは、CaboCha のソースの <code>model/</code> にあるテキスト形式のモデルで、UTF-8 のものです。インストール先にあるコンパイル済みのモデル（<code>dep.ipa.model</code>）は読みません。マシンに依存する形式のためです。</p>
 <p>2 つのファイルは、同じモデルのものを渡してください。品詞体系は、解析器のモデルのヘッダー（<code>posset: IPA</code>）から読みます。区切りのモデルには、どの体系のものかが書かれていません。<code>chunk.ipa.txt</code> と <code>dep.juman.txt</code> を渡すと、エラーにならずに、文節を誤って区切るモデルができます。</p>
 <h2 id="変換"><a class="header" href="#変換">変換</a></h2>
-<p>コマンドは、<code>train</code> の feature を付けたビルドにあります。</p>
-<pre><code class="language-sh">cargo install lindera-dependency --features train,embed-ipadic
+<p>コマンドは、<code>lindera</code> の既定のビルドにあります（既定のビルドは <code>train</code> の feature を持ちます）。</p>
+<pre><code class="language-sh">cargo install lindera-cli --features embed-ipadic
 </code></pre>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.ipa.txt \
     --parser cabocha/model/dep.ipa.txt \
     --output cabocha-ipa.model
@@ -3915,7 +3912,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>できたファイルは <code>ipadic</code> 用のモデルです。ほかのモデルと同じく、既定のビルドの <code>parse</code>、<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>、<code>Model::new</code> で読めます。</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict embedded://ipadic --model cabocha-ipa.model
+    | lindera dependency parse --dict embedded://ipadic --model cabocha-ipa.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -3944,7 +3941,7 @@ EOS
 <p>Rust からは、<code>lindera_dependency::cabocha::convert</code> に 2 つのファイルの内容を渡すと、2 つのモデルと、変換で行ったことの記録が返ります。</p>
 <h3 id="juman-のモデル"><a class="header" href="#juman-のモデル">JUMAN のモデル</a></h3>
 <p>JUMAN のモデルは、CaboCha のページで精度が最も高いとされているモデルです。京大コーパスをそのまま使って学習されています。ほかの 2 つは、コーパスを形態素解析し直して学習されています。変換のしかたは同じです。</p>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.juman.txt \
     --parser cabocha/model/dep.juman.txt \
     --output cabocha-juman.model
@@ -3961,7 +3958,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>できたファイルは <code>jumandic</code> 用のモデルです。<code>lindera-dependency</code> が埋め込める辞書は IPADIC だけなので、<code>--dict</code> には JUMAN 辞書のディレクトリを渡します。7.1.0 からは <code>lindera download jumandic</code> で取得でき、<a href="lindera-dependency/../lindera-jumandic/build.html"><code>lindera build</code></a> でソースから作ることもできます。</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+    | lindera dependency parse --dict jumandic --model cabocha-juman.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,人名,*,*,太郎,たろう,人名:日本:名:45:0.00106
@@ -3986,7 +3983,7 @@ EOS
 <p>MeCab と mecab-jumandic を使う <code>cabocha -f1 -n0 -P JUMAN</code> は、この文に、同じ文節・係り先・位置・点数を書きます。判定をしないところには <code>-0.468695</code> を書きます。形態素の行は、助詞の最後の列が違います。Lindera が <code>*</code> のところが <code>連語</code> です。同じコストの 2 つのエントリから、別のほうを採るためです（<a href="lindera-dependency/../lindera-jumandic/examples.html#mecab-%E3%81%A8%E3%81%AE%E4%B8%80%E8%87%B4">使用例</a>）。この列を、モデルは読みません。</p>
 <h3 id="unidic-のモデル-1"><a class="header" href="#unidic-のモデル-1">UniDic のモデル</a></h3>
 <p>UniDic のモデルも、同じように変換します。</p>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.unidic.txt \
     --parser cabocha/model/dep.unidic.txt \
     --output cabocha-unidic.model
@@ -4003,7 +4000,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>できたファイルは <code>unidic</code>（unidic-mecab 2.1.2 から作った辞書）用のモデルです。Lindera には UniDic の辞書が 3 つあり、モデルが読む列の位置はどれも同じです。モデルファイルは、名前で 1 つの辞書に結び付きます。<code>--dictionary unidic-cwj</code> か <code>--dictionary unidic-csj</code> を付けると、そのうちの別の辞書用のモデルになります。CaboCha のページには、このモデルの学習に使った UniDic の版が書かれていません。<code>--dict</code> には、<code>lindera download unidic</code> で取得できる辞書のディレクトリを渡します。</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+    | lindera dependency parse --dict unidic --model cabocha-unidic.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,タロウ,タロウ,太郎,タロー,太郎,タロー,固,*,*,*,*
@@ -4061,7 +4058,7 @@ EOS
 <li>句読点は <code>。</code> と <code>、</code>、括弧は CaboCha のもので、どれも表層の全体で照合します。</li>
 </ul>
 <h2 id="cabocha-との一致"><a class="header" href="#cabocha-との一致">CaboCha との一致</a></h2>
-<p><code>scripts/dependency/cabocha_models.sh</code> は、IPA のモデル（<code>--posset juman</code> か <code>--posset unidic</code> を付けると、JUMAN か UniDic のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。<code>scripts/dependency/build_baselines.sh</code> でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う <code>lindera-dependency parse</code> に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。</p>
+<p><code>scripts/dependency/cabocha_models.sh</code> は、IPA のモデル（<code>--posset juman</code> か <code>--posset unidic</code> を付けると、JUMAN か UniDic のモデル）を変換し、同じ入力を、CaboCha 0.69（96e100a。<code>scripts/dependency/build_baselines.sh</code> でビルドし、モデルは CaboCha 自身のビルドがコンパイルしたもの）と、変換したモデルを使う <code>lindera dependency parse</code> に渡します。入力は、UD Japanese-GSD と UD Japanese-PUD の 9,066 文です。決まったテキストとして使うだけで、その正解は使いません。</p>
 <p>同じ形態素（Lindera と IPADIC のもの）を渡すと、すべてが一致します。</p>
 <div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>文節が同じ文</th><th>係り先が同じ文節</th><th>主辞と機能語が同じ文節</th></tr></thead><tbody>
 <tr><td>GSD dev</td><td>100%（506 / 506）</td><td>100%（3,740 / 3,740）</td><td>100%（4,246 / 4,246）</td></tr>
@@ -4129,16 +4126,16 @@ EOS
 <li><strong>未検証</strong>: Linux（x86_64）の GCC 15.2 以外のコンパイラ・OS でビルドした CaboCha。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="コマンドライン"><a class="header" href="#コマンドライン">コマンドライン</a></h1>
-<p><code>lindera-dependency</code> コマンドは、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを<a href="lindera-dependency/./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で書き出します。<code>cabocha -f1</code> が書くのと同じ形式です。</p>
+<p><code>lindera dependency parse</code> は、テキストを受け取り、Lindera の辞書で分かち書きし、各文の文節とその係り受けを<a href="lindera-dependency/./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で書き出します。<code>cabocha -f1</code> が書くのと同じ形式です。</p>
 <p>区切りと解析器の入った<a href="lindera-dependency/./model_file.html">モデルファイル</a>が必要です。7.1.0 から Lindera のリリースが公開する <a href="lindera-dependency/./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>か <a href="lindera-dependency/./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>、または自分で<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B">学習した</a>モデルを使います。</p>
 <h2 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h2>
-<p>コマンドは <code>cli</code> feature の裏にあります。この feature は <code>clap</code> と <code>lindera-segmenter</code> を入れ、学習のコードは入れません。<code>embed-ipadic</code> を付けると、IPADIC を埋め込みます。<code>embed-model-ipadic</code> を付けると、<a href="lindera-dependency/./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込み、<code>--model embedded://ipadic</code> で指せます。UniDic CWJ なら、<code>embed-model-unidic-cwj</code> と <code>--model embedded://unidic-cwj</code> です。<code>unidic</code> と <code>unidic-csj</code> も同じで、辞書はディレクトリで渡します。</p>
-<pre><code class="language-shell">cargo build --release -p lindera-dependency --features cli,embed-ipadic
+<p><code>lindera dependency</code> は、<a href="lindera-dependency/../lindera-cli/installation.html"><code>lindera</code> コマンド</a>の一部で、既定のビルドに入っています。リリースのバイナリにも、<code>cargo install lindera-cli</code> で入れたコマンドにもあります。<code>lindera-cli</code> の <code>dependency</code> feature の裏にあります。<code>embed-ipadic</code> を付けると、IPADIC を埋め込みます。<code>embed-dependency-ipadic</code> を付けると、<a href="lindera-dependency/./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込み、<code>--model embedded://ipadic</code> で指せます。UniDic CWJ なら、<code>embed-dependency-unidic-cwj</code> と <code>--model embedded://unidic-cwj</code> です。<code>unidic</code> と <code>unidic-csj</code> も同じで、辞書はディレクトリで渡します。</p>
+<pre><code class="language-shell">cargo build --release -p lindera-cli --features embed-ipadic
 </code></pre>
-<p>バイナリは <code>target/release/lindera-dependency</code> です。<code>cli</code> のビルドのサブコマンドは、<code>parse</code> と <a href="lindera-dependency/./chunking.html"><code>chunk</code></a> の 2 つです。<code>train</code> feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>
+<p>バイナリは <code>target/release/lindera</code> です。<code>lindera dependency</code> の利用者向けのサブコマンドは、<code>parse</code> と <a href="lindera-dependency/./chunking.html"><code>chunk</code></a> の 2 つです。<code>train</code> feature（これも既定のビルドに入っています）を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。クレート <code>lindera-dependency</code> 自体はライブラリで、コマンドを持ちません。</p>
 <h2 id="テキストを解析する"><a class="header" href="#テキストを解析する">テキストを解析する</a></h2>
 <p>入力の 1 行が 1 文です。</p>
-<pre><code class="language-shell">echo "彼は赤い花を見た。" | lindera-dependency parse \
+<pre><code class="language-shell">echo "彼は赤い花を見た。" | lindera dependency parse \
     --model ipadic.model --dict embedded://ipadic
 </code></pre>
 <pre><code class="language-text">* 0 3D 0/1 0.000000
@@ -4173,7 +4170,7 @@ EOS
 </div>
 <h2 id="辞書とモデル"><a class="header" href="#辞書とモデル">辞書とモデル</a></h2>
 <p>モデルは 1 つの辞書の形態素で学習したもので、ほかの辞書の形態素を渡しても、失敗せずに誤った答えを返します。そこでコマンドは、読み込んだ辞書の名前をモデルファイルの中の名前と比べ、違えば止まります。</p>
-<pre><code class="language-text">Error: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic"
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: embedded://ipadic: the model is for the dictionary "unidic", and the morphemes are of "ipadic" }
 </code></pre>
 <h2 id="分かち書き済みの入力"><a class="header" href="#分かち書き済みの入力">分かち書き済みの入力</a></h2>
 <p><code>--input-layer</code> は、入力が何を持っているかを指定します。<code>morphemes</code> と <code>bunsetsu</code> では、入力はラティス形式で、辞書は読み込みません。<code>--dict</code> を付けるとエラーになります。</p>
@@ -4183,9 +4180,9 @@ EOS
 <tr><td><code>bunsetsu</code></td><td>ラティス形式の形態素と文節</td><td>入力の文節を解析する</td><td><code>-I2</code></td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-shell">lindera-dependency parse --model ipadic.model --input-layer morphemes \
+<pre><code class="language-shell">lindera dependency parse --model ipadic.model --input-layer morphemes \
     --input tokens.lattice --output output.lattice
-lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
+lindera dependency parse --model ipadic.model --input-layer bunsetsu \
     --input dev.lattice --output output.lattice
 </code></pre>
 <p>形態素と文節がコマンドの作るものと同じであれば、3 つの層は、1 つの文に同じ出力を返します。コーパスの正解に <code>bunsetsu</code> を使うと解析器だけを、<code>morphemes</code> を使うと区切りと解析器の両方を測れます。<a href="lindera-dependency/./evaluation.html">評価</a>を見てください。ラティス形式の入力では、比べる辞書が無いので、各形態素が、モデルのスキーマの読む素性の列を持つことだけを検査します。</p>
@@ -4201,8 +4198,8 @@ lindera-dependency parse --model ipadic.model --input-layer bunsetsu \
 <p>出力は、CaboCha の道具で読めます（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。<code>cabocha-system-eval</code> は、この出力で <a href="lindera-dependency/./evaluation.html"><code>evaluate</code></a> と同じ数を数えます。<code>cabocha -I 2</code> は、文節つきの入力として受け取ります。</p>
 <h2 id="速度"><a class="header" href="#速度">速度</a></h2>
 <p>UD Japanese-GSD の test のテキスト（543 文）で、既定のモデルと埋め込んだ IPADIC を使うと、コマンドは、テキストからラティス形式まで、毎秒約 6,600 文を書き出します。辞書とモデルの読み込みは約 5 ミリ秒です。数字はマシンによって変わります。<code>scripts/dependency/parse_speed.sh</code> で測れます。</p>
-<h2 id="lindera-コマンド"><a class="header" href="#lindera-コマンド"><code>lindera</code> コマンド</a></h2>
-<p><code>lindera tokenize</code> は、解析器をトークンフィルターとして動かします。<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>を見てください。結果は、ラティス形式ではなく、JSON の出力のトークンに書かれます。<code>lindera</code> コマンドは、7.1.0 から、既定のビルドにフィルターを持ちます。</p>
+<h2 id="lindera-tokenize"><a class="header" href="#lindera-tokenize"><code>lindera tokenize</code></a></h2>
+<p><code>lindera tokenize</code> は、解析器をトークンフィルターとして動かします。<a href="lindera-dependency/./token_filter.html">トークンフィルター</a>を見てください。結果は、ラティス形式ではなく、JSON の出力のトークンに書かれます。<code>lindera</code> コマンドは、7.1.0 から、<code>lindera dependency</code> と同じく、既定のビルドにフィルターを持ちます。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="トークンフィルター"><a class="header" href="#トークンフィルター">トークンフィルター</a></h1>
 <p>トークンフィルター <code>japanese_dependency</code> は、Lindera のトークナイザーの中で係り受けを解析します。テキストのトークンを文節にまとめ、各文節の係り先の文節を求めて、結果をすべてのトークンに書き込みます。<code>lindera</code> コマンド、設定ファイル、Lindera の <code>Tokenizer</code> を使うプログラムから呼ぶのは、このフィルターです。テキストを CaboCha のラティス形式に解析するには、<a href="lindera-dependency/./command_line.html">コマンドライン</a>を見てください。</p>
 <p>フィルターは、トークンを足しも消しも書き換えもしません。MeCab 形式と分かち書きの出力はフィルターなしのときと同じで、JSON の出力には、トークンごとにキーが 1 つ増えます。</p>
@@ -4258,7 +4255,7 @@ lindera = { version = "7.1", features = ["dependency"] }
 た    {"bunsetsu": 3, "head": null, "role": "function", "score": 0.0, "sentence": 0}
 。    {"bunsetsu": 3, "head": null, "role": "other", "score": 0.0, "sentence": 0}
 </code></pre>
-<p>彼は → 見た。、赤い → 花を、花を → 見た。 という解析で、同じ文に <code>lindera-dependency parse</code> が書き出すものと同じです。</p>
+<p>彼は → 見た。、赤い → 花を、花を → 見た。 という解析で、同じ文に <code>lindera dependency parse</code> が書き出すものと同じです。</p>
 <h2 id="設定ファイルから"><a class="header" href="#設定ファイルから">設定ファイルから</a></h2>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
@@ -4521,9 +4518,9 @@ let schema = Schema {
 };
 <span class="boring">}</span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="学習データ"><a class="header" href="#学習データ">学習データ</a></h1>
-<p>文節の区切りは文節で学習し、解析器は文節の係り受けで学習します。どちらも、動かすときに使う辞書の形態素の上で学習します。<code>train</code> feature の裏にある <code>lindera-dependency convert</code> は、そのためのデータを、語の係り受けと文節の境界を持つコーパスから作ります。対象は、最後の列に <code>BunsetuBILabel</code> を持つ CoNLL-U のファイルで、UD Japanese-GSD と UD Japanese-PUD がこの形です。</p>
+<p>文節の区切りは文節で学習し、解析器は文節の係り受けで学習します。どちらも、動かすときに使う辞書の形態素の上で学習します。<code>train</code> feature の裏にある <code>lindera dependency convert</code> は、そのためのデータを、語の係り受けと文節の境界を持つコーパスから作ります。対象は、最後の列に <code>BunsetuBILabel</code> を持つ CoNLL-U のファイルで、UD Japanese-GSD と UD Japanese-PUD がこの形です。</p>
 <h2 id="コーパスを変換する"><a class="header" href="#コーパスを変換する">コーパスを変換する</a></h2>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+<pre><code class="language-shell">cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -4531,13 +4528,13 @@ let schema = Schema {
 <p><code>--dict</code> には、Lindera 用にビルドした辞書のディレクトリも渡せます。その場合は <code>train</code> feature だけで足ります。</p>
 <p><a href="lindera-dependency/./head_and_function_word.html">スキーマ</a>は、その辞書のものを使います。<code>convert</code> は、辞書の名前を辞書のメタデータから読みます。スキーマがあるのは <code>ipadic</code>・<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> です。UniDic では、辞書のディレクトリを渡します。たとえば、<a href="lindera-dependency/../lindera-cli/commands.html"><code>lindera download</code></a> が入れたディレクトリです。</p>
 <pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
-cargo run --release -p lindera-dependency --features train -- convert \
+cargo run --release -p lindera-cli -- dependency convert \
     --dict "$dictionary" \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
 </code></pre>
 <p>スキーマの無い辞書は断ります。</p>
-<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj }
 </code></pre>
 <p>学習するコマンドは辞書を読みません。<a href="lindera-dependency/./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a>・<a href="lindera-dependency/./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a>・<code>instances</code> には、辞書の名前を <code>--dictionary-name</code> で渡します。省くと <code>ipadic</code> です。</p>
 <p>コマンドは、文ごとに次を行います。</p>
@@ -4627,8 +4624,8 @@ head words on the content head of the corpus: 54449 of 56396 (96.55%)
 <li>変換したデータで学習したモデルは、コーパスとその版、ライセンスを明記して公開します。継承（share-alike）の条件が学習済みのモデルに及ぶかを判断した裁判例は、ありません。このプロジェクトは、重みを持つだけで注釈を含まない自分のモデルを、コーパスの改変物ではないとみなし、MIT ライセンスで配布します。<a href="lindera-dependency/./model_file.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルのライセンス</a>を見てください。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="評価"><a class="header" href="#評価">評価</a></h1>
-<p><code>train</code> feature の裏にある <code>lindera-dependency evaluate</code> は、出力を正解と比べます。どちらも<a href="lindera-dependency/./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で、同じ文が同じ順に並んでいる必要があります。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- evaluate \
+<p><code>train</code> feature の裏にある <code>lindera dependency evaluate</code> は、出力を正解と比べます。どちらも<a href="lindera-dependency/./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で、同じ文が同じ順に並んでいる必要があります。</p>
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice \
     --system output.lattice
 </code></pre>
@@ -4659,7 +4656,7 @@ end to end sentences: 14.43% (73/506)
 <p>正解の文節を与えた「どの文節も次の文節に係る」は、どの解析器も超えなければならない基準です。レベル 1 で、dev は 64.10% (2,334 / 3,641)、test は 62.77% (2,490 / 3,967)、UD Japanese-PUD は 60.87% (5,386 / 8,849) です。</p>
 <h2 id="2-つの出力を比べる"><a class="header" href="#2-つの出力を比べる">2 つの出力を比べる</a></h2>
 <p><code>--compare</code> を付けると、2 つ目の出力も評価し、2 つを対にします。文の区切り、一貫の係り、文のそれぞれについて、両方で正解、1 つ目だけ正解、2 つ目だけ正解、どちらも不正解を数えます。p 値は、食い違う 2 つの数に対する McNemar の正確検定（両側）のものです。区切りの対は、係り先が何であっても、2 つの区切りを比べられます。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- evaluate \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 </code></pre>
 <p>train の 10 分割での、2 つの区切りの比較です（1 つ目が CaboCha のテンプレート、2 つ目が既定のテンプレート）。</p>
@@ -4675,8 +4672,8 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <li><strong>test と UD Japanese-PUD は、報告する結果にだけ使います。</strong></li>
 </ul>
 <h2 id="交差検証"><a class="header" href="#交差検証">交差検証</a></h2>
-<p><code>lindera-dependency split</code> は、分割を書き出します。入力の文 <code>i</code>（0 から数える）は、fold <code>i mod k</code> のテストのファイルと、ほかのすべての fold の学習のファイルに入ります。そのため、どこでコマンドを流しても同じ分割になります。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- split \
+<p><code>lindera dependency split</code> は、分割を書き出します。入力の文 <code>i</code>（0 から数える）は、fold <code>i mod k</code> のテストのファイルと、ほかのすべての fold の学習のファイルに入ります。そのため、どこでコマンドを流しても同じ分割になります。</p>
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency split \
     --input train.lattice --folds 10 --output-dir folds
 </code></pre>
 <p>これは、<code>fold0.test.lattice</code> と <code>fold0.train.lattice</code> から <code>fold9.test.lattice</code> と <code>fold9.train.lattice</code> までを書き出します。UD Japanese-GSD の train では、各テストのファイルは 702 文か 703 文です。</p>
@@ -4767,7 +4764,7 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <p>詳細は <a href="lindera-cli/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="コマンド-2"><a class="header" href="#コマンド-2">コマンド</a></h1>
-<p>Lindera CLI は6つのメインコマンドを提供します：</p>
+<p>Lindera CLI は7つのメインコマンドを提供します：</p>
 <ul>
 <li><strong>list</strong> - 形態素解析辞書の一覧と状態を表示</li>
 <li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
@@ -4775,6 +4772,7 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <li><strong>download</strong> - GitHub リリースページから学習済み辞書をダウンロード</li>
 <li><strong>train</strong> - 注釈付きコーパスデータからCRFモデルを学習</li>
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
+<li><strong>dependency</strong> - 文節の係り受けを解析し、解析のモデルを学習・評価</li>
 </ul>
 <h2 id="警告とログメッセージ"><a class="header" href="#警告とログメッセージ">警告とログメッセージ</a></h2>
 <p>どのコマンドも、結果を標準出力に、Lindera のライブラリが出す警告を標準エラー出力に書きます。たとえば <code>tokenize</code> は、文の区切り文字のないテキストが 32 KiB を超えると、そこで文を区切り（<a href="lindera-cli/../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）、警告を出します：</p>
@@ -4787,6 +4785,7 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <ul>
 <li><code>tokenize</code>・<code>list</code>・<code>download</code> は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。<code>tokenize</code> は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。</li>
 <li><code>train</code>・<code>export</code> は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。</li>
+<li><code>dependency parse</code> と <code>dependency evaluate</code> は結果を標準出力に書き、<code>tokenize</code> と同じく、読み手のいない最初の書き込みで止まります。<code>dependency</code> のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。</li>
 </ul>
 <p>標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（<code>download</code> の進捗や通知、<code>list</code> の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。</p>
 <p>v6.2.0 までは、コマンドは失敗していました。<a href="lindera-cli/../migration_v6_to_v7.html#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF%E6%A8%99%E6%BA%96%E5%87%BA%E5%8A%9B%E3%81%AB%E8%AA%AD%E3%81%BF%E6%89%8B%E3%81%8C%E3%81%84%E3%81%AA%E3%81%84%E3%81%A8%E3%81%8D%E9%9D%99%E3%81%8B%E3%81%AB%E7%B5%82%E3%82%8F%E3%82%8B">移行ガイド</a>を参照してください。</p>
@@ -5700,6 +5699,31 @@ EOS
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>
 </ol>
+<h2 id="dependency"><a class="header" href="#dependency">dependency</a></h2>
+<p><a href="lindera-cli/../lindera-dependency.html"><code>lindera-dependency</code></a> のライブラリで、文節の係り受けを解析します。7.1.0 からのコマンドです。このコマンドは、さらにサブコマンドを持ちます。</p>
+<pre><code class="language-text">lindera dependency &lt;SUBCOMMAND&gt;
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>内容</th><th>ページ</th></tr></thead><tbody>
+<tr><td><code>parse</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="lindera-cli/../lindera-dependency/command_line.html">コマンドライン</a></td></tr>
+<tr><td><code>chunk</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="lindera-cli/../lindera-dependency/chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>convert</code></td><td>文節のラベルを持つ CoNLL-U のファイルから、学習データを作る</td><td><a href="lindera-cli/../lindera-dependency/training_data.html">学習データ</a></td></tr>
+<tr><td><code>evaluate</code></td><td>出力を正解と比べる</td><td><a href="lindera-cli/../lindera-dependency/evaluation.html">評価</a></td></tr>
+<tr><td><code>split</code></td><td>交差検証の分割を書き出す</td><td><a href="lindera-cli/../lindera-dependency/evaluation.html">評価</a></td></tr>
+<tr><td><code>train-chunker</code></td><td>文節の区切りを学習し、モデルファイルを書く</td><td><a href="lindera-cli/../lindera-dependency/chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>instances</code></td><td>解析器の学習事例を書き出す</td><td><a href="lindera-cli/../lindera-dependency/parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>train-parser</code></td><td>解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる</td><td><a href="lindera-cli/../lindera-dependency/parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>convert-cabocha</code></td><td>CaboCha の区切りと解析器のモデルを、モデルファイルに変換する</td><td><a href="lindera-cli/../lindera-dependency/cabocha_models.html">CaboCha のモデル</a></td></tr>
+</tbody></table>
+</div>
+<p><code>parse</code> と <code>chunk</code> は <code>dependency</code> feature のあるビルドに、ほかの 7 つは、さらに <code>train</code> もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。</p>
+<h3 id="dependency-の使用例"><a class="header" href="#dependency-の使用例">dependency の使用例</a></h3>
+<p><code>parse</code> には、分かち書きに使う辞書に合ったモデルが要ります。モデルは <code>download</code> で取得します。</p>
+<pre><code class="language-bash">DICT=$(lindera download ipadic)
+MODEL=$(lindera download dependency-ipadic)
+echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
+</code></pre>
+<p>各文の文節とその係り受けを、ラティス形式で書き出します。<code>cabocha -f1</code> が書く形式です。出力は<a href="lindera-cli/../lindera-dependency/quickstart.html">クイックスタート</a>に、読み方は<a href="lindera-cli/../lindera-dependency/reading_the_result.html">結果の読み方と使い方</a>にあります。</p>
+<p><code>tokenize</code> は、トークンフィルター <code>japanese_dependency</code> で、同じ解析の結果を出力のトークンに書きます。<a href="lindera-cli/../lindera-dependency/token_filter.html">トークンフィルター</a>を参照してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="チュートリアル"><a class="header" href="#チュートリアル">チュートリアル</a></h1>
 <p>このチュートリアルでは、Lindera CLIの基本的な使い方を、インストールから高度なテキスト処理まで順を追って説明します。</p>
 <h2 id="1-cliのインストール"><a class="header" href="#1-cliのインストール">1. CLIのインストール</a></h2>
@@ -16673,7 +16697,7 @@ lindera = { version = "7", features = ["embed-ipadic", "embed-ko-dic"] }
 <h4 id="lindera-analysis-1"><a class="header" href="#lindera-analysis-1"><code>lindera-analysis</code></a></h4>
 <p><code>lindera-segmenter</code> の上に構築されたLucene風の分析チェーンです（ファサード経由では <code>lindera::analysis</code> として利用します）。文字フィルタ、トークンフィルタ、およびそれらを <code>Segmenter</code> の周りで組み合わせる <code>Tokenizer</code> を提供します。</p>
 <h4 id="lindera-dependency-1"><a class="header" href="#lindera-dependency-1"><code>lindera-dependency</code></a></h4>
-<p>日本語の文節の係り受け解析です（<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>）。7.1.0 から公開しています。解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（<code>cabocha -f1</code>）の読み書き、係り受けの木の検査、辞書のスキーマ（どの素性の列が何を持つかと、文節の主辞・機能語を決め、記号を見分けるパターン。IPADIC 用と UniDic 用がある）、文節の区切り（条件付き確率場と、重みの表だけのモデルで、形態素を文節にまとめる）、辞書のモデルファイル（その場で読む）、解析器（shift-reduce と、素性とその対の上の分類器で、各文節の係り先を求める）があります。IPADIC のモデルは Lindera のリリースが公開し、文節の区切りと解析器は、このクレートのコマンドで学習することもできます。既定のビルドは workspace のほかのクレートに依存せず、<code>wasm32-unknown-unknown</code> 向けにビルドできます（<code>make check-lindera-dependency</code>）。<code>train</code> feature を付けると、<code>lindera-dependency convert</code> コマンドも入ります。UD Japanese-GSD のような係り受けのコーパスを <code>lindera-segmenter</code> で解析し直して、学習データを作り、スキーマの主辞がコーパスの内容の主辞と一致する割合を報告します。<code>lindera-dependency evaluate</code> と <code>lindera-dependency split</code> コマンドも入り、文節の区切りと係り受けの精度を CaboCha・J.DepP と同じ数え方で数え、交差検証の分割を書き出します。<code>lindera-dependency train-chunker</code> と <code>lindera-dependency chunk</code> コマンドは、文節の区切りのモデルを <code>lindera-crf</code> で学習し、そのモデルでファイルを区切り直します。<code>lindera-dependency instances</code> コマンドは、解析器の学習事例を書き出します（クレートの README を参照）。使い方は <a href="development/../lindera-dependency.html">Lindera Dependency</a> の章にあります。このクレートの決定と、その根拠になった数字は<a href="development/./dependency_design.html">設計メモ</a>に、数字を出すスクリプトは <code>scripts/dependency/</code> にあります。</p>
+<p>日本語の文節の係り受け解析です（<a href="https://github.com/lindera/lindera/issues/1417">#1417</a>）。7.1.0 から公開しています。解析の土台になる型（形態素の trait、文節、文）、CaboCha のラティス形式（<code>cabocha -f1</code>）の読み書き、係り受けの木の検査、辞書のスキーマ（どの素性の列が何を持つかと、文節の主辞・機能語を決め、記号を見分けるパターン。IPADIC 用と UniDic 用がある）、文節の区切り（条件付き確率場と、重みの表だけのモデルで、形態素を文節にまとめる）、辞書のモデルファイル（その場で読む）、解析器（shift-reduce と、素性とその対の上の分類器で、各文節の係り先を求める）があります。IPADIC のモデルは Lindera のリリースが公開し、文節の区切りと解析器は、<code>lindera dependency</code> コマンドで学習することもできます。コマンドは <code>lindera-cli</code> にあり、このクレートは、バイナリを持たないライブラリです。既定のビルドは workspace のほかのクレートに依存せず、<code>wasm32-unknown-unknown</code> 向けにビルドできます（<code>make check-lindera-dependency</code>）。<code>train</code> feature を付けると、<code>lindera dependency convert</code> コマンドの本体も入ります。UD Japanese-GSD のような係り受けのコーパスを <code>lindera-segmenter</code> で解析し直して、学習データを作り、スキーマの主辞がコーパスの内容の主辞と一致する割合を報告します。<code>lindera dependency evaluate</code> と <code>lindera dependency split</code> コマンドも入り、文節の区切りと係り受けの精度を CaboCha・J.DepP と同じ数え方で数え、交差検証の分割を書き出します。<code>lindera dependency train-chunker</code> と <code>lindera dependency chunk</code> コマンドは、文節の区切りのモデルを <code>lindera-crf</code> で学習し、そのモデルでファイルを区切り直します。<code>lindera dependency instances</code> コマンドは、解析器の学習事例を書き出します（クレートの README を参照）。使い方は <a href="development/../lindera-dependency.html">Lindera Dependency</a> の章にあります。このクレートの決定と、その根拠になった数字は<a href="development/./dependency_design.html">設計メモ</a>に、数字を出すスクリプトは <code>scripts/dependency/</code> にあります。</p>
 <h4 id="lindera-cli-1"><a class="header" href="#lindera-cli-1"><code>lindera-cli</code></a></h4>
 <p>トークナイズ、辞書学習、エクスポート、ビルドのためのコマンドラインインターフェースです。デフォルトで <code>train</code> feature が有効です。</p>
 <h4 id="lindera-binding"><a class="header" href="#lindera-binding"><code>lindera-binding</code></a></h4>
@@ -17172,6 +17196,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>モデルの素性を作るものは、スキーマのデータとする。表層の正規化と、記号の照合の仕方まで含める。</td><td>ほかのプログラムのモデルは、そのプログラムの素性でしか正しく動かない。スキーマをコードに持つと、1 つの辞書に 1 つのスキーマしか持てない。このために、ファイルの版を 2 にした。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a></td></tr>
 <tr><td>CaboCha の 3 つのモデルを変換できるようにする。JUMAN のモデルのために、Lindera に JUMAN の辞書を足す。</td><td>2026-11-27 のメンテナーの決定。JUMAN のモデルは、京大コーパスから直接学習されたものである。</td><td><a href="https://github.com/lindera/lindera/issues/1442">#1442</a>、<a href="https://github.com/lindera/lindera/issues/1466">#1466</a></td></tr>
 <tr><td>テキストを受けるコマンドは、このクレートのバイナリの、学習のコードを含まないビルドに置く。<code>cli</code> feature がコマンドを持ち、<code>train</code> がそこに学習を足す。<code>lindera</code> コマンドからの利用は、フィルターと公開の後にする。</td><td>コマンドを使うだけの人に <code>lindera-crf</code> が入らない。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できない。<code>lindera tokenize</code> の出力形式にするには、トークンフィルターが要る。</td><td>#1439</td></tr>
+<tr><td>コマンドを、クレートの公開の前に、<code>lindera dependency</code> として <code>lindera-cli</code> に移す。クレートはライブラリだけにする。バイナリも、<code>cli</code> feature も、<code>clap</code>・<code>lindera-segmenter</code> への依存も持たない。</td><td>Lindera のコマンドラインを「対象 → 操作」の 3 階層にし、利用者が入れるコマンドを 1 つにする。係り受けの解析はまだ何も公開していないので、古いコマンドは別名を残さずに消す。<code>lindera-cli</code> は、クレートと一緒に公開されるようになったので、クレートに依存できる。</td><td>#1482</td></tr>
 <tr><td>CaboCha のオプションのうち、コマンドは、ラティス形式の出力（<code>-f1</code>）と 3 つの入力の層（<code>-I</code>）を <code>--input-layer</code> として持つ。木・XML・CoNLL の出力、出力の層、固有表現は持たない。</td><td>ラティス形式はほかの道具が読む形式で、書き出しの実装がある。入力の層は、<code>parse</code> と <code>parse --chunk</code> がしていたことを 1 つのオプションにまとめたもの。形態素だけ、文節だけを書くコマンドは別にある。</td><td>#1439</td></tr>
 <tr><td>コマンドは、1 文ずつ読んで、解析して、書く。解析できない最初の文で止まり、そこまでに書いた出力は残る。</td><td>パイプの中で使え、メモリが入力の長さで増えない。</td><td>#1439</td></tr>
 <tr><td>IPADIC のモデルは MIT ライセンスで配布し、UD Japanese-GSD への謝辞と IPADIC の表示を添える。</td><td>モデルが持つのは素性の名前と重みで、注釈は含まない。このプロジェクトは、これをコーパスの改変物ではないとみなす。この問いを判断した裁判例はない。立場の根拠は<a href="development/../lindera-dependency/model_file.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E3%83%A9%E3%82%A4%E3%82%BB%E3%83%B3%E3%82%B9">モデルファイルのページ</a>に書く。コードとモデルが同じライセンスなので、モデルを埋め込んだプログラムは、辞書を埋め込んだプログラムと同じように配布できる。</td><td>#1440</td></tr>
@@ -17202,15 +17227,15 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><code>Sentence::violations</code> は、文が、解析器の仮定する木でない点を報告する。根は 1 つで最後の文節、係り先はすべて右、係りは交差しない。コーパスの変換と評価が共有する。</li>
 </ul>
 <h3 id="学習データ1419"><a class="header" href="#学習データ1419">学習データ（<a href="https://github.com/lindera/lindera/issues/1419">#1419</a>）</a></h3>
-<p><code>lindera-dependency convert</code> は、UD Japanese-GSD と UD Japanese-PUD から、2 段階で学習データを作ります。</p>
+<p><code>lindera dependency convert</code> は、UD Japanese-GSD と UD Japanese-PUD から、2 段階で学習データを作ります。</p>
 <ol>
 <li><strong>語の係り受けから文節の係り受けへ。</strong> <code>BunsetuBILabel=B</code> の語が文節を始める。文節の外に係る語が、文節の係り先を決める。並列を戻す（<code>a → b</code>、<code>b → c</code>、<code>c → h</code>、種類は <code>P</code>）。木にならない文は落とす。</li>
 <li><strong>辞書の形態素への投影。</strong> 文章を、解析器を使うときと同じ、その辞書と Lindera の既定の設定で解析する。文節を文字の位置で形態素に合わせ、境界が形態素の途中に来たら、次に合う境界まで文節をつなぐ。つないだ文節は、<code>kc2cabocha.pl</code> と同じく、最後の文節の係り先を引き継ぐ。</li>
 </ol>
-<p>コマンドは、<code>train</code> feature の裏の、クレート自身のバイナリのサブコマンドです（バイナリ自体は、#1439 から <code>cli</code> の裏にあります）。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できません。</p>
+<p>コマンドは、<code>train</code> feature の裏の、クレート自身のバイナリのサブコマンドです（バイナリ自体は、#1439 から <code>cli</code> の裏にあります）。<code>lindera-cli</code> は公開されているので、公開していないクレートに依存できません。#1482 からは、コマンドは <code>lindera-cli</code> の <code>lindera dependency convert</code> です。こちらは、クレートと一緒に公開されます。</p>
 <h3 id="評価1420"><a class="header" href="#評価1420">評価（<a href="https://github.com/lindera/lindera/issues/1420">#1420</a>）</a></h3>
-<p><code>lindera-dependency evaluate</code> は、<code>cabocha-system-eval</code> と J.DepP と同じものを数えます。数字を並べて比べられるようにするためです。レベル 1（各文の最後を除いた文節）は J.DepP が報告する数字で、ここでも見出しの数字にします。一貫（end to end）は、正解の文節のうち各文の最後を除いたものについて、出力に同じ範囲の文節があり、その係り先が、正解の係り先と同じ範囲であるものを数えます。</p>
-<p>2 つの出力は対にして比べ、McNemar の正確検定（二項分布、両側）を使います。カイ二乗の近似は使いません。食い違う対の数が小さいためです。<code>lindera-dependency split</code> は、交差検証の分割を「文 <code>i</code> は fold <code>i mod k</code> のテストに入る」という規則で、乱数なしで書き出すので、どこで流しても同じ分割になります。</p>
+<p><code>lindera dependency evaluate</code> は、<code>cabocha-system-eval</code> と J.DepP と同じものを数えます。数字を並べて比べられるようにするためです。レベル 1（各文の最後を除いた文節）は J.DepP が報告する数字で、ここでも見出しの数字にします。一貫（end to end）は、正解の文節のうち各文の最後を除いたものについて、出力に同じ範囲の文節があり、その係り先が、正解の係り先と同じ範囲であるものを数えます。</p>
+<p>2 つの出力は対にして比べ、McNemar の正確検定（二項分布、両側）を使います。カイ二乗の近似は使いません。食い違う対の数が小さいためです。<code>lindera dependency split</code> は、交差検証の分割を「文 <code>i</code> は fold <code>i mod k</code> のテストに入る」という規則で、乱数なしで書き出すので、どこで流しても同じ分割になります。</p>
 <h3 id="文節の区切り1421"><a class="header" href="#文節の区切り1421">文節の区切り（<a href="https://github.com/lindera/lindera/issues/1421">#1421</a>）</a></h3>
 <ul>
 <li><strong>素性の取り出しと復号を分ける。</strong> 形態素からスキーマを通して列を読み、CRF++ の形式のテンプレートが素性の文字列に展開する。復号は、素性の文字列と重みの表だけを見る。後で、CaboCha と同じ文字列を作る取り出し方を足せば、同じ復号を使える。</li>
@@ -17261,7 +17286,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong><code>parse</code> は、利用者のコマンドです</strong>。1 行 1 文のテキストを受けて、ラティス形式で書き出します。これまでは、<code>evaluate</code> のためにラティス形式のファイルを解析するサブコマンドでした。テキスト用のサブコマンドを別に足すと、同じ解析に入口が 2 つできます。これまでの動きは、<code>--input-layer bunsetsu</code> と <code>--input-layer morphemes</code> です。</li>
 <li><strong>テキストは、学習データと同じ設定で分かち書きします</strong>。<code>Mode::Normal</code> で、ユーザー辞書は使いません。<code>convert</code> と同じ設定です。違う分かち書きは、モデルが学習したものではなくなります。</li>
 <li><strong>読み込んだ辞書の名前を、モデルファイルの名前と比べます</strong>（#1437 の <code>Model::check_dictionary</code>）。モデルファイルに名前を持たせたのは、この照合のためです。ラティス形式の入力では辞書が無いので、素性の列の数だけを検査します。</li>
-<li><strong>feature を 2 つに分けました</strong>。<code>cli</code> は <code>clap</code> と <code>lindera-segmenter</code> を、<code>train</code> はそこに <code>lindera-crf</code> と <code>serde_json</code> を入れます。<code>scripts/check_dependency_crate.sh</code> が、<code>cli</code> のビルドに <code>lindera-crf</code> が入らないことを検査し、CI のジョブが、そのビルドでコマンドをテストします。</li>
+<li><strong>feature を 2 つに分けました</strong>。<code>cli</code> は <code>clap</code> と <code>lindera-segmenter</code> を、<code>train</code> はそこに <code>lindera-crf</code> と <code>serde_json</code> を入れます。<code>scripts/check_dependency_crate.sh</code> が、<code>cli</code> のビルドに <code>lindera-crf</code> が入らないことを検査し、CI のジョブが、そのビルドでコマンドをテストします。#1482 で、コマンドをクレートの外に出しました。<code>lindera-cli</code> が、<code>dependency</code> feature の裏にコマンドを、さらに <code>train</code> の裏に学習のサブコマンドを持ちます。クレートには <code>train</code> だけが残り、スクリプトは、どの feature でも <code>clap</code>・<code>lindera-segmenter</code> に依存しないことを検査します。</li>
 <li><strong><code>DictionaryMorpheme</code></strong>（トークンから作る形態素）を、<code>train</code> の裏の <code>corpus</code> モジュールから、既定のビルドへ移しました。</li>
 <li><strong>CaboCha の道具が出力を読める</strong>（<a href="https://github.com/lindera/lindera/issues/1433">#1433</a>）。<code>cabocha-system-eval</code> は、<code>parse</code> の出力で <code>evaluate</code> と同じ数を数える。<code>cabocha -I 2</code> は、出力を文節つきの入力として受け取る。</li>
 </ul>
@@ -17272,7 +17297,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <li><strong>半角のピリオドでは、文を終えません。</strong> スキーマの句点は <code>。</code>、<code>．</code>、<code>.</code> です。これをそのまま使うと、UD Japanese-GSD の test の 543 行のうち 4 行が分かれ、どれも数（<code>4.20</code>、<code>1.5km</code>）か <code>...</code> の位置でした。全角の <code>．</code> は、直後が数字でなければ文を終えます。<code>！</code> と <code>？</code> でも終えます。IPADIC では、これらは句点ではなく記号です。</li>
 <li><strong>前のフィルターについてこのフィルターに見えるのは、位置です。</strong> トークナイザーは、トークンに 0 から隙間なく位置を振ります。トークンを消すフィルターは隙間を残し、つなぐフィルターは位置を 2 つ以上占めるトークンを残します。書き換えられた表層や詳細と、末尾から消されたトークンは見えません。文書では、このフィルターを最初に置くよう案内しています。</li>
 <li><strong>トークンは、その場で読みます。</strong> フィルターの形態素は、トークンの表層と詳細を借ります。モデルは <code>Arc</code> の中にあり、フィルターの複製の間で共有します。トークナイザーを複製すると、フィルターも複製されます。</li>
-<li><strong>フィルターの結果は、コマンドの結果と同じです。</strong> UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの <code>lindera-dependency parse</code> と一致します。</li>
+<li><strong>フィルターの結果は、コマンドの結果と同じです。</strong> UD Japanese-GSD の test の 543 文で、すべてのトークンの文節、係り先、役割、スコアが、同じモデルの <code>lindera dependency parse</code> と一致します。</li>
 <li><strong>バインディングは、係り受けをトークンの上の独立したオブジェクトとして返します。</strong> フィルターを使わなければ何も返しません。Python では <code>None</code>、Ruby では <code>nil</code>、PHP では <code>null</code> で、Node.js と WebAssembly ではプロパティがありません。この 2 つではトークンがプレーンなオブジェクトなので、これまでと同じオブジェクトのままです。最後の文節の係り先は、コマンドの JSON と同じく、どのバインディングでも null です。<code>lindera-binding</code> の <code>TokenView</code> が、5 つすべてに運びます。</li>
 <li><strong>Node.js は、6 つのプロパティの名前を、係り受けを持つ最初のトークンで作ります。</strong> そのトークンを作るハンドルスコープの中で作り、スコープを開き直した後は作り直します。フィルターを使わない呼び出しは、これまでと同じ呼び出しで、これまでと同じオブジェクトを作ります。</li>
 <li><strong>WebAssembly は、<code>appendDependencyFilter</code> でモデルのバイト列を受け取ります。</strong> 読めるパスが無いためです。そのために、<code>lindera-binding</code> のビルダーは Rust で作ったフィルターを受け取り、<code>kind</code> で足したフィルターの間の、足された位置で動かします。</li>
@@ -17335,7 +17360,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>J.DepP: 同じ</td><td>dev 97.17 / 90.11（3,281 / 3,641）/ 85.99、test 97.02 / 88.71（3,519 / 3,967）/ 84.65、PUD 98.04 / 88.98（7,874 / 8,849）/ 86.45</td><td><code>evaluate</code>、スクリプト: <code>baselines.sh</code></td></tr>
 <tr><td>同じ 2 つの、測り直す前に記録に残っていた数字</td><td>CaboCha: dev 96.82 / 89.84 / 85.03、test 96.80 / 88.51 / 84.25、PUD 97.80 / 88.64 / 85.65。J.DepP: dev 95.93 / 89.98 / 83.80、test 95.37 / 88.76 / 82.40</td><td>試作・消失</td></tr>
 <tr><td>CaboCha の区切りのコスト（<code>-c</code>）0.5、1、2、4、8、16: dev での区切りの F と、train の 10 分割の交差検証</td><td>dev 96.66、96.64、96.68、96.79、96.82、96.86。交差検証 96.45、96.57、96.63、96.66、96.66、96.67</td><td>スクリプト: <code>cabocha_chunker_cost.sh</code></td></tr>
-<tr><td>CaboCha の出力と <code>lindera-dependency parse</code> の出力を <code>cabocha-system-eval</code> で数えた結果</td><td><code>evaluate</code> と同じ数。CaboCha は dev でレベル 1 が 3,271 / 3,641、区切りが 4,008 / 4,135 と 4,008 / 4,147。<code>parse</code> は 3,281 / 3,641、4,009 / 4,132 と 4,009 / 4,147</td><td>スクリプト: <code>baselines.sh</code>。後者は手作業</td></tr>
+<tr><td>CaboCha の出力と <code>lindera dependency parse</code> の出力を <code>cabocha-system-eval</code> で数えた結果</td><td><code>evaluate</code> と同じ数。CaboCha は dev でレベル 1 が 3,271 / 3,641、区切りが 4,008 / 4,135 と 4,008 / 4,147。<code>parse</code> は 3,281 / 3,641、4,009 / 4,132 と 4,009 / 4,147</td><td>スクリプト: <code>baselines.sh</code>。後者は手作業</td></tr>
 <tr><td>正解の文節を与えたときに、CaboCha と J.DepP で違う係り</td><td>dev で 3,641 のうち 127、test で 3,967 のうち 196、PUD で 8,849 のうち 424</td><td><code>evaluate</code>、スクリプト: <code>baselines.sh</code>。以前の記録は 5 と 10 で、これは正しい係りの数の差であり、違う係りの数ではない</td></tr>
 <tr><td>学習データを 2 倍にするごとの、係り受けの精度の伸び</td><td>約 0.8 ポイント。7,024 文でも頭打ちにならない</td><td>試作・消失</td></tr>
 <tr><td>CRF++ と <code>lindera-crf</code>、CaboCha のテンプレート、L2 0.25: 区切りの F</td><td>dev / test で 96.79 / 96.77</td><td>試作・消失。<code>chunker_experiments.sh table</code> は、<code>lindera-crf</code> で 96.79 / 96.80 を出す</td></tr>
@@ -17465,7 +17490,7 @@ model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &a
 <tr><td>フィルターあり</td><td>毎秒 約 180,000 トークン、約 7,700 文</td><td>スクリプト: <code>filter_speed.sh</code></td></tr>
 <tr><td>フィルターが 1 トークンに足すもの</td><td>約 5.2 マイクロ秒。約 78,000 命令</td><td>スクリプト: <code>filter_speed.sh</code>。命令数は <code>perf stat</code> で測った。スクリプトは残していない</td></tr>
 <tr><td>モデルを読む、フィルターの作成</td><td>約 4 ミリ秒</td><td>スクリプト: <code>filter_speed.sh</code></td></tr>
-<tr><td>フィルターと <code>lindera-dependency parse</code></td><td>543 文の 12,644 トークンで、文節、係り先、役割、スコアが同じ</td><td>2 つの出力を比べた。スクリプトは残していない</td></tr>
+<tr><td>フィルターと <code>lindera dependency parse</code></td><td>543 文の 12,644 トークンで、文節、係り先、役割、スコアが同じ</td><td>2 つの出力を比べた。スクリプトは残していない</td></tr>
 <tr><td>係り受けの無いトークン（フィールドを足す前の Lindera との比較）</td><td>15 の計測で、命令数の増加は最大 0.35%。トークンはポインタ 1 つ分大きい</td><td><code>perf stat</code>。フィールドを足した pull request（#1449）</td></tr>
 </tbody></table>
 </div>

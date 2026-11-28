@@ -201,7 +201,7 @@
 <li><strong>Convert the three models CaboCha distributes</strong>, for IPA, for JUMAN and for UniDic, into a model file that analyzes as CaboCha does. Such a model is limited to research and personal use, as CaboCha's.</li>
 <li><strong>Evaluate</strong> chunking and dependency accuracy as CaboCha and J.DepP count them, and compare two outputs with a paired test.</li>
 </ul>
-<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it holds the types, the lattice format, the schema, the model file, the chunker and the parser. The command is behind the <code>cli</code> feature, and the training and the evaluation behind the <code>train</code> feature.</p>
+<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it holds the types, the lattice format, the schema, the model file, the chunker and the parser. The training and the evaluation are behind the <code>train</code> feature. The crate is a library: its command is <a href="./lindera-dependency/command_line.html"><code>lindera dependency</code></a>, of the <code>lindera</code> command.</p>
 <h2 id="contents"><a class="header" href="#contents">Contents</a></h2>
 <ul>
 <li>
@@ -229,7 +229,7 @@
 <p><a href="./lindera-dependency/cabocha_models.html">CaboCha's Models</a> -- Converting the models CaboCha distributes: their terms, the command, what is converted, and the agreement with CaboCha</p>
 </li>
 <li>
-<p><a href="./lindera-dependency/command_line.html">Command Line</a> -- Parsing plain text with the <code>lindera-dependency</code> command: the options, the input layers, the speed</p>
+<p><a href="./lindera-dependency/command_line.html">Command Line</a> -- Parsing plain text with <code>lindera dependency parse</code>: the options, the input layers, the speed</p>
 </li>
 <li>
 <p><a href="./lindera-dependency/token_filter.html">Token Filter</a> -- The filter <code>japanese_dependency</code> of the Lindera tokenizer: the build, what is written on a token, the sentences, the order of the filters, the speed</p>

@@ -177,9 +177,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="学習データ"><a class="header" href="#学習データ">学習データ</a></h1>
-<p>文節の区切りは文節で学習し、解析器は文節の係り受けで学習します。どちらも、動かすときに使う辞書の形態素の上で学習します。<code>train</code> feature の裏にある <code>lindera-dependency convert</code> は、そのためのデータを、語の係り受けと文節の境界を持つコーパスから作ります。対象は、最後の列に <code>BunsetuBILabel</code> を持つ CoNLL-U のファイルで、UD Japanese-GSD と UD Japanese-PUD がこの形です。</p>
+<p>文節の区切りは文節で学習し、解析器は文節の係り受けで学習します。どちらも、動かすときに使う辞書の形態素の上で学習します。<code>train</code> feature の裏にある <code>lindera dependency convert</code> は、そのためのデータを、語の係り受けと文節の境界を持つコーパスから作ります。対象は、最後の列に <code>BunsetuBILabel</code> を持つ CoNLL-U のファイルで、UD Japanese-GSD と UD Japanese-PUD がこの形です。</p>
 <h2 id="コーパスを変換する"><a class="header" href="#コーパスを変換する">コーパスを変換する</a></h2>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+<pre><code class="language-shell">cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -187,13 +187,13 @@
 <p><code>--dict</code> には、Lindera 用にビルドした辞書のディレクトリも渡せます。その場合は <code>train</code> feature だけで足ります。</p>
 <p><a href="./head_and_function_word.html">スキーマ</a>は、その辞書のものを使います。<code>convert</code> は、辞書の名前を辞書のメタデータから読みます。スキーマがあるのは <code>ipadic</code>・<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> です。UniDic では、辞書のディレクトリを渡します。たとえば、<a href="../lindera-cli/commands.html"><code>lindera download</code></a> が入れたディレクトリです。</p>
 <pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
-cargo run --release -p lindera-dependency --features train -- convert \
+cargo run --release -p lindera-cli -- dependency convert \
     --dict "$dictionary" \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
 </code></pre>
 <p>スキーマの無い辞書は断ります。</p>
-<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj }
 </code></pre>
 <p>学習するコマンドは辞書を読みません。<a href="./chunking.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-chunker</code></a>・<a href="./parsing.html#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E5%AD%A6%E7%BF%92%E3%81%99%E3%82%8B"><code>train-parser</code></a>・<code>instances</code> には、辞書の名前を <code>--dictionary-name</code> で渡します。省くと <code>ipadic</code> です。</p>
 <p>コマンドは、文ごとに次を行います。</p>

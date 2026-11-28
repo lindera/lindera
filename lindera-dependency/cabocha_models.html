@@ -177,7 +177,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="cabochas-models"><a class="header" href="#cabochas-models">CaboCha's Models</a></h1>
-<p><a href="https://taku910.github.io/cabocha/">CaboCha</a> comes with models trained on the Kyoto University Text Corpus 4.0. They cannot be trained again without the corpus, and their bunsetsu are those of the Kyoto corpus, not those of UD Japanese-GSD, which the models of this crate follow. <code>lindera-dependency convert-cabocha</code> converts such a model into a <a href="./model_file.html">model file</a>, and the analysis with the converted model is the one CaboCha gives.</p>
+<p><a href="https://taku910.github.io/cabocha/">CaboCha</a> comes with models trained on the Kyoto University Text Corpus 4.0. They cannot be trained again without the corpus, and their bunsetsu are those of the Kyoto corpus, not those of UD Japanese-GSD, which the models of this crate follow. <code>lindera dependency convert-cabocha</code> converts such a model into a <a href="./model_file.html">model file</a>, and the analysis with the converted model is the one CaboCha gives.</p>
 <h2 id="the-terms-of-the-models"><a class="header" href="#the-terms-of-the-models">The terms of the models</a></h2>
 <p><strong>A converted model is limited to research and personal use, as the model it comes from. Convert the files of your own copy of CaboCha, and do not distribute the result.</strong> This crate, its releases and its builds hold no model of CaboCha.</p>
 <p>The license of CaboCha, the LGPL or the BSD license, does not cover its models. Its page says (in Japanese):</p>
@@ -197,10 +197,10 @@
 <p>The files are the text models in <code>model/</code> of CaboCha's source, in UTF-8. The compiled models of an installation (<code>dep.ipa.model</code>) are not read: they depend on the machine.</p>
 <p>The two files have to be those of one model. The part-of-speech set is read in the header of the parser model (<code>posset: IPA</code>), and the chunker model does not say which it is for: <code>chunk.ipa.txt</code> with <code>dep.juman.txt</code> converts without an error, into a model that chunks wrongly.</p>
 <h2 id="converting"><a class="header" href="#converting">Converting</a></h2>
-<p>The command is in the build with the <code>train</code> feature:</p>
-<pre><code class="language-sh">cargo install lindera-dependency --features train,embed-ipadic
+<p>The command is in the default build of <code>lindera</code>, which has the <code>train</code> feature:</p>
+<pre><code class="language-sh">cargo install lindera-cli --features embed-ipadic
 </code></pre>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.ipa.txt \
     --parser cabocha/model/dep.ipa.txt \
     --output cabocha-ipa.model
@@ -217,7 +217,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>The file is a model for <code>ipadic</code>, read by <code>parse</code>, by the <a href="./token_filter.html">token filter</a> and by <code>Model::new</code> as any other, in the default build:</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict embedded://ipadic --model cabocha-ipa.model
+    | lindera dependency parse --dict embedded://ipadic --model cabocha-ipa.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,太郎,タロウ,タロー
@@ -246,7 +246,7 @@ EOS
 <p>From Rust, <code>lindera_dependency::cabocha::convert</code> takes the content of the two files and gives the two models and what it did.</p>
 <h3 id="the-model-for-juman"><a class="header" href="#the-model-for-juman">The model for JUMAN</a></h3>
 <p>The model for JUMAN is the one CaboCha's page gives the highest accuracy for: it was trained on the Kyoto corpus as it is, where the other two were trained on the corpus tokenized again. It is converted in the same way:</p>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.juman.txt \
     --parser cabocha/model/dep.juman.txt \
     --output cabocha-juman.model
@@ -263,7 +263,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>The file is a model for <code>jumandic</code>. <code>lindera-dependency</code> embeds no dictionary but IPADIC, so <code>--dict</code> takes the directory of the JUMAN dictionary, which <code>lindera download jumandic</code> installs, from 7.1.0 on, and <a href="../lindera-jumandic/build.html"><code>lindera build</code></a> makes from the source:</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict jumandic --model cabocha-juman.model
+    | lindera dependency parse --dict jumandic --model cabocha-juman.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,人名,*,*,太郎,たろう,人名:日本:名:45:0.00106
@@ -288,7 +288,7 @@ EOS
 <p><code>cabocha -f1 -n0 -P JUMAN</code>, with MeCab and mecab-jumandic, writes the same bunsetsu, heads, positions and scores for this sentence, with <code>-0.468695</code> where no decision is made. Its lines differ in the last column of the particles, <code>連語</code> where Lindera has <code>*</code>: the two take another one of two entries of the same cost (<a href="../lindera-jumandic/examples.html#agreement-with-mecab">Examples</a>), in a column the model does not read.</p>
 <h3 id="the-model-for-unidic"><a class="header" href="#the-model-for-unidic">The model for UniDic</a></h3>
 <p>The model for UniDic is converted in the same way:</p>
-<pre><code class="language-sh">lindera-dependency convert-cabocha \
+<pre><code class="language-sh">lindera dependency convert-cabocha \
     --chunker cabocha/model/chunk.unidic.txt \
     --parser cabocha/model/dep.unidic.txt \
     --output cabocha-unidic.model
@@ -305,7 +305,7 @@ The models of CaboCha are limited to research and personal use, and so is this f
 </code></pre>
 <p>The file is a model for <code>unidic</code>, the dictionary built from unidic-mecab 2.1.2. Lindera has three UniDic dictionaries, which have the columns a model reads at the same places, and a model file is for one dictionary by its name: <code>--dictionary unidic-cwj</code> or <code>--dictionary unidic-csj</code> makes the model one for another of them. CaboCha's page does not say which UniDic its model was trained with. <code>--dict</code> takes the directory of the dictionary, which <code>lindera download unidic</code> installs:</p>
 <pre><code class="language-sh">echo "太郎は花子が読んでいる本を次郎に渡した。" \
-    | lindera-dependency parse --dict unidic --model cabocha-unidic.model
+    | lindera dependency parse --dict unidic --model cabocha-unidic.model
 </code></pre>
 <pre><code class="language-text">* 0 5D 0/1 0.000000
 太郎	名詞,固有名詞,人名,名,*,*,タロウ,タロウ,太郎,タロー,太郎,タロー,固,*,*,*,*
@@ -363,7 +363,7 @@ EOS
 <li>the punctuation is <code>。</code> and <code>、</code>, and the brackets are those of CaboCha, each matched as the whole surface.</li>
 </ul>
 <h2 id="agreement-with-cabocha"><a class="header" href="#agreement-with-cabocha">Agreement with CaboCha</a></h2>
-<p><code>scripts/dependency/cabocha_models.sh</code> converts the model for IPA, or with <code>--posset juman</code> or <code>--posset unidic</code> the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by <code>scripts/dependency/build_baselines.sh</code>, with the model as its own build compiled it) and to <code>lindera-dependency parse</code> with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.</p>
+<p><code>scripts/dependency/cabocha_models.sh</code> converts the model for IPA, or with <code>--posset juman</code> or <code>--posset unidic</code> the one for JUMAN or for UniDic, and gives the same input to CaboCha 0.69 (96e100a, built by <code>scripts/dependency/build_baselines.sh</code>, with the model as its own build compiled it) and to <code>lindera dependency parse</code> with the converted model. The input is the 9,066 sentences of UD Japanese-GSD and UD Japanese-PUD, as a fixed text: their answers are not used.</p>
 <p>On the same morphemes, those of Lindera with IPADIC, everything is the same:</p>
 <div class="table-wrapper"><table><thead><tr><th>File</th><th>Sentences with the same bunsetsu</th><th>Bunsetsu with the same head</th><th>Bunsetsu with the same head word and function word</th></tr></thead><tbody>
 <tr><td>GSD dev</td><td>100% (506 / 506)</td><td>100% (3,740 / 3,740)</td><td>100% (4,246 / 4,246)</td></tr>

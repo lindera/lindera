@@ -206,10 +206,9 @@
 </tbody></table>
 </div>
 <p>この文には、文節が 4 つあります。彼は (0) と 花を (2) は 見た。 (3) に係り、赤い (1) は 花を に係り、最後の文節はどこにも係りません。欄の意味、テキストを文に分ける規則、設定ファイルやバインディングからの使い方は、<a href="./token_filter.html">トークンフィルター</a>にあります。</p>
-<h2 id="lindera-dependency-コマンドで"><a class="header" href="#lindera-dependency-コマンドで"><code>lindera-dependency</code> コマンドで</a></h2>
-<p>クレートのコマンドは、ラティス形式を書き出します。<code>cabocha -f1</code> が書く形式です。</p>
-<pre><code class="language-shell">% cargo install lindera-dependency --features cli
-% echo "彼は赤い花を見た。" | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+<h2 id="lindera-dependency-parse-で"><a class="header" href="#lindera-dependency-parse-で"><code>lindera dependency parse</code> で</a></h2>
+<p>同じコマンドの <code>lindera dependency parse</code> は、ラティス形式を書き出します。<code>cabocha -f1</code> が書く形式です。</p>
+<pre><code class="language-shell">% echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 3D 0/1 0.000000
 彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ

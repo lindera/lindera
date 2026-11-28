@@ -177,7 +177,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h1>
-<p>Lindera CLI は6つのメインコマンドを提供します：</p>
+<p>Lindera CLI は7つのメインコマンドを提供します：</p>
 <ul>
 <li><strong>list</strong> - 形態素解析辞書の一覧と状態を表示</li>
 <li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
@@ -185,6 +185,7 @@
 <li><strong>download</strong> - GitHub リリースページから学習済み辞書をダウンロード</li>
 <li><strong>train</strong> - 注釈付きコーパスデータからCRFモデルを学習</li>
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
+<li><strong>dependency</strong> - 文節の係り受けを解析し、解析のモデルを学習・評価</li>
 </ul>
 <h2 id="警告とログメッセージ"><a class="header" href="#警告とログメッセージ">警告とログメッセージ</a></h2>
 <p>どのコマンドも、結果を標準出力に、Lindera のライブラリが出す警告を標準エラー出力に書きます。たとえば <code>tokenize</code> は、文の区切り文字のないテキストが 32 KiB を超えると、そこで文を区切り（<a href="../lindera/segmenter.html#%E6%96%87%E5%88%86%E5%89%B2">文分割</a>を参照）、警告を出します：</p>
@@ -197,6 +198,7 @@
 <ul>
 <li><code>tokenize</code>・<code>list</code>・<code>download</code> は結果を標準出力に書くので、読み手のいない最初の書き込みで止まります。<code>tokenize</code> は入力の残りを読みません。書き込みのそれ以外のエラー（ディスクが一杯など）は標準エラー出力に書き、終了コードは 1 です。</li>
 <li><code>train</code>・<code>export</code> は、書いたファイルについて標準出力に報告するだけなので、学習の進捗と同じく書けない行を捨て、モデルや辞書のファイルを最後まで書きます。標準出力が原因で失敗することはありません。</li>
+<li><code>dependency parse</code> と <code>dependency evaluate</code> は結果を標準出力に書き、<code>tokenize</code> と同じく、読み手のいない最初の書き込みで止まります。<code>dependency</code> のほかのサブコマンドは、ファイルを書き、その報告を標準エラー出力に書きます。</li>
 </ul>
 <p>標準エラー出力に読み手がいないときも、コマンドは自身のメッセージ（<code>download</code> の進捗や通知、<code>list</code> の通知など）を同じく捨て、続けて結果を書きます。標準エラー出力が非ブロッキングで一杯のとき（読むのが遅い親プロセスのもとで起こります）は、学習の進捗と同じく、メッセージを受け取るまで待ちます。</p>
 <p>v6.2.0 までは、コマンドは失敗していました。<a href="../migration_v6_to_v7.html#%E3%82%B3%E3%83%9E%E3%83%B3%E3%83%89%E3%81%AF%E6%A8%99%E6%BA%96%E5%87%BA%E5%8A%9B%E3%81%AB%E8%AA%AD%E3%81%BF%E6%89%8B%E3%81%8C%E3%81%84%E3%81%AA%E3%81%84%E3%81%A8%E3%81%8D%E9%9D%99%E3%81%8B%E3%81%AB%E7%B5%82%E3%82%8F%E3%82%8B">移行ガイド</a>を参照してください。</p>
@@ -1110,6 +1112,31 @@ EOS
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>
 </ol>
+<h2 id="dependency"><a class="header" href="#dependency">dependency</a></h2>
+<p><a href="../lindera-dependency.html"><code>lindera-dependency</code></a> のライブラリで、文節の係り受けを解析します。7.1.0 からのコマンドです。このコマンドは、さらにサブコマンドを持ちます。</p>
+<pre><code class="language-text">lindera dependency &lt;SUBCOMMAND&gt;
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>内容</th><th>ページ</th></tr></thead><tbody>
+<tr><td><code>parse</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="../lindera-dependency/command_line.html">コマンドライン</a></td></tr>
+<tr><td><code>chunk</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="../lindera-dependency/chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>convert</code></td><td>文節のラベルを持つ CoNLL-U のファイルから、学習データを作る</td><td><a href="../lindera-dependency/training_data.html">学習データ</a></td></tr>
+<tr><td><code>evaluate</code></td><td>出力を正解と比べる</td><td><a href="../lindera-dependency/evaluation.html">評価</a></td></tr>
+<tr><td><code>split</code></td><td>交差検証の分割を書き出す</td><td><a href="../lindera-dependency/evaluation.html">評価</a></td></tr>
+<tr><td><code>train-chunker</code></td><td>文節の区切りを学習し、モデルファイルを書く</td><td><a href="../lindera-dependency/chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>instances</code></td><td>解析器の学習事例を書き出す</td><td><a href="../lindera-dependency/parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>train-parser</code></td><td>解析器を学習し、モデルファイルを書く。ほかのファイルの区切りを入れられる</td><td><a href="../lindera-dependency/parsing.html">係り受けの解析</a></td></tr>
+<tr><td><code>convert-cabocha</code></td><td>CaboCha の区切りと解析器のモデルを、モデルファイルに変換する</td><td><a href="../lindera-dependency/cabocha_models.html">CaboCha のモデル</a></td></tr>
+</tbody></table>
+</div>
+<p><code>parse</code> と <code>chunk</code> は <code>dependency</code> feature のあるビルドに、ほかの 7 つは、さらに <code>train</code> もあるビルドに入ります。どちらの feature も、既定のビルドに入っています。</p>
+<h3 id="dependency-の使用例"><a class="header" href="#dependency-の使用例">dependency の使用例</a></h3>
+<p><code>parse</code> には、分かち書きに使う辞書に合ったモデルが要ります。モデルは <code>download</code> で取得します。</p>
+<pre><code class="language-bash">DICT=$(lindera download ipadic)
+MODEL=$(lindera download dependency-ipadic)
+echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
+</code></pre>
+<p>各文の文節とその係り受けを、ラティス形式で書き出します。<code>cabocha -f1</code> が書く形式です。出力は<a href="../lindera-dependency/quickstart.html">クイックスタート</a>に、読み方は<a href="../lindera-dependency/reading_the_result.html">結果の読み方と使い方</a>にあります。</p>
+<p><code>tokenize</code> は、トークンフィルター <code>japanese_dependency</code> で、同じ解析の結果を出力のトークンに書きます。<a href="../lindera-dependency/token_filter.html">トークンフィルター</a>を参照してください。</p>
 
                     </main>
 

@@ -310,10 +310,10 @@ assert_eq!(output, text.as_bytes());
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
 <p>A <code>Parser</code> finds the head of each bunsetsu with shift-reduce. The features of a decision are strings made through the schema; a <code>FeatureSet</code> says which groups of them are made; a <code>Classifier</code> scores them, by adding the weights of the features and of their pairs. The classifier of a model file is a <code>ParserPart</code>, which reads the weights on the bytes of the file; <code>ParserModel</code> holds them in memory, as training gives them; <code>LinearClassifier</code> takes weights made by hand. <code>parser::instances</code> gives the training instances from a sentence with its answer, and <code>parser::train</code> trains on them. See <a href="./parsing.html">Parsing</a>.</p>
 <h3 id="the-command"><a class="header" href="#the-command">The command</a></h3>
-<p>With the <code>cli</code> feature the crate builds the <code>lindera-dependency</code> command, which tokenizes with <code>lindera-segmenter</code> and has no training code. The <code>train</code> feature adds the subcommands that make training data, train and evaluate:</p>
+<p>The crate has no binary. Its command is <code>lindera dependency</code>, in <code>lindera-cli</code>, behind the <code>dependency</code> feature of that crate, which is in its default build. With the <code>train</code> feature of <code>lindera-cli</code>, also in the default build, it has the subcommands that make training data, train and evaluate:</p>
 <div class="table-wrapper"><table><thead><tr><th>Subcommand</th><th>Feature</th><th>What it does</th><th>Page</th></tr></thead><tbody>
-<tr><td><code>parse</code></td><td><code>cli</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="./command_line.html">Command Line</a></td></tr>
-<tr><td><code>chunk</code></td><td><code>cli</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="./chunking.html">Chunking</a></td></tr>
+<tr><td><code>parse</code></td><td><code>dependency</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="./command_line.html">Command Line</a></td></tr>
+<tr><td><code>chunk</code></td><td><code>dependency</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="./chunking.html">Chunking</a></td></tr>
 <tr><td><code>convert</code></td><td><code>train</code></td><td>Makes training data from a CoNLL-U file with bunsetsu labels</td><td><a href="./training_data.html">Training Data</a></td></tr>
 <tr><td><code>evaluate</code></td><td><code>train</code></td><td>Compares an output with the answer</td><td><a href="./evaluation.html">Evaluation</a></td></tr>
 <tr><td><code>split</code></td><td><code>train</code></td><td>Writes the folds of a cross-validation</td><td><a href="./evaluation.html">Evaluation</a></td></tr>
@@ -323,13 +323,11 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>convert-cabocha</code></td><td><code>train</code></td><td>Converts the chunker and parser models of CaboCha into a model file</td><td><a href="./cabocha_models.html">CaboCha's Models</a></td></tr>
 </tbody></table>
 </div>
-<p>The command is in this crate, not in <code>lindera-cli</code>: it writes the lattice format and holds the training, which a user of the tokenizer does not need. <code>lindera-cli</code> runs the parser as a <a href="./token_filter.html">token filter</a>.</p>
+<p>The command is in <code>lindera-cli</code>, not in this crate (<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>): a user has one command to install, the one that also downloads the dictionary and the model, and this crate depends on no tokenizer with any feature. <code>lindera-cli</code> also runs the parser as a <a href="./token_filter.html">token filter</a>.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td>(none)</td><td>The types, the lattice format, the schema, the model file, the chunker and the parser. No dependency; builds for <code>wasm32-unknown-unknown</code></td><td>Yes</td></tr>
-<tr><td><code>cli</code></td><td>The <code>lindera-dependency</code> command with <code>parse</code> and <code>chunk</code>, which tokenizes with <code>lindera-segmenter</code>. No training code</td><td>No</td></tr>
-<tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser, and their subcommands (implies <code>cli</code>)</td><td>No</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>Embeds IPADIC in the command, for <code>--dict embedded://ipadic</code> (implies <code>cli</code>)</td><td>No</td></tr>
+<tr><td><code>train</code></td><td>The <code>corpus</code> and <code>evaluation</code> modules, the training of the chunker with <code>lindera-crf</code> and of the parser</td><td>No</td></tr>
 <tr><td><code>embed-model-ipadic</code></td><td>Embeds the <a href="./model_file.html#embedding-it">model for IPADIC</a>, for <code>embedded::model("ipadic")</code> and <code>--model embedded://ipadic</code>. A build dependency, and none of the library</td><td>No</td></tr>
 <tr><td><code>embed-model-unidic</code>, <code>embed-model-unidic-cwj</code>, <code>embed-model-unidic-csj</code></td><td>Embed the <a href="./model_file.html#the-models-for-unidic">models for UniDic</a>, for <code>embedded::model("unidic")</code> and <code>--model embedded://unidic</code>, and the same with the two other names</td><td>No</td></tr>
 </tbody></table>

@@ -242,7 +242,7 @@ EOS
 </code></pre>
 <h2 id="モデルを学習する"><a class="header" href="#モデルを学習する">モデルを学習する</a></h2>
 <p>Lindera が公開する <a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>には、区切りが入っています。<a href="./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>も同じです。自分のモデルは、<a href="./training_data.html">学習データ</a>から学習します。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
 <p>モデルは IPADIC のものになります。<code>--dictionary-name</code> でほかの辞書（<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code>）を指定すると、その辞書の名前と<a href="./head_and_function_word.html">スキーマ</a>がモデルに入り、列・テンプレート・係数は<a href="#unidic-%E3%81%AE%E5%A0%B4%E5%90%88">その辞書の設定</a>になります。</p>
@@ -264,7 +264,7 @@ bytes: 261857
 </tbody></table>
 </div>
 <p><code>chunk</code> は、モデルでファイルの形態素を区切り直します。<a href="./evaluation.html"><code>evaluate</code></a> で正解と比べるためのものです。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
 <p>どの文節も次の文節に係るとして書き出します。区切りだけを測るためです。区切ってから解析するのは <a href="./command_line.html#%E5%88%86%E3%81%8B%E3%81%A1%E6%9B%B8%E3%81%8D%E6%B8%88%E3%81%BF%E3%81%AE%E5%85%A5%E5%8A%9B"><code>parse --input-layer morphemes</code></a> です。</p>

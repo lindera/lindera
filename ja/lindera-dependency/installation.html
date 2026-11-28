@@ -191,9 +191,9 @@ lindera = { version = "7.1", features = ["dependency"] }
 <pre><code class="language-toml">[dependencies]
 lindera-dependency = "7.1"
 </code></pre>
-<p>既定のビルドは依存を持たず、<code>wasm32-unknown-unknown</code> 向けにビルドできます。Lindera のものでなくても、形態素の列なら受け取れます。<a href="./architecture.html#feature-%E3%83%95%E3%83%A9%E3%82%B0">feature フラグ</a>で、コマンド、学習、埋め込みのモデルを足します。</p>
-<p>テキストを解析してラティス形式を書き出す <code>lindera-dependency</code> コマンドは、<code>cli</code> の裏にあります。</p>
-<pre><code class="language-shell">cargo install lindera-dependency --features cli
+<p>既定のビルドは依存を持たず、<code>wasm32-unknown-unknown</code> 向けにビルドできます。Lindera のものでなくても、形態素の列なら受け取れます。<a href="./architecture.html#feature-%E3%83%95%E3%83%A9%E3%82%B0">feature フラグ</a>で、学習、埋め込みのモデルを足します。</p>
+<p>このクレートはライブラリです。テキストを解析してラティス形式を書き出すコマンドは <code>lindera dependency</code> で、<code>lindera</code> コマンドの一部として、既定のビルドに入っています。</p>
+<pre><code class="language-shell">cargo install lindera-cli
 </code></pre>
 <h2 id="モデル"><a class="header" href="#モデル">モデル</a></h2>
 <p>解析には、トークナイザーの辞書に合った<a href="./model_file.html">モデルファイル</a>が必要です。Lindera は、リリースのたびに、モデルを 4 つ公開します。IPADIC 用が 1 つ（<a href="./model_file.html#ipadic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">IPADIC のモデル</a>）と、<code>unidic</code>・<code>unidic-cwj</code>・<code>unidic-csj</code> 用が 1 つずつです（<a href="./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>）。モデルは、辞書と同じく、パッケージにもクレートにも入っていません。手に入れる方法は 3 つあります。ここでは IPADIC の場合を示します。UniDic の辞書では、<code>ipadic</code> のところが辞書の名前になります。</p>

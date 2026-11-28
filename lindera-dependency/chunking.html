@@ -242,7 +242,7 @@ EOS
 </code></pre>
 <h2 id="training-a-model"><a class="header" href="#training-a-model">Training a model</a></h2>
 <p>The <a href="./model_file.html#the-model-for-ipadic">model for IPADIC</a> that Lindera releases has a chunker, and so have the <a href="./model_file.html#the-models-for-unidic">models for UniDic</a>. To train one of your own from <a href="./training_data.html">training data</a>:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- train-chunker \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency train-chunker \
     --input train.lattice --output chunker.model
 </code></pre>
 <p>The model is for IPADIC unless <code>--dictionary-name</code> names another dictionary (<code>unidic</code>, <code>unidic-cwj</code> or <code>unidic-csj</code>): the name and the <a href="./head_and_function_word.html">schema</a> of that dictionary then go into the model, and the columns, the template and the coefficient are <a href="#with-unidic">the ones for it</a>.</p>
@@ -264,7 +264,7 @@ bytes: 261857
 </tbody></table>
 </div>
 <p><code>chunk</code> segments the morphemes of a file again with a model, for <a href="./evaluation.html"><code>evaluate</code></a> to compare with the answer:</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- chunk \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency chunk \
     --model chunker.model --input dev.lattice --output output.lattice
 </code></pre>
 <p>It writes every bunsetsu as depending on the next one: it measures the chunker alone. <a href="./command_line.html#input-that-is-tokenized-already"><code>parse --input-layer morphemes</code></a> segments and parses.</p>

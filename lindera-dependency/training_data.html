@@ -177,9 +177,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="training-data"><a class="header" href="#training-data">Training Data</a></h1>
-<p>The chunker is trained on bunsetsu, and the parser will be trained on bunsetsu dependencies, both on the morphemes of the dictionary they run with. <code>lindera-dependency convert</code>, behind the <code>train</code> feature, makes such data from a corpus that has word dependencies and bunsetsu boundaries: a CoNLL-U file with <code>BunsetuBILabel</code> in its last column, as UD Japanese-GSD and UD Japanese-PUD have it.</p>
+<p>The chunker is trained on bunsetsu, and the parser will be trained on bunsetsu dependencies, both on the morphemes of the dictionary they run with. <code>lindera dependency convert</code>, behind the <code>train</code> feature, makes such data from a corpus that has word dependencies and bunsetsu boundaries: a CoNLL-U file with <code>BunsetuBILabel</code> in its last column, as UD Japanese-GSD and UD Japanese-PUD have it.</p>
 <h2 id="converting-a-corpus"><a class="header" href="#converting-a-corpus">Converting a corpus</a></h2>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features embed-ipadic -- convert \
+<pre><code class="language-shell">cargo run --release -p lindera-cli --features embed-ipadic -- dependency convert \
     --dict embedded://ipadic \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
@@ -187,13 +187,13 @@
 <p><code>--dict</code> also takes the directory of a dictionary built for Lindera; the <code>train</code> feature alone is then enough.</p>
 <p>The <a href="./head_and_function_word.html">schema</a> is the one of the dictionary: <code>convert</code> reads the name of the dictionary from its metadata. There are schemas for <code>ipadic</code>, <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code>. For UniDic, give the directory of the dictionary, such as the one <a href="../lindera-cli/commands.html"><code>lindera download</code></a> installs:</p>
 <pre><code class="language-shell">dictionary=$(lindera download unidic-cwj)
-cargo run --release -p lindera-dependency --features train -- convert \
+cargo run --release -p lindera-cli -- dependency convert \
     --dict "$dictionary" \
     --input ja_gsd-ud-train.conllu \
     --output train.lattice
 </code></pre>
 <p>A dictionary without a schema is refused:</p>
-<pre><code class="language-text">Error: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj
+<pre><code class="language-text">Error: LinderaError { kind: Content, source: /path/to/ko-dic: there is no schema for the dictionary ko-dic; there are schemas for ipadic, unidic, unidic-cwj, unidic-csj }
 </code></pre>
 <p>The commands that train do not read a dictionary. <a href="./chunking.html#training-a-model"><code>train-chunker</code></a>, <a href="./parsing.html#training-a-model"><code>train-parser</code></a> and <code>instances</code> take its name with <code>--dictionary-name</code>, and <code>ipadic</code> when it is left out.</p>
 <p>For each sentence, the command:</p>

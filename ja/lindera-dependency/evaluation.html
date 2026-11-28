@@ -177,8 +177,8 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="評価"><a class="header" href="#評価">評価</a></h1>
-<p><code>train</code> feature の裏にある <code>lindera-dependency evaluate</code> は、出力を正解と比べます。どちらも<a href="./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で、同じ文が同じ順に並んでいる必要があります。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- evaluate \
+<p><code>train</code> feature の裏にある <code>lindera dependency evaluate</code> は、出力を正解と比べます。どちらも<a href="./architecture.html#%E3%83%A9%E3%83%86%E3%82%A3%E3%82%B9%E5%BD%A2%E5%BC%8F">ラティス形式</a>で、同じ文が同じ順に並んでいる必要があります。</p>
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice \
     --system output.lattice
 </code></pre>
@@ -209,7 +209,7 @@ end to end sentences: 14.43% (73/506)
 <p>正解の文節を与えた「どの文節も次の文節に係る」は、どの解析器も超えなければならない基準です。レベル 1 で、dev は 64.10% (2,334 / 3,641)、test は 62.77% (2,490 / 3,967)、UD Japanese-PUD は 60.87% (5,386 / 8,849) です。</p>
 <h2 id="2-つの出力を比べる"><a class="header" href="#2-つの出力を比べる">2 つの出力を比べる</a></h2>
 <p><code>--compare</code> を付けると、2 つ目の出力も評価し、2 つを対にします。文の区切り、一貫の係り、文のそれぞれについて、両方で正解、1 つ目だけ正解、2 つ目だけ正解、どちらも不正解を数えます。p 値は、食い違う 2 つの数に対する McNemar の正確検定（両側）のものです。区切りの対は、係り先が何であっても、2 つの区切りを比べられます。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- evaluate \
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency evaluate \
     --gold dev.lattice --system first.lattice --compare second.lattice
 </code></pre>
 <p>train の 10 分割での、2 つの区切りの比較です（1 つ目が CaboCha のテンプレート、2 つ目が既定のテンプレート）。</p>
@@ -225,8 +225,8 @@ paired sentences: both 887, first only 4, second only 12, neither 6121, McNemar 
 <li><strong>test と UD Japanese-PUD は、報告する結果にだけ使います。</strong></li>
 </ul>
 <h2 id="交差検証"><a class="header" href="#交差検証">交差検証</a></h2>
-<p><code>lindera-dependency split</code> は、分割を書き出します。入力の文 <code>i</code>（0 から数える）は、fold <code>i mod k</code> のテストのファイルと、ほかのすべての fold の学習のファイルに入ります。そのため、どこでコマンドを流しても同じ分割になります。</p>
-<pre><code class="language-shell">cargo run --release -p lindera-dependency --features train -- split \
+<p><code>lindera dependency split</code> は、分割を書き出します。入力の文 <code>i</code>（0 から数える）は、fold <code>i mod k</code> のテストのファイルと、ほかのすべての fold の学習のファイルに入ります。そのため、どこでコマンドを流しても同じ分割になります。</p>
+<pre><code class="language-shell">cargo run --release -p lindera-cli -- dependency split \
     --input train.lattice --folds 10 --output-dir folds
 </code></pre>
 <p>これは、<code>fold0.test.lattice</code> と <code>fold0.train.lattice</code> から <code>fold9.test.lattice</code> と <code>fold9.train.lattice</code> までを書き出します。UD Japanese-GSD の train では、各テストのファイルは 702 文か 703 文です。</p>

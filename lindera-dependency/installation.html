@@ -191,9 +191,9 @@ lindera = { version = "7.1", features = ["dependency"] }
 <pre><code class="language-toml">[dependencies]
 lindera-dependency = "7.1"
 </code></pre>
-<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it takes any sequence of morphemes, from Lindera or not. The <a href="./architecture.html#feature-flags">feature flags</a> add the command, the training and the embedded model.</p>
-<p>The <code>lindera-dependency</code> command, which parses plain text and writes the lattice format, is behind <code>cli</code>:</p>
-<pre><code class="language-shell">cargo install lindera-dependency --features cli
+<p>The default build has no dependency and builds for <code>wasm32-unknown-unknown</code>: it takes any sequence of morphemes, from Lindera or not. The <a href="./architecture.html#feature-flags">feature flags</a> add the training and the embedded model.</p>
+<p>The crate is a library. Its command, which parses plain text and writes the lattice format, is <code>lindera dependency</code>, a part of the <code>lindera</code> command, in its default build:</p>
+<pre><code class="language-shell">cargo install lindera-cli
 </code></pre>
 <h2 id="the-model"><a class="header" href="#the-model">The model</a></h2>
 <p>The analysis needs a <a href="./model_file.html">model file</a> for the dictionary of the tokenizer. Lindera publishes four with each release: one for IPADIC (<a href="./model_file.html#the-model-for-ipadic">The model for IPADIC</a>) and one for each of <code>unidic</code>, <code>unidic-cwj</code> and <code>unidic-csj</code> (<a href="./model_file.html#the-models-for-unidic">The models for UniDic</a>). A model is not part of a package or of a crate, as the dictionaries are not. There are three ways to get one, shown here for IPADIC; for a UniDic dictionary, its name takes the place of <code>ipadic</code>:</p>

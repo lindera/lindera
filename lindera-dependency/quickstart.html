@@ -206,10 +206,9 @@
 </tbody></table>
 </div>
 <p>The sentence has four bunsetsu: 彼は (0) and 花を (2) depend on 見た。 (3), 赤い (1) on 花を, and the last one on nothing. <a href="./token_filter.html">Token Filter</a> describes the fields, how a text is cut into sentences, and the same from a configuration file and from the bindings.</p>
-<h2 id="with-the-lindera-dependency-command"><a class="header" href="#with-the-lindera-dependency-command">With the <code>lindera-dependency</code> command</a></h2>
-<p>The command of the crate writes the lattice format, which is what <code>cabocha -f1</code> writes:</p>
-<pre><code class="language-shell">% cargo install lindera-dependency --features cli
-% echo "彼は赤い花を見た。" | lindera-dependency parse --model "$MODEL" --dict "$DICT"
+<h2 id="with-lindera-dependency-parse"><a class="header" href="#with-lindera-dependency-parse">With <code>lindera dependency parse</code></a></h2>
+<p><code>lindera dependency parse</code>, of the same command, writes the lattice format, which is what <code>cabocha -f1</code> writes:</p>
+<pre><code class="language-shell">% echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
 </code></pre>
 <pre><code class="language-text">* 0 3D 0/1 0.000000
 彼	名詞,代名詞,一般,*,*,*,彼,カレ,カレ

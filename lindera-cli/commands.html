@@ -177,7 +177,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
-<p>The Lindera CLI provides six main commands:</p>
+<p>The Lindera CLI provides seven main commands:</p>
 <ul>
 <li><strong>list</strong> - List the morphological analysis dictionaries and their status</li>
 <li><strong>tokenize</strong> - Perform morphological analysis on text</li>
@@ -185,6 +185,7 @@
 <li><strong>download</strong> - Download a pre-built dictionary from the GitHub releases page</li>
 <li><strong>train</strong> - Train a CRF model from annotated corpus data</li>
 <li><strong>export</strong> - Export a trained model to dictionary format</li>
+<li><strong>dependency</strong> - Analyze bunsetsu dependencies, and train and evaluate the models of the analysis</li>
 </ul>
 <h2 id="warnings-and-log-messages"><a class="header" href="#warnings-and-log-messages">Warnings and log messages</a></h2>
 <p>Every command writes its results to standard output and the warnings of the Lindera libraries to standard error. For example, when <code>tokenize</code> reads more than 32 KiB of text without a sentence delimiter, it cuts the sentence there (see <a href="../lindera/segmenter.html#sentence-splitting">Sentence Splitting</a>) and warns:</p>
@@ -197,6 +198,7 @@
 <ul>
 <li><code>tokenize</code>, <code>list</code> and <code>download</code> write their result there, so they stop at the first write that has no reader. <code>tokenize</code> reads no more of its input. Another error while they write, such as a full disk, is written to standard error, and the exit code is 1.</li>
 <li><code>train</code> and <code>export</code> only report there on the files they write, so they drop the lines that cannot be written, as the training does with its progress, and write the model or the dictionary files all the same. Standard output never makes them fail.</li>
+<li><code>dependency parse</code> and <code>dependency evaluate</code> write their result there, and stop at the first write that has no reader, as <code>tokenize</code> does. The other subcommands of <code>dependency</code> write files, and report on them on standard error.</li>
 </ul>
 <p>When standard error has no reader, the commands drop their own messages there in the same way, such as the progress and notices of <code>download</code> and the notices of <code>list</code>, and go on to write their result. When standard error is non-blocking and full, as a parent process that reads it late can leave it, they wait until it takes each message, as the training does with its progress.</p>
 <p>Up to v6.2.0, the commands failed instead; see the <a href="../migration_v6_to_v7.html#the-commands-end-quietly-when-their-standard-output-has-no-reader">migration guide</a>.</p>
@@ -1110,6 +1112,31 @@ EOS
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>
 </ol>
+<h2 id="dependency"><a class="header" href="#dependency">dependency</a></h2>
+<p>Analyzes bunsetsu dependencies, with the library of <a href="../lindera-dependency.html"><code>lindera-dependency</code></a>, from 7.1.0 on. The command has subcommands of its own:</p>
+<pre><code class="language-text">lindera dependency &lt;SUBCOMMAND&gt;
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>Subcommand</th><th>What it does</th><th>Page</th></tr></thead><tbody>
+<tr><td><code>parse</code></td><td>Parses plain text, or input that is tokenized or segmented already, and writes the lattice format</td><td><a href="../lindera-dependency/command_line.html">Command Line</a></td></tr>
+<tr><td><code>chunk</code></td><td>Segments the morphemes of a file again with a model file</td><td><a href="../lindera-dependency/chunking.html">Chunking</a></td></tr>
+<tr><td><code>convert</code></td><td>Makes training data from a CoNLL-U file with bunsetsu labels</td><td><a href="../lindera-dependency/training_data.html">Training Data</a></td></tr>
+<tr><td><code>evaluate</code></td><td>Compares an output with the answer</td><td><a href="../lindera-dependency/evaluation.html">Evaluation</a></td></tr>
+<tr><td><code>split</code></td><td>Writes the folds of a cross-validation</td><td><a href="../lindera-dependency/evaluation.html">Evaluation</a></td></tr>
+<tr><td><code>train-chunker</code></td><td>Trains the chunker and writes a model file</td><td><a href="../lindera-dependency/chunking.html">Chunking</a></td></tr>
+<tr><td><code>instances</code></td><td>Writes the training instances of the parser</td><td><a href="../lindera-dependency/parsing.html">Parsing</a></td></tr>
+<tr><td><code>train-parser</code></td><td>Trains the parser and writes a model file, with the chunker of another one</td><td><a href="../lindera-dependency/parsing.html">Parsing</a></td></tr>
+<tr><td><code>convert-cabocha</code></td><td>Converts the chunker and parser models of CaboCha into a model file</td><td><a href="../lindera-dependency/cabocha_models.html">CaboCha's Models</a></td></tr>
+</tbody></table>
+</div>
+<p><code>parse</code> and <code>chunk</code> are in a build with the <code>dependency</code> feature, and the seven others in a build that has <code>train</code> as well. Both features are in the default build.</p>
+<h3 id="dependency-usage"><a class="header" href="#dependency-usage">Dependency usage</a></h3>
+<p><code>parse</code> needs the model for the dictionary it tokenizes with, which <code>download</code> gets:</p>
+<pre><code class="language-bash">DICT=$(lindera download ipadic)
+MODEL=$(lindera download dependency-ipadic)
+echo "彼は赤い花を見た。" | lindera dependency parse --model "$MODEL" --dict "$DICT"
+</code></pre>
+<p>It writes the bunsetsu of each sentence and their dependencies in the lattice format, which is what <code>cabocha -f1</code> writes. <a href="../lindera-dependency/quickstart.html">Quick Start</a> has the output, and <a href="../lindera-dependency/reading_the_result.html">Reading and Using the Result</a> says how to read it.</p>
+<p><code>tokenize</code> gives the same analysis on the tokens of its output, with the token filter <code>japanese_dependency</code>: see <a href="../lindera-dependency/token_filter.html">Token Filter</a>.</p>
 
                     </main>
 

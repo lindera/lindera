@@ -201,7 +201,7 @@
 <li><strong>CaboCha が配布する 3 つのモデル（IPA・JUMAN・UniDic）を変換し</strong>、CaboCha と同じ解析をするモデルファイルにする。そのモデルの利用は、CaboCha のモデルと同じく、研究目的と個人利用に限られる。</li>
 <li>文節の区切りと係り受けの精度を、CaboCha・J.DepP と同じ数え方で<strong>評価し</strong>、2 つの出力を対の検定で比べる。</li>
 </ul>
-<p>既定のビルドは依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。コマンドは <code>cli</code> feature の裏に、学習と評価は <code>train</code> feature の裏にあります。</p>
+<p>既定のビルドは依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできます。型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器が入っています。学習と評価は <code>train</code> feature の裏にあります。このクレートはライブラリで、コマンドは <code>lindera</code> コマンドの <a href="./lindera-dependency/command_line.html"><code>lindera dependency</code></a> です。</p>
 <h2 id="目次"><a class="header" href="#目次">目次</a></h2>
 <ul>
 <li>
@@ -229,7 +229,7 @@
 <p><a href="./lindera-dependency/cabocha_models.html">CaboCha のモデル</a> -- CaboCha が配布するモデルを変換する。利用条件、コマンド、変換するもの、CaboCha との一致</p>
 </li>
 <li>
-<p><a href="./lindera-dependency/command_line.html">コマンドライン</a> -- <code>lindera-dependency</code> コマンドでテキストを解析する。オプション、入力の層、速度</p>
+<p><a href="./lindera-dependency/command_line.html">コマンドライン</a> -- <code>lindera dependency parse</code> でテキストを解析する。オプション、入力の層、速度</p>
 </li>
 <li>
 <p><a href="./lindera-dependency/token_filter.html">トークンフィルター</a> -- Lindera のトークナイザーのフィルター <code>japanese_dependency</code>。ビルド、トークンに書かれるもの、文、フィルターの順、速度</p>

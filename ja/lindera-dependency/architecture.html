@@ -310,10 +310,10 @@ assert_eq!(output, text.as_bytes());
 <h3 id="parser--classifier"><a class="header" href="#parser--classifier">Parser / Classifier</a></h3>
 <p><code>Parser</code> は、shift-reduce で各文節の係り先を求めます。1 回の判定の素性は、スキーマを通して作る文字列です。<code>FeatureSet</code> がどの群の素性を作るかを決め、<code>Classifier</code> が、素性の重みとその対の重みを足して点数を付けます。モデルファイルの分類器は <code>ParserPart</code> で、ファイルのバイト列の上で重みを読みます。<code>ParserModel</code> は、学習の結果の重みをメモリに持ちます。<code>LinearClassifier</code> は、手で作った重みを受け取ります。<code>parser::instances</code> は正解のある文から学習事例を作り、<code>parser::train</code> がそれで学習します。<a href="./parsing.html">係り受けの解析</a>を参照してください。</p>
 <h3 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h3>
-<p><code>cli</code> feature を付けると、<code>lindera-dependency</code> コマンドがビルドされます。分かち書きには <code>lindera-segmenter</code> を使い、学習のコードは入りません。<code>train</code> feature を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>
+<p>このクレートにバイナリはありません。コマンドは <code>lindera-cli</code> の <code>lindera dependency</code> で、そのクレートの <code>dependency</code> feature の裏にあり、既定のビルドに入っています。<code>lindera-cli</code> の <code>train</code> feature（これも既定のビルドに入っています）を付けると、学習データを作る、学習する、評価するサブコマンドが加わります。</p>
 <div class="table-wrapper"><table><thead><tr><th>サブコマンド</th><th>Feature</th><th>内容</th><th>ページ</th></tr></thead><tbody>
-<tr><td><code>parse</code></td><td><code>cli</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="./command_line.html">コマンドライン</a></td></tr>
-<tr><td><code>chunk</code></td><td><code>cli</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="./chunking.html">文節の区切り</a></td></tr>
+<tr><td><code>parse</code></td><td><code>dependency</code></td><td>テキストか、分かち書き済み・文節つきの入力を解析し、ラティス形式で書く</td><td><a href="./command_line.html">コマンドライン</a></td></tr>
+<tr><td><code>chunk</code></td><td><code>dependency</code></td><td>モデルファイルで、ファイルの形態素を区切り直す</td><td><a href="./chunking.html">文節の区切り</a></td></tr>
 <tr><td><code>convert</code></td><td><code>train</code></td><td>文節のラベルを持つ CoNLL-U のファイルから、学習データを作る</td><td><a href="./training_data.html">学習データ</a></td></tr>
 <tr><td><code>evaluate</code></td><td><code>train</code></td><td>出力を正解と比べる</td><td><a href="./evaluation.html">評価</a></td></tr>
 <tr><td><code>split</code></td><td><code>train</code></td><td>交差検証の分割を書き出す</td><td><a href="./evaluation.html">評価</a></td></tr>
@@ -323,13 +323,11 @@ assert_eq!(output, text.as_bytes());
 <tr><td><code>convert-cabocha</code></td><td><code>train</code></td><td>CaboCha の区切りと解析器のモデルを、モデルファイルに変換する</td><td><a href="./cabocha_models.html">CaboCha のモデル</a></td></tr>
 </tbody></table>
 </div>
-<p>コマンドは <code>lindera-cli</code> ではなく、このクレートにあります。ラティス形式を書き出し、学習を持つコマンドで、トークナイザーを使うだけの人には要らないためです。<code>lindera-cli</code> は、解析器を<a href="./token_filter.html">トークンフィルター</a>として動かします。</p>
+<p>コマンドは、このクレートではなく <code>lindera-cli</code> にあります（<a href="https://github.com/lindera/lindera/issues/1482">#1482</a>）。利用者が入れるコマンドが、辞書とモデルのダウンロードも行う 1 つで済み、このクレートは、どの feature でもトークナイザーに依存しません。<code>lindera-cli</code> は、解析器を<a href="./token_filter.html">トークンフィルター</a>としても動かします。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td>（なし）</td><td>型、ラティス形式、スキーマ、モデルファイル、文節の区切り、解析器。依存がなく、<code>wasm32-unknown-unknown</code> 向けにビルドできる</td><td>Yes</td></tr>
-<tr><td><code>cli</code></td><td><code>lindera-dependency</code> コマンドの <code>parse</code> と <code>chunk</code>。分かち書きは <code>lindera-segmenter</code>。学習のコードは入らない</td><td>No</td></tr>
-<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習、そのサブコマンド（<code>cli</code> を含む）</td><td>No</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>コマンドに IPADIC を埋め込む。<code>--dict embedded://ipadic</code> で使う（<code>cli</code> を含む）</td><td>No</td></tr>
+<tr><td><code>train</code></td><td><code>corpus</code> と <code>evaluation</code> のモジュール、<code>lindera-crf</code> による区切りの学習と解析器の学習</td><td>No</td></tr>
 <tr><td><code>embed-model-ipadic</code></td><td><a href="./model_file.html#%E5%9F%8B%E3%82%81%E8%BE%BC%E3%82%80">IPADIC のモデル</a>を埋め込む。<code>embedded::model("ipadic")</code> と <code>--model embedded://ipadic</code> で使う。ビルド依存が増え、ライブラリの依存は増えない</td><td>No</td></tr>
 <tr><td><code>embed-model-unidic</code>、<code>embed-model-unidic-cwj</code>、<code>embed-model-unidic-csj</code></td><td><a href="./model_file.html#unidic-%E3%81%AE%E3%83%A2%E3%83%87%E3%83%AB">UniDic のモデル</a>を埋め込む。<code>embedded::model("unidic")</code> と <code>--model embedded://unidic</code> で使う。ほかの 2 つの名前でも同じ</td><td>No</td></tr>
 </tbody></table>
