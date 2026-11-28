@@ -38,6 +38,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The timeouts are those of the same two steps in release.yml,
+  # `build-lindera-nodejs` and `publish-nodejs-npm` (#1485).
   build:
     name: Build Node.js Native (${{ matrix.platform.target }})
     # Kept in step with the `build-lindera-nodejs` matrix in release.yml.
@@ -58,6 +60,7 @@ jobs:
           - runner: windows-latest
             target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -97,6 +100,7 @@ jobs:
     name: Publish Node.js to npm
     needs: [build]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Run checkout
         uses: actions/checkout@v7

@@ -6,9 +6,15 @@ on:
     - cron: 0 0 * * SUN
 
 jobs:
+  # Every job has a timeout, so that one that hangs is stopped in minutes
+  # and not after the six hours of GitHub (#1485): 30 minutes for the
+  # tests, as test-crate.yml gives the same tests in regression.yml, and
+  # 20 for `format`. In the 10 runs before the timeouts, the longest job
+  # took 7.3 minutes.
   format:
     name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -29,6 +35,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -48,6 +55,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -72,6 +80,7 @@ jobs:
             target: x86_64-pc-windows-msvc
         toolchain: [stable, beta, nightly]
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -92,6 +101,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -111,6 +121,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -130,6 +141,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -154,6 +166,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -178,6 +191,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -202,6 +216,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -226,6 +241,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -250,6 +266,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -274,6 +291,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -293,6 +311,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -312,6 +331,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -347,6 +367,7 @@ jobs:
             target: x86_64-pc-windows-msvc
         toolchain: [stable, beta, nightly]
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -380,6 +401,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -404,6 +426,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -428,6 +451,7 @@ jobs:
             target: x86_64-pc-windows-msvc
         toolchain: [stable, beta, nightly]
     runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -448,6 +472,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -472,6 +497,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -491,6 +517,7 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -507,6 +534,7 @@ jobs:
     name: Test lindera-python
     needs: [test-lindera]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -530,6 +558,7 @@ jobs:
     name: Test lindera-nodejs
     needs: [test-lindera]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -552,6 +581,7 @@ jobs:
     name: Test lindera-ruby
     needs: [test-lindera]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -577,6 +607,7 @@ jobs:
     name: Test lindera-php
     needs: [test-lindera]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
@@ -606,6 +637,7 @@ jobs:
     name: Test lindera-wasm
     needs: [test-lindera]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Run checkout
         uses: actions/checkout@v7

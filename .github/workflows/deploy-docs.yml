@@ -11,8 +11,11 @@ on:
   workflow_dispatch:
 
 jobs:
+  # The job takes about 3 minutes. The timeout stops one that hangs in
+  # minutes and not after the six hours of GitHub (#1485).
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write  # To push to the gh-pages branch.
     steps:
